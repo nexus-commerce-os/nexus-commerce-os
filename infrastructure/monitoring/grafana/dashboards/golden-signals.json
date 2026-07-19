@@ -1,0 +1,79 @@
+{
+  "uid": "nexus-golden-signals",
+  "title": "NEXUS · Golden Signals (per service)",
+  "tags": ["nexus", "golden-signals", "sre"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(service:http_requests:rate5m, service)",
+        "refresh": 2,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Traffic — requests/sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (service) (service:http_requests:rate5m{service=~\"$service\"})", "legendFormat": "{{service}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Errors — 5xx ratio (SLO budget 0.05%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.0005 } ] } } },
+      "targets": [
+        { "expr": "service:http_errors:ratio_rate5m{service=~\"$service\"}", "legendFormat": "{{service}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Latency — p95 (SLO ≤ 400ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.4 } ] } } },
+      "targets": [
+        { "expr": "service:http_request_latency:p95_5m{service=~\"$service\"}", "legendFormat": "{{service}} {{route}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Saturation — CPU vs request (limit)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "targets": [
+        { "expr": "sum by (service) (rate(container_cpu_usage_seconds_total{namespace=~\"nexus-.*\"}[5m])) / sum by (service) (kube_pod_container_resource_limits{resource=\"cpu\", namespace=~\"nexus-.*\"})", "legendFormat": "{{service}} cpu" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Error-budget burn (fast/slow windows)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Feeds the multiwindow-multiburn SLO alerts and the §4 canary auto-rollback guardrails.",
+      "targets": [
+        { "expr": "service:http_errors:ratio_rate1h{service=~\"$service\"} / 0.0005", "legendFormat": "{{service}} 1h burn x" },
+        { "expr": "service:http_errors:ratio_rate6h{service=~\"$service\"} / 0.0005", "legendFormat": "{{service}} 6h burn x" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+# ============================================================================
+# Recording rules — precompute golden-signal SLIs so SLO burn alerts + Grafana
+# read cheap aggregates (docs/10 §7). SLO targets come from the §7 table:
+#   core discovery availability 99.95%, search p95 <= 400ms, referral 99.9%.
+# These are SKELETON rules keyed on the platform-hello canary metric names; a
+# real service emits the same golden signals via the library-chart contract.
+# ============================================================================
+groups:
+  - name: nexus.sli.request
+    interval: 30s
+    rules:
+      # Per-service request rate.
+      - record: service:http_requests:rate5m
+        expr: sum by (service, namespace, pool) (rate(platform_hello_http_requests_total[5m]))
+
+      # Per-service error ratio (5xx / total) over several windows for multiburn.
+      - record: service:http_errors:ratio_rate5m
+        expr: |
+          sum by (service, namespace) (rate(platform_hello_http_requests_total{status=~"5.."}[5m]))
+          /
+          sum by (service, namespace) (rate(platform_hello_http_requests_total[5m]))
+      - record: service:http_errors:ratio_rate30m
+        expr: |
+          sum by (service, namespace) (rate(platform_hello_http_requests_total{status=~"5.."}[30m]))
+          /
+          sum by (service, namespace) (rate(platform_hello_http_requests_total[30m]))
+      - record: service:http_errors:ratio_rate1h
+        expr: |
+          sum by (service, namespace) (rate(platform_hello_http_requests_total{status=~"5.."}[1h]))
+          /
+          sum by (service, namespace) (rate(platform_hello_http_requests_total[1h]))
+      - record: service:http_errors:ratio_rate6h
+        expr: |
+          sum by (service, namespace) (rate(platform_hello_http_requests_total{status=~"5.."}[6h]))
+          /
+          sum by (service, namespace) (rate(platform_hello_http_requests_total[6h]))
+
+  - name: nexus.sli.latency
+    interval: 30s
+    rules:
+      # p95 request latency per service+route (SLO: search read path <= 400ms).
+      - record: service:http_request_latency:p95_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service, route, le) (rate(platform_hello_http_request_duration_seconds_bucket[5m])))
+
+  - name: nexus.slo.availability
+    interval: 30s
+    rules:
+      # Availability SLI = 1 - error ratio. Recorded so the error-budget burn
+      # alerts and the golden-signals dashboard share one source of truth.
+      - record: slo:availability:ratio_rate5m
+        expr: 1 - service:http_errors:ratio_rate5m
+      # Error-budget target label for downstream alerts (99.95% => budget 0.0005).
+      - record: slo:error_budget:target
+        expr: vector(0.0005)

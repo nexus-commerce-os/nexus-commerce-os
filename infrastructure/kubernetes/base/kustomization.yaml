@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base = the cluster-wide, env-agnostic scaffolding: the namespace layout with
+# discovery vs money vs observability blast-radius separation. Per-env overlays
+# layer on labels + the ArgoCD Applications that deploy the Helm workloads.
+resources:
+  - namespaces.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: nexus
+      app.kubernetes.io/managed-by: argocd
+    includeSelectors: false

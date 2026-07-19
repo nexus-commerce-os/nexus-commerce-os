@@ -1,0 +1,19 @@
+{
+  "name": "@nexus/affiliate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "NEXUS Affiliate & Attribution + Referral/Handoff module (NestJS/TS) — P0.1 scaffold. No logic; implemented in P0.3/P0.4.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "echo \"no tests — scaffold\" && exit 0"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.0",
+    "@nestjs/core": "^10.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

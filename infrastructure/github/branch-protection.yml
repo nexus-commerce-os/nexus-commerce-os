@@ -1,0 +1,39 @@
+# Branch protection — config-as-doc for `main`.
+# Certified by docs/10 §2 (fail-closed gate blocks merge) + §3 (blocks promotion),
+# docs/08 §5.5, README non-negotiables. Applied by an org-admin bootstrap (Terraform
+# `github_branch_protection` or `gh api`), NEVER by a workflow token — the pipeline
+# must not be able to weaken its own gates.
+#
+# This is the declarative source of truth; translate to the GitHub REST shape at apply time.
+
+branch: main
+
+required_status_checks:
+  strict: true # why: a PR must be up to date with main before merge (no stale-branch bypass of gates).
+  # why: ONE aggregate required check keeps this list stable while the CI job graph evolves.
+  #      `ci-gate` (ci.yml) only goes green when EVERY gate below it succeeded (fail-closed).
+  contexts:
+    - ci-gate
+
+enforce_admins: true # why: admins are not exempt — the gate is universal (docs/10 §0.1, no snowflakes).
+
+required_pull_request_reviews:
+  require_code_owner_reviews: true # why: CODEOWNERS review is mandatory — every path has an owning team.
+  required_approving_review_count: 1 # why: min human review; prod promotion adds a 2nd gate (environments.yml).
+  dismiss_stale_reviews: true # why: a new push invalidates prior approvals (review the code that ships).
+  require_last_push_approval: true # why: the approver cannot be the last pusher (self-approval blocked).
+
+required_linear_history: true # why: docs/10 — auditable history; no merge-commit tangle, easy revert (rollback).
+required_signed_commits: true # why: docs/08 A08 integrity — every commit is verified/signed, no forged authorship.
+required_conversation_resolution: true # why: no unresolved review threads merge silently.
+
+allow_force_pushes: false # why: history on main is immutable — force-push would erase the audit trail.
+allow_deletions: false # why: the protected branch cannot be deleted.
+block_creations: false
+lock_branch: false
+
+# Notes:
+# - Routine config-repo digest bumps to NON-prod may use CODEOWNERS auto-approval (docs/10 §3 risk note);
+#   humans gate prod via the `production` Environment (environments.yml), not via this branch rule.
+# - `contexts: [ci-gate]` is deliberate: adding/removing individual gate jobs never requires editing branch
+#   protection, and a skipped/failed sub-job propagates to `ci-gate` failing (see ci.yml aggregate job).

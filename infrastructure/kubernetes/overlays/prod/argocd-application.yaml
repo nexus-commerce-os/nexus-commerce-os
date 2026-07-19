@@ -1,0 +1,79 @@
+# ============================================================================
+# prod GitOps (docs/10 §3, §4). prod is NON-auto-sync on purpose: promotion is
+# a MANUAL approval gate (change ticket + 2 approvals + rollback-proof id),
+# then a progressive, region-by-region rollout via Argo Rollouts. Self-heal is
+# ON (drift correction) but syncs are operator-initiated after the gate. A
+# scoped break-glass (docs/10 §3) suspends self-heal during an incident.
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: nexus-prod
+  namespace: argocd
+spec:
+  description: NEXUS production (multi-region, gated promotion)
+  sourceRepos:
+    - "https://github.com/nexus/monorepo.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "nexus-*"
+    - server: https://kubernetes.default.svc
+      namespace: observability
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  # Prod changes require signed commits + PR review upstream; enforce here too.
+  signatureKeys: []
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexus-namespaces-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: nexus-prod
+  source:
+    repoURL: "https://github.com/nexus/monorepo.git"
+    targetRevision: main
+    path: infrastructure/kubernetes/base
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    # No `automated:` block — namespaces change only via reviewed manual sync.
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-hello-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: nexus-prod
+  source:
+    repoURL: "https://github.com/nexus/monorepo.git"
+    targetRevision: main
+    path: services/platform-hello/helm
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: image.digest
+          value: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexus-platform
+  syncPolicy:
+    # NO automated sync in prod — promotion is the manual approval gate (docs/10 §3).
+    # selfHeal is intentionally OFF at the Application level; drift is surfaced as
+    # OutOfSync for review rather than silently reconciled (docs/10 §5 prod drift).
+    syncOptions:
+      - CreateNamespace=false
+      - ApplyOutOfSyncOnly=true

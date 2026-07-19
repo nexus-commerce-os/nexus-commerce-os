@@ -1,0 +1,63 @@
+# ============================================================================
+# Prometheus scrape config (docs/09 §11, docs/10 §7). Lives in the separate
+# observability failure domain. Feeds HPA/KEDA custom metrics (§7) and the SLO
+# burn-rate release gates (§4) — so it MUST stay up independently of workloads.
+# In prod this is Prometheus + Thanos/AMP for long-term/global aggregation.
+# ============================================================================
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    cluster: nexus
+    monitor: nexus-observability
+
+rule_files:
+  - /etc/prometheus/rules/recording-rules.yaml
+  - /etc/prometheus/rules/alert-rules.yaml
+
+alerting:
+  alertmanagers:
+    - kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names: [observability]
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: alertmanager
+          action: keep
+
+scrape_configs:
+  # ---- The collector's own telemetry (self-observability) -----------------
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector.observability.svc.cluster.local:8888"]
+
+  # ---- Annotation-based pod discovery across NEXUS namespaces --------------
+  # Any pod with prometheus.io/scrape=true (the nexus-common chart sets these)
+  # is scraped on its declared metrics port/path.
+  - job_name: nexus-pods
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [nexus-platform, nexus-discovery, nexus-money]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: "true"
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_label_nexus_io_pool]
+        target_label: pool

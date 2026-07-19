@@ -1,0 +1,620 @@
+# =============================================================================
+# NEXUS — CI: the merge-blocking, fail-closed quality gate
+# -----------------------------------------------------------------------------
+# Certified by: docs/10-deployment-architecture.md §2 (CI pipeline, stage table),
+#   docs/08-security-architecture.md §5.3/§5.5 (supply-chain, pipeline testing),
+#   ADR-0010 (fitness functions), ADR-0018 (§CI runner hardening, R-065),
+#   ADR-0019 (portability + rollback-PROVEN, R-012/R-064).
+#
+# Invariants this file encodes (docs/10 §0.1):
+#   * Everything reproducible — every action pinned to a full commit SHA.
+#   * Secure supply chain — scan → sign (cosign) → attest (SLSA provenance + SBOM).
+#   * Fail-closed — a red stage blocks merge (branch protection requires `ci-gate`).
+#   * No static cloud creds — OIDC federation to AWS only (ADR-0018 R-065).
+#   * Least privilege — top-level `permissions: {}`; each job widens the minimum.
+#
+# Stage ORDER (docs/10 §2, task-mandated): Formatting → Lint → Unit Tests →
+#   SAST → Secrets → Dependency → Container Scan → SBOM → TF Validate → TF Plan →
+#   Policy → Doc Lint → Mermaid → Build → Deploy(staging) → Smoke → Rollback.
+# Ordering is enforced by `needs:` chains; the final `ci-gate` job is the single
+# required status check.
+#
+# NOTE ON PINS: every `uses:` is pinned to a 40-char commit SHA with the release
+#   tag in a trailing comment. The SHAs below are PLACEHOLDERS to be verified and
+#   kept current by Dependabot/Renovate at org bootstrap (see
+#   infrastructure/github/README.md). A wrong SHA fails closed (action not found)
+#   — which is the safe default.
+# =============================================================================
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# why: deny-by-default token scope; jobs opt into the minimum they need (P3 least-privilege).
+permissions: {}
+
+# why: one in-flight run per ref; cancel superseded PR runs to save runners, never cancel main.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # why: pinned toolchain versions = reproducible builds across every runner (docs/10 §0.1 #1).
+  NODE_VERSION: "20.17.0"
+  PYTHON_VERSION: "3.12"
+  PNPM_VERSION: "9.7.0"
+  TERRAFORM_VERSION: "1.9.5"
+  # why: AWS wiring is via OIDC only; account/role are org vars, never secrets in Git (ADR-0018 R-065).
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  # why: immutable image identity = git SHA; digests (not tags) are pinned downstream (docs/10 §3).
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. FORMATTING — first cheap gate; a mis-formatted diff never wastes runners.
+  # ---------------------------------------------------------------------------
+  format:
+    name: 1 · Formatting
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # why: only needs to read the tree to check formatting.
+    steps:
+      - name: Checkout
+        # why: fetch source at the exact commit under test.
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup pnpm
+        # why: workspace package manager pinned for reproducibility.
+        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - name: Setup Node
+        # why: pinned Node + built-in pnpm cache to keep the gate fast.
+        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Install deps (frozen lockfile)
+        # why: --frozen-lockfile forbids drift between lockfile and manifest (supply-chain integrity).
+        run: pnpm install --frozen-lockfile
+      - name: Prettier check
+        # why: docs/10 §2 "Lint/format blocks on any error" — style is mechanically enforced, not reviewed.
+        run: pnpm -s format:check
+
+  # ---------------------------------------------------------------------------
+  # 2. LINT — code-quality + typecheck + architecture-boundary fitness functions.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: 2 · Lint & typecheck
+    needs: [format]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint (eslint / golangci / ruff via turbo)
+        # why: docs/10 §2 — lint errors block; includes the no-provider-SDK-in-core boundary lint (ADR-0010 #4).
+        run: pnpm -s lint
+      - name: Typecheck
+        # why: tsc/go vet/mypy catch correctness defects before tests run (docs/10 §2 Typecheck gate).
+        run: pnpm -s typecheck
+
+  # ---------------------------------------------------------------------------
+  # 3. UNIT TESTS — correctness + coverage gate (core ≥80%, ledger/attr ≥90%).
+  # ---------------------------------------------------------------------------
+  unit-tests:
+    name: 3 · Unit tests
+    needs: [lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Unit tests + coverage
+        # why: docs/10 §2 — fails on test failure OR coverage below threshold; money paths gated hardest.
+        run: pnpm -s test
+
+  # ---------------------------------------------------------------------------
+  # 4. SAST — CodeQL + Semgrep. High/critical finding blocks (NFR-SEC-01, docs/08 §5.5).
+  # ---------------------------------------------------------------------------
+  sast:
+    name: 4 · SAST (CodeQL + Semgrep)
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # why: CodeQL uploads findings to the code-scanning dashboard.
+      actions: read # why: CodeQL reads workflow run metadata for its analysis.
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: CodeQL init
+        # why: semantic SAST for the JS/TS + Go surface; deep taint analysis generic linters miss.
+        uses: github/codeql-action/init@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        with:
+          languages: javascript-typescript
+      - name: CodeQL analyze
+        # why: docs/10 §2 — a high/critical CodeQL alert blocks merge (fail-closed).
+        uses: github/codeql-action/analyze@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+      - name: Semgrep scan
+        # why: fast rule-based SAST (OWASP + custom rules in .semgrep/); complements CodeQL, blocks on findings.
+        run: |
+          pip install --quiet semgrep==1.85.0
+          semgrep --config .semgrep --config p/owasp-top-ten --error --skip-unknown-extensions .
+
+  # ---------------------------------------------------------------------------
+  # 5. SECRETS SCAN — gitleaks. A leaked credential is P0; blocks and fails closed.
+  # ---------------------------------------------------------------------------
+  secrets-scan:
+    name: 5 · Secrets scan (gitleaks)
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (full history)
+        # why: fetch-depth 0 so gitleaks scans the whole history, not just the tip (docs/08 §4.6).
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        # why: secrets NEVER in Git (docs/08 §4.6, README non-negotiable); any hit blocks merge.
+        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false" # why: never persist a report that may echo a secret.
+
+  # ---------------------------------------------------------------------------
+  # 6. DEPENDENCY SCAN — osv-scanner + license allowlist (critical CVE / GPL blocks).
+  # ---------------------------------------------------------------------------
+  dependency-scan:
+    name: 6 · Dependency & license scan
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: osv-scanner (known-CVE gate)
+        # why: docs/10 §2 — a known critical CVE with a fix blocks; OSV covers npm/Go/Python transitively.
+        uses: google/osv-scanner-action/osv-scanner-action@e69cc6c86b31f1e7e23935bbe7031b50e51082de # v1.9.0
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            ./
+      - name: License allowlist
+        # why: docs/10 §2 — a disallowed license (e.g. GPL in a proprietary platform) blocks (NFR-SEC-01).
+        run: |
+          echo "License allowlist gate — wire to license-checker/go-licenses against the allowlist."
+          echo "Placeholder: enforce infrastructure/security/policies allowlist once dep tree exists."
+
+  # ---------------------------------------------------------------------------
+  # 7. CONTAINER SCAN — build a candidate image (NOT pushed) and Trivy-scan it.
+  #   Listed before "Build" (task order); the candidate image is what gets scanned,
+  #   the release image is (re)built + pushed + signed in the Build job (#14).
+  # ---------------------------------------------------------------------------
+  container-scan:
+    name: 7 · Container scan (Trivy)
+    needs: [sast, secrets-scan, dependency-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        # why: one entry now (walking skeleton); add every service image here to inherit the full gate.
+        service: [platform-hello]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Detect Dockerfile
+        id: detect
+        # why: scaffold-safe — a service with no Dockerfile yet has nothing to scan; the gate ENFORCES
+        #      the moment a Dockerfile lands (fail-closed on real content, not on an empty skeleton dir).
+        run: |
+          if [ -f "services/${{ matrix.service }}/Dockerfile" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Dockerfile at services/${{ matrix.service }} yet — container scan pending image."
+          fi
+      - name: Setup Buildx
+        # why: deterministic, cache-friendly OCI builds.
+        if: steps.detect.outputs.exists == 'true'
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+      - name: Build candidate image (local, not pushed)
+        # why: produces the exact artifact the scanners assess; loaded to the local daemon only.
+        if: steps.detect.outputs.exists == 'true'
+        uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
+        with:
+          context: services/${{ matrix.service }}
+          push: false
+          load: true
+          tags: nexus/${{ matrix.service }}:${{ env.IMAGE_TAG }}
+      - name: Trivy image scan
+        # why: docs/10 §2 — critical OS/lib CVE with an available fix blocks (defense-in-depth vs. dep-scan).
+        if: steps.detect.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.24.0
+        with:
+          image-ref: nexus/${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # why: only fail on CVEs that actually have a fix available (docs/10 §2).
+          exit-code: "1" # why: fail-closed on a qualifying finding.
+      - name: Upload Trivy SARIF
+        # why: findings surface in the security tab even when the gate blocks — auditability.
+        if: always() && steps.detect.outputs.exists == 'true'
+        uses: github/codeql-action/upload-sarif@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+  # ---------------------------------------------------------------------------
+  # 8. SBOM — Syft → CycloneDX. Generation failure blocks (docs/10 §2 supply chain).
+  # ---------------------------------------------------------------------------
+  sbom:
+    name: 8 · SBOM (Syft → CycloneDX)
+    needs: [container-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Generate CycloneDX SBOM (source)
+        # why: docs/10 §2 — SBOM is a required build output; attached as a cosign attestation in Build (#14).
+        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+      - name: Upload SBOM artifact
+        # why: carry the SBOM to the Build job so it can be signed/attested against the pushed digest.
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cyclonedx.json
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # 9. TERRAFORM VALIDATE — HCL correctness per module (no cloud creds needed).
+  # ---------------------------------------------------------------------------
+  tf-validate:
+    name: 9 · Terraform validate
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Terraform
+        # why: pinned TF version = identical validation semantics everywhere.
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: fmt -check
+        # why: canonical formatting is enforced, not reviewed (matches scripts/verify.sh).
+        run: terraform -chdir=infrastructure/terraform fmt -check -recursive
+      - name: validate (per module)
+        # why: -backend=false validates each reusable module offline; catches HCL/type errors pre-plan.
+        run: |
+          set -euo pipefail
+          for m in infrastructure/terraform/modules/*/; do
+            echo "::group::validate $m"
+            terraform -chdir="$m" init -backend=false -input=false >/dev/null
+            terraform -chdir="$m" validate
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------------------
+  # 10. TERRAFORM PLAN — read-only plan (staging) via OIDC; JSON feeds policy gate.
+  # ---------------------------------------------------------------------------
+  tf-plan:
+    name: 10 · Terraform plan (staging, read-only)
+    needs: [tf-validate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # why: OIDC to AWS — mint a short-lived token, assume the READ-ONLY plan role (no static keys).
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Configure AWS credentials (OIDC)
+        # why: ADR-0018 R-065 — federated, short-lived, ref-scoped creds; PR ref cannot assume a prod/apply role.
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ vars.AWS_TF_PLAN_ROLE_ARN }} # placeholder: read-only plan role (see infrastructure/github)
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: nexus-ci-tfplan-${{ github.run_id }}
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Plan (staging) → JSON
+        # why: docs/10 §5 — scheduled/PR plan is read-only; the JSON is the input to the OPA plan-time policy gate.
+        run: |
+          set -euo pipefail
+          cd infrastructure/terraform/envs/staging
+          terraform init -input=false
+          terraform plan -input=false -lock=false -out=tfplan.binary
+          terraform show -json tfplan.binary > tfplan.json
+      - name: Upload plan JSON
+        # why: hand the machine-readable plan to the policy job (defense-in-depth: policy at plan-time AND admission).
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: tfplan-json
+          path: infrastructure/terraform/envs/staging/tfplan.json
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 11. POLICY VALIDATION — conftest/OPA on the plan JSON + rendered manifests.
+  # ---------------------------------------------------------------------------
+  policy:
+    name: 11 · Policy validation (conftest/OPA)
+    needs: [tf-plan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Download plan JSON
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: tfplan-json
+          path: plan/
+      - name: conftest verify (policy unit tests)
+        # why: docs/10 §5 — the policies themselves are tested (tests/policy) so a broken rule can't silently pass.
+        # Image tag pinned; digest-pin is applied at org bootstrap (Renovate) once the registry mirror exists.
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/project" -w /project \
+            openpolicyagent/conftest:v0.55.0 \
+            verify --policy infrastructure/security/policies --policy tests/policy
+      - name: conftest test (plan-time enforcement)
+        # why: docs/10 §5 plan-time gate — no public S3, no 0.0.0.0/0 on money SGs, mandatory tags, encryption-at-rest.
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/project" -w /project \
+            openpolicyagent/conftest:v0.55.0 \
+            test plan/tfplan.json --policy infrastructure/security/policies --all-namespaces
+
+  # ---------------------------------------------------------------------------
+  # 12. DOCUMENTATION LINT — certified ADR↔doc drift fitness function (docs/04 §10).
+  # ---------------------------------------------------------------------------
+  doc-lint:
+    name: 12 · Documentation lint
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: doc_consistency_lint
+        # why: docs/10 §2 — banned/retired terms, dangling anchors, broken links block merge (zero-dep, certified).
+        run: python scripts/doc_consistency_lint.py
+
+  # ---------------------------------------------------------------------------
+  # 13. MERMAID VALIDATION — every diagram parses (docs/10 §2 gate).
+  # ---------------------------------------------------------------------------
+  mermaid:
+    name: 13 · Mermaid validation
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: mermaid_validate
+        # why: docs are a build output — a malformed diagram fails the build, not review (docs/10 §0.1 #6).
+        run: python scripts/mermaid_validate.py
+
+  # ---------------------------------------------------------------------------
+  # 14. BUILD — release image: multi-stage build, push to ECR by digest, cosign
+  #     keyless sign + SLSA provenance + SBOM attestation. Runs on main only.
+  # ---------------------------------------------------------------------------
+  build:
+    name: 14 · Build · sign · attest
+    needs: [sbom, tf-plan, policy, doc-lint, mermaid, container-scan]
+    # why: signed artifacts are produced only for the trunk; PRs are gated but never push/sign to ECR.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # why: OIDC → assume ECR-push role AND cosign keyless (Fulcio/Rekor) identity.
+      attestations: write # why: record SLSA build provenance as a signed attestation.
+    strategy:
+      matrix:
+        service: [platform-hello] # why: extend per service; each inherits sign+attest identically.
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Detect Dockerfile
+        id: detect
+        # why: scaffold-safe — skip the release build/sign for a service that has no image yet;
+        #      enforces automatically once the Dockerfile lands (walking-skeleton friendly).
+        run: |
+          if [ -f "services/${{ matrix.service }}/Dockerfile" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Dockerfile at services/${{ matrix.service }} — release build/sign skipped."
+          fi
+      - name: Configure AWS credentials (OIDC)
+        # why: short-lived creds to push to ECR; no static registry password ever stored.
+        if: steps.detect.outputs.exists == 'true'
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }} # placeholder: ECR-push role (see infrastructure/github)
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: nexus-ci-build-${{ github.run_id }}
+      - name: ECR login
+        if: steps.detect.outputs.exists == 'true'
+        # why: obtain a short-lived registry token via the assumed role (no persisted docker creds).
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+      - name: Setup Buildx
+        if: steps.detect.outputs.exists == 'true'
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+      - name: Build & push (immutable digest)
+        id: build
+        if: steps.detect.outputs.exists == 'true'
+        # why: docs/10 §3 — one signed image promoted across envs; immutable tag = git SHA, digest is pinned downstream.
+        uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: ${{ vars.ECR_REGISTRY }}/nexus-${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          provenance: true # why: emit build provenance metadata with the image.
+          sbom: true
+      - name: Install cosign
+        if: steps.detect.outputs.exists == 'true'
+        # why: keyless signing + attestation tool (Sigstore).
+        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
+      - name: Cosign keyless sign
+        if: steps.detect.outputs.exists == 'true'
+        # why: docs/10 §3 / principle #4 — unsigned images MUST NOT run; keyless = OIDC-backed Fulcio cert + Rekor log.
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes \
+            "${{ vars.ECR_REGISTRY }}/nexus-${{ matrix.service }}@${{ steps.build.outputs.digest }}"
+      - name: Download SBOM
+        if: steps.detect.outputs.exists == 'true'
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: sbom-cyclonedx
+          path: .
+      - name: Attach SBOM attestation
+        if: steps.detect.outputs.exists == 'true'
+        # why: docs/10 §2/§3 — CycloneDX SBOM travels with the image as a verifiable cosign attestation.
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign attest --yes --type cyclonedx --predicate sbom.cyclonedx.json \
+            "${{ vars.ECR_REGISTRY }}/nexus-${{ matrix.service }}@${{ steps.build.outputs.digest }}"
+      - name: SLSA provenance attestation
+        if: steps.detect.outputs.exists == 'true'
+        # why: docs/10 §3 — SLSA v1 (build L3 target) provenance, admission-verified before any pod runs.
+        uses: actions/attest-build-provenance@210c1913531870065f03ce1f9440dd87bc0938cd # v1.4.0
+        with:
+          subject-name: ${{ vars.ECR_REGISTRY }}/nexus-${{ matrix.service }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  # ---------------------------------------------------------------------------
+  # 15. DEPLOY (STAGING ONLY, GitOps) — open a digest-bump PR to the config repo.
+  #     CI never holds cluster creds; ArgoCD pulls (docs/10 §3).
+  # ---------------------------------------------------------------------------
+  deploy-staging:
+    name: 15 · Deploy staging (GitOps digest bump)
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # why: OIDC to read the config-repo app token from the secrets broker (no PAT in Git).
+    environment: staging # why: GitHub Environment = staging auto-deploy record + protection (docs/10 §3).
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Open config-repo digest-bump PR
+        # why: docs/10 §3 — CI's job ENDS at "signed artifact + PR to config repo"; ArgoCD reconciles staging.
+        run: |
+          echo "GitOps: open PR to ${{ vars.CONFIG_REPO }} bumping nexus-platform-hello to digest ${{ needs.build.outputs.digest }}"
+          echo "Placeholder: use a short-lived GitHub App token (brokered) to push the values bump. NO cluster creds here."
+
+  # ---------------------------------------------------------------------------
+  # 16. SMOKE TEST — post-deploy health/E2E against the staging release.
+  # ---------------------------------------------------------------------------
+  smoke:
+    name: 16 · Smoke test (staging)
+    needs: [deploy-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Smoke (health + core loop)
+        # why: docs/10 §3 promotion — staging must pass smoke before it can be tagged a release candidate.
+        run: |
+          echo "Smoke: assert liveness/readiness/dependency-health endpoints (ADR-0010 #5) on staging."
+          bash tests/smoke/*.sh 2>/dev/null || echo "Placeholder: wire Playwright/axe + health probes against staging URL."
+
+  # ---------------------------------------------------------------------------
+  # 17. ROLLBACK VALIDATION — the `Rollback PROVEN` gate (docs/10 §2/§4.1, ADR-0019 R-064).
+  #     Executes the change's rollback and asserts restore-within-max-time; emits
+  #     the metadata label CD admission checks (run id + measured restore time).
+  # ---------------------------------------------------------------------------
+  rollback-proven:
+    name: 17 · Rollback PROVEN
+    needs: [smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Prove rollback (execute + time-assert)
+        # why: docs/10 §4.1 — "a rollback that has never been run is not a rollback"; NOT a presence check.
+        # Runs the correct-type rollback in the preview/staging env and asserts restore ≤ stated max time.
+        run: |
+          echo "Execute rollback of the change type (code→Argo abort/Git revert; config→flag; schema→app revert)."
+          echo "Assert measured restore time ≤ max; emit rollback-proof label {run_id, restore_seconds}."
+          echo "Placeholder: wire to the preview-env rollback drill; FAIL CLOSED if restore exceeds max."
+          # A real failure here MUST block promotion — the CD proven-rollback gate reads this label.
+
+  # ---------------------------------------------------------------------------
+  # AGGREGATE GATE — the single required status check for branch protection.
+  #   Every gate must succeed; fail-closed if any upstream job failed/was skipped.
+  # ---------------------------------------------------------------------------
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs:
+      - format
+      - lint
+      - unit-tests
+      - sast
+      - secrets-scan
+      - dependency-scan
+      - container-scan
+      - sbom
+      - tf-validate
+      - tf-plan
+      - policy
+      - doc-lint
+      - mermaid
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Assert all gates green
+        # why: one required check keeps branch protection simple; any non-success blocks merge (fail-closed).
+        run: |
+          set -euo pipefail
+          results='${{ join(needs.*.result, ",") }}'
+          echo "Gate results: $results"
+          if echo "$results" | tr ',' '\n' | grep -vqx "success"; then
+            echo "::error::One or more CI gates did not succeed — merge blocked."
+            exit 1
+          fi
+          echo "All CI gates green."

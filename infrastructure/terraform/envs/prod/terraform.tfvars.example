@@ -1,0 +1,7 @@
+# =============================================================================
+# prod env — EXAMPLE variables. Copy to terraform.tfvars (gitignored).
+# =============================================================================
+
+primary_region = "us-east-1" # Phase-1 US residency
+dr_region      = "us-west-2" # in-zone DR pair (same residency zone)
+owner_tag      = "platform-team"

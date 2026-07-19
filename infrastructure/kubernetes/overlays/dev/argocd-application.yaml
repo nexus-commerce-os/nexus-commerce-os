@@ -1,0 +1,76 @@
+# ============================================================================
+# dev GitOps — ArgoCD AppProject + Applications (docs/10 §3).
+# dev auto-syncs on merge to main (auto-sync + self-heal). CI never holds
+# cluster creds; ArgoCD (in-cluster) pulls desired state from this repo.
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: nexus-dev
+  namespace: argocd
+spec:
+  description: NEXUS dev environment
+  sourceRepos:
+    - "https://github.com/nexus/monorepo.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "nexus-*"
+    - server: https://kubernetes.default.svc
+      namespace: observability
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+# Namespaces (blast-radius separation) rendered from the Kustomize base overlay.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexus-namespaces-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: nexus-dev
+  source:
+    repoURL: "https://github.com/nexus/monorepo.git"
+    targetRevision: main
+    path: infrastructure/kubernetes/base
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+# The platform-hello walking-skeleton, deployed from its Helm chart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-hello-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: nexus-dev
+  source:
+    repoURL: "https://github.com/nexus/monorepo.git"
+    targetRevision: main
+    path: services/platform-hello/helm
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: image.tag
+          value: "dev-latest"   # dev tracks trunk; staging/prod pin digests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexus-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false   # namespaces owned by nexus-namespaces-dev

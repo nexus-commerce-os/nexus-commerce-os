@@ -1,0 +1,57 @@
+{
+  "uid": "nexus-money-vms",
+  "title": "NEXUS · Money & VMS (business) — PLACEHOLDER",
+  "tags": ["nexus", "business", "vms", "placeholder"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "About this dashboard",
+      "type": "text",
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "**PLACEHOLDER — no business logic exists yet (P0.1).** This dashboard reserves the layout for the [Vision north-star](../../../../docs/01-vision.md#4-north-star-metric--guardrails) business signals — **VMS/MAU, agentic handoff→conversion, coupon apply-success**. Panels below query metric names that product services will emit later; until then they render empty. The **money path** (checkout/handoff/ledger) runs in the isolated `nexus-money` namespace/pool (ADR-0017 R-059), so its business + reliability signals are scoped here separately from discovery."
+      }
+    },
+    {
+      "id": 2,
+      "title": "VMS — Verified Marketplace Sales (north-star) [pending]",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "expr": "sum(rate(nexus_vms_amount_minor_total[1h]))", "legendFormat": "VMS (minor units/h)" } ]
+    },
+    {
+      "id": 3,
+      "title": "Agentic handoff → conversion rate [pending]",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "targets": [ { "expr": "sum(rate(nexus_handoff_converted_total[1h])) / sum(rate(nexus_handoff_started_total[1h]))", "legendFormat": "conversion" } ]
+    },
+    {
+      "id": 4,
+      "title": "Coupon apply-success [pending]",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "targets": [ { "expr": "sum(rate(nexus_coupon_apply_success_total[1h])) / sum(rate(nexus_coupon_apply_attempt_total[1h]))", "legendFormat": "apply-success" } ]
+    },
+    {
+      "id": 5,
+      "title": "Ledger reconciliation mismatches (SLO: 0 unreconciled) [pending]",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } },
+      "targets": [ { "expr": "sum(nexus_ledger_unreconciled_total)", "legendFormat": "unreconciled" } ]
+    }
+  ]
+}

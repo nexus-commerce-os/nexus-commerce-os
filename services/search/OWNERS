@@ -1,0 +1,8 @@
+# OWNERS — services/search (Search Service, Go)
+# Authoritative ownership lives in /.github/CODEOWNERS. This is a convenience pointer.
+
+teams:
+  - "@nexus/commerce"
+
+phase: P0.3   # Commerce Foundation
+component: Search Service — Go + OpenSearch (docs/04 §4)

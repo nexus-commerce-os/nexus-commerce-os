@@ -1,0 +1,75 @@
+# ============================================================================
+# staging GitOps (docs/10 §3). staging auto-syncs tagged release candidates;
+# the SLO/load/chaos/DR gates (§8) must pass before prod promotion. Images are
+# DIGEST-pinned (no floating tags past dev).
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: nexus-staging
+  namespace: argocd
+spec:
+  description: NEXUS staging environment (prod-identical topology)
+  sourceRepos:
+    - "https://github.com/nexus/monorepo.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "nexus-*"
+    - server: https://kubernetes.default.svc
+      namespace: observability
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexus-namespaces-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: nexus-staging
+  source:
+    repoURL: "https://github.com/nexus/monorepo.git"
+    targetRevision: main
+    path: infrastructure/kubernetes/base
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-hello-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: nexus-staging
+  source:
+    repoURL: "https://github.com/nexus/monorepo.git"
+    targetRevision: main
+    path: services/platform-hello/helm
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        # Release candidate pinned by immutable digest (docs/10 §3).
+        - name: image.digest
+          value: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexus-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

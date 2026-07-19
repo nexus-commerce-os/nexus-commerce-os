@@ -1,0 +1,20 @@
+{{/*
+platform-hello renders entirely from the nexus-common library chart.
+This is the canonical "thin service chart" pattern (docs/10 §3): a service
+adds no bespoke manifests — it inherits probes, resources, securityContext,
+OTel, HPA, PDB, NetworkPolicy, and ServiceMonitor by including the library
+templates. New services copy this file verbatim.
+*/}}
+{{- include "nexus-common.serviceaccount" . }}
+---
+{{ include "nexus-common.deployment" . }}
+---
+{{ include "nexus-common.service" . }}
+---
+{{ include "nexus-common.hpa" . }}
+---
+{{ include "nexus-common.pdb" . }}
+---
+{{ include "nexus-common.networkpolicy" . }}
+---
+{{ include "nexus-common.servicemonitor" . }}

@@ -1,0 +1,60 @@
+# platform-hello — values consumed by the nexus-common library templates.
+# Only the service-specific keys are set here; everything else inherits the
+# template defaults documented in charts/nexus-common/values.yaml.
+
+nameOverride: platform-hello
+
+# Canary lives on the shared platform pool — it is not a discovery or money workload.
+pool: platform
+
+image:
+  # Set to the ECR repo in GitOps values; digest-pinned per env (docs/10 §3).
+  repository: 000000000000.dkr.ecr.us-east-1.amazonaws.com/nexus/platform-hello
+  # Placeholder tag for local `helm template`; real deploys pin image.digest.
+  tag: "0.1.0"
+  digest: ""
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+  metricsPort: 9090
+
+# REQUIRED (docs/10 §6). Tiny — this is a canary, not a product service.
+resources:
+  requests:
+    cpu: "25m"
+    memory: "32Mi"
+  limits:
+    cpu: "100m"
+    memory: "64Mi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+serviceAccount:
+  create: true
+  roleArn: ""   # canary needs no cloud identity
+
+otel:
+  enabled: true
+  endpoint: "http://otel-collector.observability.svc.cluster.local:4317"
+  protocol: grpc
+  serviceNamespace: nexus
+
+serviceMonitor:
+  enabled: true
+  path: /metrics
+
+networkPolicy:
+  enabled: true
+  allowSameNamespace: true
+  allowIngressFromNamespaces:
+    - ingress-nginx

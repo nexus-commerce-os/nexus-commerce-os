@@ -1,0 +1,15 @@
+# Grafana dashboard provider — loads the JSON dashboards-as-code from disk so
+# dashboards are version-controlled, not clicked together in the UI (docs/10
+# §0.1 principle #1: everything reproducible from Git).
+apiVersion: 1
+providers:
+  - name: nexus-dashboards
+    orgId: 1
+    folder: NEXUS
+    type: file
+    disableDeletion: true
+    editable: false
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

@@ -1,0 +1,7 @@
+# pnpm workspace — the JS/TS side of the monorepo (Go/Python services build via their own toolchains).
+# Rationale: pnpm's content-addressable store gives reproducible, fast installs; workspaces let
+# packages/* be consumed by apps/* and services/* without publishing.
+packages:
+  - "apps/*"
+  - "services/*"          # TS services (auth, etc.); Go/Python services ignore this
+  - "packages/*"

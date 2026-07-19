@@ -1,0 +1,8 @@
+# =============================================================================
+# staging env — EXAMPLE variables. Copy to terraform.tfvars (gitignored).
+# =============================================================================
+
+primary_region      = "us-east-1"
+regulated_region    = "ap-south-1" # Mumbai — South-Asia residency tier
+regulated_dr_region = "ap-south-2" # Hyderabad — in-zone DR pair
+owner_tag           = "platform-team"

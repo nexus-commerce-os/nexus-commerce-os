@@ -1,0 +1,8 @@
+# OWNERS — services/analytics (Analytics, Go + ClickHouse)
+# Authoritative ownership lives in /.github/CODEOWNERS. This is a convenience pointer.
+
+teams:
+  - "@nexus/data"
+
+phase: P0.6   # Observability (data feeds begin P0.3/P0.4)
+component: Analytics / real-time dashboards — Go + ClickHouse (docs/04 §3, §5.4)

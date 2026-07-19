@@ -1,0 +1,8 @@
+# =============================================================================
+# dev env — EXAMPLE variables. Copy to terraform.tfvars (gitignored) and adjust.
+# No secrets belong here.
+# =============================================================================
+
+aws_region = "us-east-1"
+owner_tag  = "platform-team"
+vpc_cidr   = "10.10.0.0/16"

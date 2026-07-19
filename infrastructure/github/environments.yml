@@ -1,0 +1,43 @@
+# GitHub Environments — config-as-doc.
+# Certified by docs/10 §3 (staging auto-sync, prod manual approval gate) + §11 (change mgmt).
+# Environments are the deployment-protection boundary the workflows reference by name:
+#   ci.yml           → environment: staging     (auto, on push to main)
+#   cd-prod.yml      → environment: production   (manual, required reviewers)
+# Applied by an org-admin bootstrap (Terraform `github_repository_environment` or `gh api`).
+
+environments:
+  # -------------------------------------------------------------------------
+  - name: staging
+    # why: docs/10 §3 — staging AUTO-syncs signed release candidates; no human gate, gated by CI green + smoke.
+    deployment_branch_policy:
+      protected_branches: false
+      custom_branch_policies: true
+      branches:
+        - main # why: only artifacts built from trunk may reach staging (same-artifact promotion, docs/10 §1).
+    reviewers: [] # why: staging is intentionally un-gated by humans — velocity with a prod-like safety net.
+    # Environment secrets: NONE. All AWS access is OIDC-federated at run time (ADR-0018 R-065).
+    variables:
+      # placeholders resolved at bootstrap; NOT secrets:
+      - name: AWS_REGION
+        value: "us-east-1" # placeholder
+      - name: CONFIG_REPO
+        value: "nexus/config-repo" # placeholder — GitOps desired-state repo
+
+  # -------------------------------------------------------------------------
+  - name: production
+    # why: docs/10 §3/§11 — prod is the MANUAL approval gate; GitHub pauses cd-prod.yml here until reviewers sign off.
+    deployment_branch_policy:
+      protected_branches: true
+      custom_branch_policies: false # why: only protected (main) refs can deploy to prod.
+    required_reviewers:
+      # why: docs/10 §11 — "change ticket + 2 approvals"; 4-eyes on every prod promotion.
+      - "@nexus/sre" # placeholder team
+      - "@nexus/devsecops" # placeholder team
+    wait_timer_minutes: 5 # why: a deliberate cool-down window to abort an accidental dispatch before it proceeds.
+    prevent_self_review: true # why: the dispatcher cannot approve their own promotion (separation of duties, docs/08 §3.3).
+    # Environment secrets: NONE — OIDC only. Admission control (cosign+OPA) is the real enforcement in-cluster.
+    variables:
+      - name: AWS_REGION
+        value: "us-east-1" # placeholder
+      - name: PROD_URL
+        value: "https://nexus.example" # placeholder

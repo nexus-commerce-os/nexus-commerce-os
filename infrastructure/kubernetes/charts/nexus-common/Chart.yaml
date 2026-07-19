@@ -1,0 +1,20 @@
+apiVersion: v2
+name: nexus-common
+description: >-
+  NEXUS platform library chart. Every deployable service inherits it to become
+  "production-shaped on day one" (docs/10 §6): liveness/readiness/dependency-health
+  probes, required resource requests+limits, hardened non-root/read-only securityContext,
+  OpenTelemetry wiring, HPA, PodDisruptionBudget, IRSA-ready ServiceAccount, and a
+  default-deny NetworkPolicy. Encodes ADR-0010 principles #5 (health), #6 (metrics),
+  and the operability defaults referenced by docs/10 §3 (Helm library chart "nexus-common").
+type: library
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - platform
+  - library
+  - observability
+  - nexus
+maintainers:
+  - name: Platform Engineering + SRE
+    email: platform@nexus.internal

@@ -1,0 +1,54 @@
+# ============================================================================
+# Tempo — distributed trace store (docs/09 §11: OpenTelemetry -> Tempo, 100%
+# coverage of user-facing paths, NFR-OBS-01). Receives OTLP traces from the
+# OTel Collector (which does authoritative tail sampling). Separate failure
+# domain (ADR-0017 R-060). SKELETON single-binary config; prod = microservices
+# mode on S3 object storage.
+# ============================================================================
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9096
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 336h        # 14d (docs/09 §11: traces 7-30d sampled; keep 100% errors/slow)
+
+storage:
+  trace:
+    backend: local               # prod: `s3` object storage
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal
+
+# Generate RED service-graph + span metrics and remote-write them to Prometheus
+# so traces enrich the golden-signals dashboards (exemplars link metric->trace).
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus.observability.svc.cluster.local:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics]

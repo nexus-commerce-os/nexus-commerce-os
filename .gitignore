@@ -1,0 +1,54 @@
+# --- Secrets: NEVER commit. OIDC + external secret stores only. ---
+*.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+**/secrets/**
+!**/secrets/README.md
+*.tfvars
+!*.tfvars.example
+
+# --- Terraform ---
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl.bak
+tfplan
+*.tfplan
+
+# --- Node / pnpm / turbo ---
+node_modules/
+.pnpm-store/
+.turbo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+.next/
+
+# --- Containers / build ---
+*.tar
+sbom/*.json
+!sbom/.gitkeep
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- Logs ---
+*.log
+npm-debug.log*
+pnpm-debug.log*

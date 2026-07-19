@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# prod overlay — live, multi-region. Rollout is region-by-region behind a
+# manual approval gate + progressive delivery (docs/10 §3, §4).
+resources:
+  - ../../base
+  - argocd-application.yaml
+
+labels:
+  - pairs:
+      nexus.io/env: prod
+    includeSelectors: false

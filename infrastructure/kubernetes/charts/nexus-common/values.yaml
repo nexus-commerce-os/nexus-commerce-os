@@ -1,0 +1,157 @@
+# ============================================================================
+# nexus-common — REFERENCE VALUES SCHEMA (library chart)
+# ----------------------------------------------------------------------------
+# This file documents every key the library templates read from the PARENT
+# chart's `.Values`. A library chart does NOT auto-merge these defaults into a
+# consuming chart, so a service copies the keys it needs into its own
+# values.yaml (see services/platform-hello/helm/values.yaml for a worked
+# example). Optional keys fall back to the `default`s baked into the templates;
+# keys marked REQUIRED have no default and `helm template` fails fast if unset —
+# this is intentional (docs/10 §6: resources/limits are Kyverno-enforced MUST).
+# ============================================================================
+
+# -- REQUIRED. Short service name; becomes the workload/Service/SA name.
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  # -- REQUIRED. Immutable ECR digest ref (docs/10 §3: tag = git SHA, digest-pinned; never :latest).
+  repository: ""
+  # -- REQUIRED in real deploys. Pin by digest (sha256:...) in GitOps values.
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+# -- Replica count (ignored when autoscaling.enabled, HPA owns it then).
+replicaCount: 2
+
+# -- Blast-radius pool this service lands on (ADR-0017 R-059: discovery vs money).
+#    Drives nodeSelector + tolerations + a pool label. One of: discovery | money | platform.
+pool: platform
+
+serviceAccount:
+  create: true
+  # -- IRSA: AWS IAM role ARN injected as eks.amazonaws.com/role-arn annotation.
+  #    Empty = no cloud role (portability-friendly; docs/09 §11).
+  roleArn: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+# ---- Container ports -------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 8080          # HTTP app + health endpoints
+  metricsPort: 9090   # Prometheus /metrics scrape target
+  appProtocol: http
+
+# ---- Health probes (ADR-0010 #5; docs/10 §7) -------------------------------
+# Endpoints are fixed org contract: liveness=/healthz, readiness=/readyz.
+# Readiness MUST reflect dependency health (docs/10 §7 dependency-health).
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+  startup:
+    enabled: true
+    path: /healthz
+    periodSeconds: 3
+    failureThreshold: 20   # up to ~60s cold-start grace, then liveness takes over
+
+# ---- Resources (REQUIRED — docs/10 §6, Kyverno admission) -------------------
+# No defaults on purpose: an unset requests/limits block fails render.
+resources:
+  requests:
+    cpu: ""
+    memory: ""
+  limits:
+    cpu: ""
+    memory: ""
+
+# ---- Hardened securityContext (docs/10 §5 admission; §6 distroless/non-root)-
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532        # distroless "nonroot" uid
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  capabilities:
+    drop: ["ALL"]
+
+# writable scratch (read-only root FS still needs /tmp)
+tmpDir:
+  enabled: true
+  sizeLimit: 64Mi
+
+# ---- OpenTelemetry (ADR-0010 #6; docs/09 §11; docs/10 §7) -------------------
+# Sidecar-less: exports to the cluster-local OTel Collector gateway which lives
+# in the SEPARATE observability failure domain (ADR-0017 R-060). Adds the
+# instrumentation.opentelemetry.io/inject annotation so the OTel Operator can
+# auto-instrument where supported.
+otel:
+  enabled: true
+  # Collector gateway service in the observability domain (off critical path).
+  endpoint: "http://otel-collector.observability.svc.cluster.local:4317"
+  protocol: grpc
+  serviceNamespace: nexus
+  samplerArg: "0.1"                # tail sampling done at collector; SDK head-sample hint
+  operatorInject: true            # instrumentation.opentelemetry.io/inject-sdk annotation
+
+# ---- Autoscaling (docs/10 §6: HPA on scaling signal) -----------------------
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ---- PodDisruptionBudget (docs/10 §6: availability, NFR-AVAIL-01) ----------
+pdb:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: ""  # set one OR the other
+
+# ---- Topology spread across AZs (docs/10 §6) -------------------------------
+topologySpread:
+  enabled: true
+  maxSkew: 1
+  topologyKey: topology.kubernetes.io/zone
+  whenUnsatisfiable: ScheduleAnyway
+
+# ---- NetworkPolicy default-deny (docs/10 §5 admission: NetworkPolicy present)
+networkPolicy:
+  enabled: true
+  # Allow ingress from these namespaces (label selector on namespace).
+  allowIngressFromNamespaces:
+    - ingress-nginx
+  # Allow ingress from same namespace (service-to-service within a domain).
+  allowSameNamespace: true
+  # Egress: DNS + OTel collector are always permitted (see template).
+  # Additional egress CIDRs/ports declared here (default-deny otherwise).
+  extraEgress: []
+
+# ---- ServiceMonitor (Prometheus Operator scrape) ---------------------------
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  interval: 30s
+  scrapeTimeout: 10s
+
+# ---- Extra env / labels ----------------------------------------------------
+env: []          # list of {name, value} or {name, valueFrom}
+extraLabels: {}
+extraAnnotations: {}

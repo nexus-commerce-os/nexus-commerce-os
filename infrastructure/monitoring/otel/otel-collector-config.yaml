@@ -1,0 +1,97 @@
+# ============================================================================
+# OpenTelemetry Collector — gateway config (docs/09 §11, docs/10 §7).
+# Single vendor-neutral ingestion point: traces -> Tempo, metrics -> Prometheus,
+# logs -> Loki. Runs in the SEPARATE observability failure domain (ADR-0017
+# R-060): services EXPORT here; this collector never depends on the workloads
+# it observes, and the app-autoscaler must not depend on the app being up.
+#
+# Deploy shape: a horizontally-scaled Deployment "gateway" behind a Service
+# (otel-collector.observability.svc:4317/4318) + optional node DaemonSet agents
+# (docs/09 §11 "DaemonSet/gateway per region"). This file is the gateway.
+# ============================================================================
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Guard the collector's own memory before it is a problem.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+  # Attach k8s metadata (pod, namespace, node) to every signal.
+  k8sattributes:
+    auth_type: serviceAccount
+    extract:
+      metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.node.name
+        - k8s.deployment.name
+  # Tail-based sampling: keep 100% of errors/slow traces, sample the happy path
+  # (docs/10 §7 — 100% coverage of paths without 100% volume).
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100000
+    policies:
+      - name: errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow
+        type: latency
+        latency:
+          threshold_ms: 500
+      - name: baseline-sample
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+exporters:
+  # Traces -> Tempo (OTLP gRPC).
+  otlp/tempo:
+    endpoint: tempo.observability.svc.cluster.local:4317
+    tls:
+      insecure: true
+  # Metrics -> Prometheus (remote-write into the Prometheus/Mimir tsdb).
+  prometheusremotewrite:
+    endpoint: http://prometheus.observability.svc.cluster.local:9090/api/v1/write
+    resource_to_telemetry_conversion:
+      enabled: true
+  # Logs -> Loki (OTLP-native ingestion path).
+  otlphttp/loki:
+    endpoint: http://loki.observability.svc.cluster.local:3100/otlp
+  # Local buffer / debug fallback if a backend is down (fail-safe, docs/10 §7).
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, k8sattributes, tail_sampling, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, k8sattributes, batch]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, k8sattributes, batch]
+      exporters: [otlphttp/loki]
+  telemetry:
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888   # the collector's OWN /metrics (self-observability)

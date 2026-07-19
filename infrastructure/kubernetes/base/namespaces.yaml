@@ -1,0 +1,53 @@
+# ============================================================================
+# NEXUS namespace layout — blast-radius separation (ADR-0017 R-059/R-060).
+#
+# Discovery (search/AI, elastic, best-effort) and money (checkout/handoff/
+# ledger, strict SLO) run in SEPARATE namespaces pinned to SEPARATE node pools
+# so a discovery surge cannot starve or SLO-couple the money path. Observability
+# is its OWN failure domain (R-060) — workloads export to it; it never depends
+# on them. PodSecurity "restricted" is enforced on every workload namespace.
+# ============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexus-platform
+  labels:
+    nexus.io/pool: platform
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexus-discovery
+  labels:
+    nexus.io/pool: discovery
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexus-money
+  labels:
+    nexus.io/pool: money
+    # money path is the strict-SLO, high-sensitivity domain (docs/09 §3, ADR-0017 R-059)
+    nexus.io/data-sensitivity: high
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    nexus.io/failure-domain: observability
+    # NOTE: in prod this is a DEDICATED/managed cluster, not just a namespace
+    # (ADR-0017 R-060, docs/09 §11). Modeled here as a namespace for lower envs;
+    # the autoscaler MUST NOT depend on workloads it scales.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

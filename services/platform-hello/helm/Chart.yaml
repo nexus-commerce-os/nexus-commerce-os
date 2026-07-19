@@ -1,0 +1,14 @@
+apiVersion: v2
+name: platform-hello
+description: >-
+  NEXUS P0.1 walking-skeleton service — the pipeline canary. A thin chart that
+  inherits ALL platform defaults from the nexus-common library chart (probes,
+  resources, hardened securityContext, OTel, HPA, PDB, NetworkPolicy,
+  ServiceMonitor). Not a product service.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: nexus-common
+    version: 0.1.0
+    repository: "file://../../../infrastructure/kubernetes/charts/nexus-common"

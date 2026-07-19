@@ -1,0 +1,34 @@
+# CODEOWNERS — required review by the owning team on every PR (branch protection enforces this).
+# Teams are placeholders (org not yet created); replace with real GitHub teams at P0.1 org setup.
+# Every path in the monorepo has an explicit owner — no unowned code.
+
+# Default — platform team owns anything not otherwise claimed
+*                                   @nexus/platform
+
+# Infrastructure
+/infrastructure/terraform/          @nexus/infrastructure @nexus/cloud-security
+/infrastructure/kubernetes/         @nexus/platform @nexus/sre
+/infrastructure/monitoring/         @nexus/sre
+/infrastructure/security/           @nexus/cloud-security
+/infrastructure/github/             @nexus/devsecops
+/.github/                           @nexus/devsecops @nexus/platform
+
+# Apps & services (scaffold owners; feature teams added at their phase)
+/apps/                              @nexus/frontend
+/services/auth/                     @nexus/platform @nexus/cloud-security
+/services/catalog/                  @nexus/commerce
+/services/affiliate/                @nexus/commerce
+/services/search/                   @nexus/commerce
+/services/ai/                       @nexus/ai
+/services/analytics/                @nexus/data
+/services/platform-hello/           @nexus/platform
+
+# Shared packages
+/packages/                          @nexus/platform @nexus/frontend
+
+# Docs are CERTIFIED and FROZEN — changes require architecture review
+/docs/                              @nexus/architecture
+/PROJECT_MEMORY.md                  @nexus/architecture
+
+# Tests
+/tests/                             @nexus/sre @nexus/devsecops

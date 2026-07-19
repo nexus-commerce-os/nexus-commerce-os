@@ -1,0 +1,31 @@
+{
+  "name": "nexus-commerce-os",
+  "version": "0.0.0",
+  "private": true,
+  "description": "NEXUS Commerce OS monorepo — P0.1 Infrastructure Foundation. Platform scaffold only.",
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "format": "turbo run format",
+    "format:check": "prettier --check .",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "doc:lint": "python scripts/doc_consistency_lint.py",
+    "verify": "bash scripts/verify.sh"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,46 @@
+# =============================================================================
+# global stack — EXAMPLE variables. Copy to terraform.tfvars and fill in.
+# NEVER commit a real terraform.tfvars (it is gitignored). No secrets belong
+# here anyway — only ids/patterns.
+# =============================================================================
+
+org_slug     = "nexus"
+state_region = "us-east-1"
+
+# GitHub OIDC trust — scope to YOUR repo only.
+github_org  = "your-github-org"
+github_repo = "nexus"
+
+# Per-environment deploy roles. Scope each to the exact ref/environment that may
+# assume it. Prod is environment-scoped so it only works from the protected
+# GitHub "prod" environment (manual approval gate, [10 §3/§11]).
+deploy_roles = {
+  dev = {
+    allowed_ref_patterns = ["repo:your-github-org/nexus:ref:refs/heads/main"]
+    # policy_arns / inline_policy_json: attach the least-privilege dev deploy policy.
+    max_session_seconds = 3600
+  }
+  staging = {
+    allowed_ref_patterns = ["repo:your-github-org/nexus:environment:staging"]
+    max_session_seconds  = 3600
+  }
+  prod = {
+    # Environment-scoped: only the protected GitHub "prod" environment (which
+    # carries the required reviewers / manual approval) can mint a token for this.
+    allowed_ref_patterns = ["repo:your-github-org/nexus:environment:prod"]
+    max_session_seconds  = 3600
+  }
+}
+
+# Residency guardrail: deny everything OUTSIDE the approved zones. Fill with the
+# regions you do NOT operate in (example denies two arbitrary regions).
+prohibited_regions = [
+  # "cn-north-1",
+  # "us-gov-west-1",
+]
+
+tags = {
+  owner   = "platform-team"
+  env     = "global"
+  service = "landing-zone"
+}

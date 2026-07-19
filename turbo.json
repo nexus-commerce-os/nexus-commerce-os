@@ -1,0 +1,12 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned.",
+  "globalDependencies": [".env.example", "tsconfig.base.json"],
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".next/**", "!.next/cache/**"] },
+    "typecheck": { "dependsOn": ["^build"], "outputs": [] },
+    "lint": { "outputs": [] },
+    "format": { "cache": false },
+    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] }
+  }
+}

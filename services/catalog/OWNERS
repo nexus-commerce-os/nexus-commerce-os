@@ -1,0 +1,8 @@
+# OWNERS — services/catalog (Catalog & Offer)
+# Authoritative ownership lives in /.github/CODEOWNERS. This is a convenience pointer.
+
+teams:
+  - "@nexus/commerce"
+
+phase: P0.3   # Commerce Foundation
+component: Catalog & Offer (docs/04 §4)

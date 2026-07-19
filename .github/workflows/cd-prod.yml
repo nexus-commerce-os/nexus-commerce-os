@@ -1,0 +1,142 @@
+# =============================================================================
+# NEXUS — CD (production): manual-approval promotion of an already-signed artifact
+# -----------------------------------------------------------------------------
+# Certified by: docs/10-deployment-architecture.md §3 (CD/GitOps, promotion flow,
+#   proven-rollback gate), §4 (progressive delivery), §11 (manual approval gate);
+#   ADR-0019 (rollback proven, R-064); ADR-0010 (#4 signed-only admission).
+#
+# Non-negotiables this file encodes:
+#   * PROMOTE, never rebuild — the SAME digest CI signed for staging is what ships
+#     to prod (docs/10 §1 "same artifact, all envs"). No `docker build` here.
+#   * Manual approval — the `production` GitHub Environment has required reviewers
+#     (2 approvers) + a change ticket; humans gate prod, machines gate everything
+#     below it (docs/10 §3/§11).
+#   * Admission-gated — prod only admits an image whose cosign signature + SLSA
+#     provenance + rollback-proof label verify (docs/10 §3 admission control).
+#   * GitOps — this workflow opens a PR to the config repo's prod env branch;
+#     ArgoCD (in-cluster) reconciles. CI/CD never holds prod cluster creds.
+# =============================================================================
+name: cd-prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_digest:
+        description: "Immutable image digest to promote (sha256:...), already signed by CI on main."
+        required: true
+        type: string
+      change_ticket:
+        description: "Change-management ticket id (docs/10 §11 approval record)."
+        required: true
+        type: string
+      rollback_proof_id:
+        description: "CI Rollback-PROVEN run id (docs/10 §4.1) — promotion is refused without it."
+        required: true
+        type: string
+
+# why: deny-by-default; the one job that needs OIDC opts in explicitly.
+permissions: {}
+
+# why: never run two prod promotions concurrently; queue them (no cancel — a prod deploy must finish).
+concurrency:
+  group: cd-prod-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. VERIFY — before any human is paged, prove the artifact is admissible.
+  # ---------------------------------------------------------------------------
+  verify-artifact:
+    name: 1 · Verify signature + provenance + rollback proof
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # why: OIDC → read-only ECR role to pull the digest's attestations for verification.
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        # why: short-lived, read-only creds to inspect ECR attestations; no static keys (ADR-0018 R-065).
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_READONLY_ROLE_ARN }} # placeholder: ECR read-only verify role
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: nexus-cd-verify-${{ github.run_id }}
+      - name: ECR login
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+      - name: Install cosign
+        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
+      - name: Verify cosign signature (keyless identity)
+        # why: docs/10 §3 — reject any image not signed by CI's OIDC identity on main (fail-closed admission).
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+          cosign verify \
+            --certificate-identity-regexp "${{ vars.COSIGN_CI_IDENTITY_REGEXP }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ vars.ECR_REGISTRY }}/nexus-platform-hello@${{ inputs.image_digest }}"
+      - name: Verify SLSA provenance attestation
+        # why: docs/10 §3 — provenance must attest the image was built by our pipeline (supply-chain integrity).
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+          cosign verify-attestation --type slsaprovenance \
+            --certificate-identity-regexp "${{ vars.COSIGN_CI_IDENTITY_REGEXP }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${{ vars.ECR_REGISTRY }}/nexus-platform-hello@${{ inputs.image_digest }}"
+      - name: Assert rollback-proof label present
+        # why: docs/10 §3/§4.1 — proven-rollback gate: no promotion without a passing CI Rollback-PROVEN id.
+        run: |
+          set -euo pipefail
+          if [ -z "${{ inputs.rollback_proof_id }}" ]; then
+            echo "::error::Missing rollback proof — promotion refused (docs/10 §4.1)."
+            exit 1
+          fi
+          echo "Rollback proof ${{ inputs.rollback_proof_id }} supplied; admission will re-check the label in-cluster."
+
+  # ---------------------------------------------------------------------------
+  # 2. APPROVAL GATE — the `production` Environment requires human reviewers.
+  #     GitHub pauses here until the required approvers sign off (docs/10 §11).
+  # ---------------------------------------------------------------------------
+  promote-prod:
+    name: 2 · Promote to prod (manual approval)
+    needs: [verify-artifact]
+    runs-on: ubuntu-latest
+    environment:
+      name: production # why: Environment protection = required reviewers + wait timer; THIS is the manual gate.
+      url: ${{ vars.PROD_URL }}
+    permissions:
+      contents: read
+      id-token: write # why: OIDC → brokered GitHub App token to open the prod config-repo PR (no PAT stored).
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Open prod config-repo promotion PR (same digest)
+        # why: docs/10 §3 — promote the identical signed digest; region-by-region canary is driven by Argo Rollouts.
+        run: |
+          set -euo pipefail
+          echo "Promotion of digest ${{ inputs.image_digest }} approved by prod reviewers."
+          echo "Change ticket: ${{ inputs.change_ticket }} · rollback proof: ${{ inputs.rollback_proof_id }}"
+          echo "Open PR to ${{ vars.CONFIG_REPO }} (prod env branch) bumping the digest ONLY."
+          echo "Placeholder: brokered GitHub App token pushes the values bump; ArgoCD + admission (cosign+OPA) enforce."
+          echo "Admission control REJECTS the pod if signature/provenance/rollback-label do not verify (docs/10 §3)."
+
+  # ---------------------------------------------------------------------------
+  # 3. POST-PROMOTION — record + watch. Automated rollback lives in Argo Rollouts
+  #     AnalysisTemplates (SLO breach → auto-abort), not in this workflow (docs/10 §4).
+  # ---------------------------------------------------------------------------
+  post-promotion:
+    name: 3 · Record & watch
+    needs: [promote-prod]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Annotate release + hand off to progressive delivery
+        # why: docs/10 §4 — canary analysis (error rate, p95, SLO burn) auto-rolls-back; no human in the revert path.
+        run: |
+          echo "Recorded prod promotion of ${{ inputs.image_digest }} (ticket ${{ inputs.change_ticket }})."
+          echo "Argo Rollouts now canaries region-by-region with automated SLO-breach rollback (docs/10 §4)."
+          echo "Instant kill-switch = feature flag / country flag (docs/10 §4.1), independent of this pipeline."

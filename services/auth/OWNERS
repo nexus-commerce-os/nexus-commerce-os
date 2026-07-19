@@ -1,0 +1,10 @@
+# OWNERS — services/auth (Identity & Profile)
+# Authoritative ownership lives in /.github/CODEOWNERS (branch protection enforces review).
+# This note is a convenience pointer for humans browsing the tree.
+
+teams:
+  - "@nexus/platform"        # core module owner
+  - "@nexus/cloud-security"  # authN/authZ + secrets review (co-owner)
+
+phase: P0.2   # Core Platform
+component: Identity & Profile (docs/04 §4)
