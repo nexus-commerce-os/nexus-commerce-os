@@ -3,32 +3,32 @@
 # Every path in the monorepo has an explicit owner — no unowned code.
 
 # Default — platform team owns anything not otherwise claimed
-*                                   @nexus/platform
+*                                   @nexus-commerce-os/platform
 
 # Infrastructure
-/infrastructure/terraform/          @nexus/infrastructure @nexus/cloud-security
-/infrastructure/kubernetes/         @nexus/platform @nexus/sre
-/infrastructure/monitoring/         @nexus/sre
-/infrastructure/security/           @nexus/cloud-security
-/infrastructure/github/             @nexus/devsecops
-/.github/                           @nexus/devsecops @nexus/platform
+/infrastructure/terraform/          @nexus-commerce-os/infrastructure @nexus-commerce-os/cloud-security
+/infrastructure/kubernetes/         @nexus-commerce-os/platform @nexus-commerce-os/sre
+/infrastructure/monitoring/         @nexus-commerce-os/sre
+/infrastructure/security/           @nexus-commerce-os/cloud-security
+/infrastructure/github/             @nexus-commerce-os/devsecops
+/.github/                           @nexus-commerce-os/devsecops @nexus-commerce-os/platform
 
 # Apps & services (scaffold owners; feature teams added at their phase)
-/apps/                              @nexus/frontend
-/services/auth/                     @nexus/platform @nexus/cloud-security
-/services/catalog/                  @nexus/commerce
-/services/affiliate/                @nexus/commerce
-/services/search/                   @nexus/commerce
-/services/ai/                       @nexus/ai
-/services/analytics/                @nexus/data
-/services/platform-hello/           @nexus/platform
+/apps/                              @nexus-commerce-os/frontend
+/services/auth/                     @nexus-commerce-os/platform @nexus-commerce-os/cloud-security
+/services/catalog/                  @nexus-commerce-os/commerce
+/services/affiliate/                @nexus-commerce-os/commerce
+/services/search/                   @nexus-commerce-os/commerce
+/services/ai/                       @nexus-commerce-os/ai
+/services/analytics/                @nexus-commerce-os/data
+/services/platform-hello/           @nexus-commerce-os/platform
 
 # Shared packages
-/packages/                          @nexus/platform @nexus/frontend
+/packages/                          @nexus-commerce-os/platform @nexus-commerce-os/frontend
 
 # Docs are CERTIFIED and FROZEN — changes require architecture review
-/docs/                              @nexus/architecture
-/PROJECT_MEMORY.md                  @nexus/architecture
+/docs/                              @nexus-commerce-os/architecture
+/PROJECT_MEMORY.md                  @nexus-commerce-os/architecture
 
 # Tests
-/tests/                             @nexus/sre @nexus/devsecops
+/tests/                             @nexus-commerce-os/sre @nexus-commerce-os/devsecops
