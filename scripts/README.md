@@ -1,7 +1,7 @@
 # scripts/ — Repeatable automation
 
 **Status:** Scaffold — governance README (scripts themselves are owned outside this scaffold's scope)
-**Owner:** `@nexus/platform` (default owner per [`.github/CODEOWNERS`](../.github/CODEOWNERS))
+**Owner:** `@nexus-commerce-os/platform` (default owner per [`.github/CODEOWNERS`](../.github/CODEOWNERS))
 **Runtime / language:** Bash + Python (developer tooling only — not shipped in any runtime image)
 **Implemented by phase:** [P0.1](../docs/13-implementation-roadmap.md) (developer + CI ergonomics)
 

@@ -1,7 +1,7 @@
 # tests/ — Cross-cutting test suites
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/sre` `@nexus/devsecops` (per [`.github/CODEOWNERS`](../.github/CODEOWNERS) `/tests/`)
+**Owner:** `@nexus-commerce-os/sre` `@nexus-commerce-os/devsecops` (per [`.github/CODEOWNERS`](../.github/CODEOWNERS) `/tests/`)
 **Runtime / language:** TBD per suite (smoke = HTTP probes; policy = OPA/conftest)
 **Implemented by phase:** [P0.1](../docs/13-implementation-roadmap.md) (smoke) — the infrastructure exit gate
 

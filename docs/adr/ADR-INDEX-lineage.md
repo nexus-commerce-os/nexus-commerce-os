@@ -1,13 +1,13 @@
 # ADR Index & Lineage Map
 
-**Status:** 🟢 Living index · **Purpose:** single-glance traceability for the 22-ADR corpus — status, what each ADR decides/closes, and how ADRs amend one another. Addresses the maintainability need for an explicit ADR-dependency map.
+**Status:** 🟢 Living index · **Purpose:** single-glance traceability for the 23-ADR corpus — status, what each ADR decides/closes, and how ADRs amend one another. Addresses the maintainability need for an explicit ADR-dependency map.
 
 ## 1. ADR register
 
 | ADR | Title | Status | Origin |
 |-----|-------|--------|--------|
 | [0001](ADR-0001-data-sourcing.md) | Authorized-data-only sourcing | Accepted | Foundational |
-| [0002](ADR-0002-branding.md) | Codename NEXUS; brand deferred | Proposed | Foundational |
+| [0002](ADR-0002-branding.md) | Codename NEXUS; brand deferred | Accepted (Founder-ratified) | Foundational |
 | [0003](ADR-0003-cloud-provider.md) | AWS-primary, multi-cloud-capable | Proposed | Foundational |
 | [0004](ADR-0004-architecture-style.md) | Modular monolith → strangler | Proposed | Foundational |
 | [0005](ADR-0005-ai-model-gateway.md) | Model-agnostic AI gateway | Proposed | Foundational |
@@ -28,6 +28,7 @@
 | [0020](ADR-0020-performance-consistency-hardening.md) | Perf + canonical money + contract-first | Accepted | Review R1 → closes R-008/026-032/038-045/051/079/080/083 |
 | [0021](ADR-0021-legal-product-truth.md) | **D1–D5 legal/product** | Accepted | Owner-ratified → closes R-021/022/023/024/037/046/047 |
 | [0022](ADR-0022-round2-remediation.md) | Round-2 remediation | Accepted | Review R2 → closes NC-1…NC-9 + partials |
+| [0023](ADR-0023-doc-freeze-and-approval-gate.md) | **Doc freeze + 4-approver implementation-complete gate** | Accepted (Founder-directed) | Governance (post-cert) → P0.1-onward |
 
 ## 2. Amendment lineage (which ADR modifies which)
 
@@ -59,11 +60,13 @@ graph LR
     A22[0022 R2 remediation] -. amends .-> A11 & A12 & A13 & A15 & A17 & A19
     A21[0021 D1-D5] -. finalizes UX/legal of .-> A14 & A20 & A06
     A16 -. residency fence .-> A15
+    A23[0023 doc-freeze + 4-approver gate] -. freezes 01-13 + ADR corpus; gates each P0.x phase .-> A22
 ```
 
 ## 3. Amendment notes (explicit)
 - **[ADR-0022](ADR-0022-round2-remediation.md)** amends 0011 (blinded panel), 0012 (NEXUS-sequence reversal ordering — supersedes the original "last-writer-by-network-timestamp"), 0013 (event-driven idempotent accrual — no atomic fan-out), 0015 (honest long-tail cache), 0017 (per-capability/per-cell canaries), 0019 (control-plane portability).
 - **[ADR-0021](ADR-0021-legal-product-truth.md)** finalizes the customer-facing/legal layer over 0006 (travel), 0014 (savings-state presentation), 0020 (commission-blind neutrality positioning).
+- **[ADR-0023](ADR-0023-doc-freeze-and-approval-gate.md)** (post-certification, Founder-directed) amends no prior ADR — it **governs the delivery process**: it freezes the certified docs 01-13 + the ADR corpus (changes only via Evidence / Bug-fix / ADR / execution-learning) and adds the four-approver, evidence-backed Implementation-Complete gate that every P0.1-P0.8 phase must pass before the next begins.
 - **Round 5** (2026-07-14) propagated the ADR-0022 NC-3 reversal-ordering wording into docs 04 §5.4 / 07 §9 (closing open Critical C-1) and added the reversal-ordering CI fitness function. The R5 *review* then found 2 further doc-propagation Criticals (C-A/C-B), fixed in **Round 6**, which also added the **doc-consistency lint** to make the recurring ADR→doc propagation gap a mechanical CI gate. See the Review-lineage table (§4) for the full round-by-round outcome.
 
 ## 4. Review lineage
@@ -78,3 +81,4 @@ graph LR
 | R6 remediation | C-A + C-B fixed at source; H-6/7/8 propagated to docs; **doc-consistency lint** added as CI fitness fn (04 §10 + 10 §2) | closes the propagation-failure class mechanically |
 | R6 review | [report v5 FINAL](../review/08-architecture-review-report-v5-FINAL.md) | **CONDITIONAL-GO** — gates 96/95/96/89/91; design certified sound, no fund-loss exploit; 2 doc-fidelity Criticals (doc06 exactly-once, this lineage map stale) |
 | R6 close-out | doc06 exactly-once→effectively-once; this lineage map updated; lint re-run green | conditions for CONDITIONAL-GO met |
+| Post-cert governance | [ADR-0023](ADR-0023-doc-freeze-and-approval-gate.md) added (doc freeze + 4-approver gate) | corpus → **23 ADRs**; register row, §3 note, and mermaid node added here so the index no longer stales |

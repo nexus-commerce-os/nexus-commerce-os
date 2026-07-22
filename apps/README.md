@@ -1,7 +1,7 @@
 # apps/ — User-facing applications
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/frontend` (per [`.github/CODEOWNERS`](../.github/CODEOWNERS) `/apps/`)
+**Owner:** `@nexus-commerce-os/frontend` (per [`.github/CODEOWNERS`](../.github/CODEOWNERS) `/apps/`)
 **Runtime / language:** Next.js (React) + Tailwind, TypeScript, PWA ([SDD §6 — Frontend](../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** Clients → Web / PWA ([04 §3 container map](../docs/04-system-architecture.md#3-context--container-map-c4-level-2))
 **Implemented by phase:** [P0.2 — Core Platform](../docs/13-implementation-roadmap.md) onward (login → RBAC-scoped dashboard)

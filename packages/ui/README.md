@@ -1,7 +1,7 @@
 # packages/ui — React design-system primitives
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/frontend` `@nexus/platform` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
+**Owner:** `@nexus-commerce-os/frontend` `@nexus-commerce-os/platform` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
 **Runtime / language:** TypeScript + React + Tailwind (consumed by `apps/web`, `apps/admin`)
 **Certified-architecture component:** shared presentation primitives for the Client tier ([04 §3](../../docs/04-system-architecture.md#3-context--container-map-c4-level-2))
 **Governing ADRs:** [ADR-0010](../../docs/adr/ADR-0010-platform-principles.md) (replaceability) · NFR-A11Y-01 (WCAG 2.2 AA)

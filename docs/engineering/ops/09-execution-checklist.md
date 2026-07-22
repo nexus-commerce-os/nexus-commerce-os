@@ -14,7 +14,7 @@
 | A2 | Repository created | `gh repo view <ORG>/<REPO> --json name,visibility` | private repo · screenshot | ☐ |
 | A3 | Branch protection on `main` | `gh api repos/<ORG>/<REPO>/branches/main/protection` | required checks + reviews + linear + signed = true | ☐ |
 | A4 | Ruleset active | `gh api repos/<ORG>/<REPO>/rulesets` | ruleset `enforcement=active` | ☐ |
-| A5 | CODEOWNERS enforced | open a PR touching `/docs`; observe required `@nexus/architecture` review | PR screenshot showing required owner review | ☐ |
+| A5 | CODEOWNERS enforced | open a PR touching `/docs`; observe required `@nexus-commerce-os/architecture` review | PR screenshot showing required owner review | ☐ |
 | A6 | Signed commits required | push an **unsigned** commit → rejected | rejection message | ☐ |
 | A7 | Required reviews | PR merge blocked with 0 approvals | blocked-merge screenshot | ☐ |
 | A8 | Required checks | PR merge blocked while `ci-gate` pending/failing | blocked-merge screenshot | ☐ |

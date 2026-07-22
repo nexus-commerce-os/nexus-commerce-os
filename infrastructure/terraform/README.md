@@ -1,7 +1,7 @@
 # infrastructure/terraform
 
 **Purpose:** the entire NEXUS cloud estate as modular, reproducible Terraform (AWS-primary, multi-cloud-capable per [ADR-0003](../../docs/adr/ADR-0003-cloud-provider.md)). **Never one giant project** — eight independent primitives composed per region and per environment.
-**Owner:** `@nexus/infrastructure` + `@nexus/cloud-security` ([CODEOWNERS](../../.github/CODEOWNERS)).
+**Owner:** `@nexus-commerce-os/infrastructure` + `@nexus-commerce-os/cloud-security` ([CODEOWNERS](../../.github/CODEOWNERS)).
 **Dependencies:** Terraform ≥ 1.7, AWS provider ~> 5.60; remote state from `global/`; consumed by CI (`terraform validate`/`plan`, [10 §2](../../docs/10-deployment-architecture.md)).
 
 ## Layout

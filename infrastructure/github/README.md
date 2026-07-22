@@ -4,7 +4,7 @@
 > the OIDC↔AWS trust relationship that make the CI/CD pipelines
 > ([`.github/workflows/ci.yml`](../../.github/workflows/ci.yml),
 > [`cd-prod.yml`](../../.github/workflows/cd-prod.yml)) safe and reproducible.
-> **Owner.** `@nexus/devsecops`.
+> **Owner.** `@nexus-commerce-os/devsecops`.
 > **Dependencies.** GitHub org + repo (created at P0.1 org bootstrap); AWS IAM OIDC
 > provider + roles provisioned by [`infrastructure/terraform`](../terraform) (IAM module);
 > the config repo (GitOps desired state) referenced by the deploy jobs.
@@ -41,7 +41,7 @@ flowchart LR
 
 ## Placeholders to resolve at org bootstrap
 
-- `@nexus/*` GitHub teams (see [`.github/CODEOWNERS`](../../.github/CODEOWNERS)) do not exist yet.
+- `@nexus-commerce-os/*` GitHub teams (see [`.github/CODEOWNERS`](../../.github/CODEOWNERS)) do not exist yet.
 - AWS account ids + role ARNs are `vars.*` placeholders (see [`oidc-trust.md`](oidc-trust.md)).
 - Action `uses:` pins in the workflows are placeholder SHAs — Dependabot/Renovate must verify + track them.
 - The config repo (`vars.CONFIG_REPO`) and its prod env branch are provisioned separately.

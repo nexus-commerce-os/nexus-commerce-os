@@ -1,7 +1,7 @@
 # tests/smoke — P0.1 post-deploy smoke suite
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/sre` `@nexus/devsecops` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/tests/`)
+**Owner:** `@nexus-commerce-os/sre` `@nexus-commerce-os/devsecops` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/tests/`)
 **Runtime / language:** TBD (lightweight HTTP probe — runs in CI after GitOps deploy)
 **Certified-architecture component:** verifies the **P0.1 walking-skeleton** (`services/platform-hello`) meets the platform fitness functions ([04 §10](../../docs/04-system-architecture.md#10-fitness-functions-how-we-keep-it-healthy))
 **Governing ADRs:** [ADR-0010](../../docs/adr/ADR-0010-platform-principles.md) (health checks everywhere)

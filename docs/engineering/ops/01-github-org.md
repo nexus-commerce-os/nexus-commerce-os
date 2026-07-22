@@ -13,7 +13,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 ## Placeholders (set once in `env.sh`, never committed)
 | Placeholder | Meaning | Constraint |
 |-------------|---------|------------|
-| `<ORG>` | GitHub org login | **MUST** equal the `@<org>` used in CODEOWNERS (i.e. `nexus`) or CODEOWNERS **MUST** be updated to match. |
+| `<ORG>` | GitHub org login | **MUST** equal the `@<org>` used in CODEOWNERS (i.e. `nexus-commerce-os`) or CODEOWNERS **MUST** be updated to match. |
 | `<REPO>` | Monorepo repository name | e.g. `nexus-monorepo`. Feeds the OIDC `sub` (`repo:<ORG>/<REPO>:…`). |
 | `<ORG_ADMIN>` | GitHub account with org-owner rights | Used for bootstrap only. |
 | `<ADMIN_TOKEN>` | Fine-grained PAT / `gh auth` token with `admin:org`, `repo` | Bootstrap only; **MUST NOT** be a workflow token. |
@@ -46,7 +46,7 @@ flowchart TD
 **Prerequisites.**
 - A GitHub account `<ORG_ADMIN>` that is allowed to create organizations (or an Enterprise with org-creation rights).
 - `gh` CLI installed and authenticated: `gh auth status` MUST show the account with `admin:org` scope.
-- Decide `<ORG>` now; it is load-bearing (CODEOWNERS `@<org>/…`, OIDC `sub`). It **MUST** be `nexus` unless CODEOWNERS is updated.
+- Decide `<ORG>` now; it is load-bearing (CODEOWNERS `@<org>/…`, OIDC `sub`). It **MUST** be `nexus-commerce-os` unless CODEOWNERS is updated.
 
 **Commands.**
 ```bash
@@ -79,7 +79,7 @@ Both MUST succeed; the repo count MUST be `0` at this point.
 
 ---
 
-## Step 2 — Create the `@nexus/*` teams
+## Step 2 — Create the `@nexus-commerce-os/*` teams
 
 **Objective.** Create the ten owning teams referenced by [`.github/CODEOWNERS`](../../../.github/CODEOWNERS), so CODEOWNERS review and Environment reviewers can resolve to real teams.
 
@@ -104,8 +104,8 @@ gh api --method PATCH /orgs/<ORG> \
   -F default_repository_permission='none'
 
 # Record each team id (needed in Step 9). Example lookup:
-gh api /orgs/<ORG>/teams/sre --jq '.id'          # → <TEAM_ID> for @nexus/sre
-gh api /orgs/<ORG>/teams/devsecops --jq '.id'    # → <TEAM_ID> for @nexus/devsecops
+gh api /orgs/<ORG>/teams/sre --jq '.id'          # → <TEAM_ID> for @nexus-commerce-os/sre
+gh api /orgs/<ORG>/teams/devsecops --jq '.id'    # → <TEAM_ID> for @nexus-commerce-os/devsecops
 ```
 
 **Expected output.** Ten JSON objects, each `{ "slug": "<team>", "id": <number> }`. `gh api /orgs/<ORG>/teams --jq 'length'` returns `10`.
@@ -116,13 +116,13 @@ gh api /orgs/<ORG>/teams --jq 'sort_by(.slug) | map(.slug)'
 # MUST equal (order-independent):
 # ["ai","architecture","cloud-security","commerce","data","devsecops","frontend","infrastructure","platform","sre"]
 ```
-Cross-check every slug against the `@nexus/*` handles in CODEOWNERS; there MUST be no CODEOWNERS handle without a matching team.
+Cross-check every slug against the `@nexus-commerce-os/*` handles in CODEOWNERS; there MUST be no CODEOWNERS handle without a matching team.
 
 **Rollback.** `gh api --method DELETE /orgs/<ORG>/teams/<slug>` per team. Safe while no repo references them yet.
 
-**Common failure.** `HTTP 422 name already exists`, or a CODEOWNERS handle like `@nexus/platform` fails to resolve later because the org login is not `nexus`.
+**Common failure.** `HTTP 422 name already exists`, or a CODEOWNERS handle like `@nexus-commerce-os/platform` fails to resolve later because the org login is not `nexus-commerce-os`.
 
-**Troubleshooting.** For 422, the team already exists — treat as idempotent and continue (`gh api /orgs/<ORG>/teams/<slug>`). If handles won't resolve, confirm `<ORG> == nexus`; if the org login intentionally differs, update the `@nexus/*` prefixes in [`.github/CODEOWNERS`](../../../.github/CODEOWNERS) in the same PR that lands the scaffold (Step 4) so ownership stays consistent.
+**Troubleshooting.** For 422, the team already exists — treat as idempotent and continue (`gh api /orgs/<ORG>/teams/<slug>`). If handles won't resolve, confirm `<ORG> == nexus-commerce-os`; if the org login intentionally differs, update the `@nexus-commerce-os/*` prefixes in [`.github/CODEOWNERS`](../../../.github/CODEOWNERS) in the same PR that lands the scaffold (Step 4) so ownership stays consistent.
 
 ---
 
@@ -224,11 +224,11 @@ gh api /repos/<ORG>/<REPO>/codeowners/errors --jq '.errors'
 
 **Expected output.** `.errors` is an **empty array** `[]` — no unknown owners, no syntax errors, no unowned-path warnings.
 
-**Verification.** Open a throwaway PR touching `/infrastructure/terraform/` and confirm GitHub auto-requests review from `@nexus/infrastructure` **and** `@nexus/cloud-security` (matching the CODEOWNERS rule). Close the PR after confirming.
+**Verification.** Open a throwaway PR touching `/infrastructure/terraform/` and confirm GitHub auto-requests review from `@nexus-commerce-os/infrastructure` **and** `@nexus-commerce-os/cloud-security` (matching the CODEOWNERS rule). Close the PR after confirming.
 
-**Rollback.** N/A (read-only validation). If CODEOWNERS is wrong, fix it via a normal PR (owned by `@nexus/architecture` for `/docs/` etc., `@nexus/devsecops` for `/.github/`).
+**Rollback.** N/A (read-only validation). If CODEOWNERS is wrong, fix it via a normal PR (owned by `@nexus-commerce-os/architecture` for `/docs/` etc., `@nexus-commerce-os/devsecops` for `/.github/`).
 
-**Common failure.** `errors` lists `Unknown owner` for a `@nexus/<team>` handle — the team was not created (Step 2) or the org login ≠ `nexus`.
+**Common failure.** `errors` lists `Unknown owner` for a `@nexus-commerce-os/<team>` handle — the team was not created (Step 2) or the org login ≠ `nexus-commerce-os`.
 
 **Troubleshooting.** Create the missing team, or reconcile the org login with the handle prefix. Re-run the errors check until `[]`. Do **not** proceed to Step 6 with a non-empty error list — CODEOWNERS review would be a paper control.
 
@@ -403,7 +403,7 @@ gh ssh-key list   # (or) gh gpg-key list  → shows the registered signing key
 
 **Objective.** Create the deployment-protection boundaries the workflows reference by name, per [`infrastructure/github/environments.yml`](../../../infrastructure/github/environments.yml): `staging` auto-syncs (no human gate), `production` requires **team reviewers + a wait timer + no self-review** and only protected (`main`) refs may deploy.
 
-**Prerequisites.** Steps 2 and 6 complete. `<TEAM_ID>` for `@nexus/sre` and `@nexus/devsecops` (from Step 2). `<ADMIN_TOKEN>` with `repo` admin.
+**Prerequisites.** Steps 2 and 6 complete. `<TEAM_ID>` for `@nexus-commerce-os/sre` and `@nexus-commerce-os/devsecops` (from Step 2). `<ADMIN_TOKEN>` with `repo` admin.
 
 **Commands.**
 ```bash
@@ -561,7 +561,7 @@ Every AWS reference in [`.github/workflows/ci.yml`](../../../.github/workflows/c
 
 All MUST hold before Chapter 2:
 
-- [ ] `<ORG>` exists; ten `@nexus/*` teams resolve with **no** CODEOWNERS errors (Steps 1–2, 5).
+- [ ] `<ORG>` exists; ten `@nexus-commerce-os/*` teams resolve with **no** CODEOWNERS errors (Steps 1–2, 5).
 - [ ] `<ORG>/<REPO>` is private, merge-commits disabled, scaffold pushed with a **Verified** first commit (Steps 3–4).
 - [ ] `main` protection + ruleset enforce: `ci-gate` (strict), CODEOWNERS review + ≥1 approval, dismiss-stale + last-push-approval, signed commits, linear history, no force-push/deletion, admins-not-exempt, empty `bypass_actors` (Steps 6–7).
 - [ ] Developer commit signing produces **Verified** commits (Step 8).

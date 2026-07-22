@@ -4,7 +4,7 @@
 > policy-as-code (plan-time + admission-time), image signing + provenance + SBOM, and the
 > least-privilege IAM model. This directory is the source of truth the CI/CD workflows and
 > the cluster admission controller enforce.
-> **Owner.** `@nexus/cloud-security`.
+> **Owner.** `@nexus-commerce-os/cloud-security`.
 > **Dependencies.** [`.github/workflows`](../../.github/workflows) (CI/CD),
 > [`infrastructure/github`](../github) (OIDC trust, branch protection),
 > [`infrastructure/terraform`](../terraform) (IAM roles, KMS), the in-cluster admission

@@ -29,9 +29,14 @@ spec:
       labels:
         {{- include "nexus-common.labels" . | nindent 8 }}
       annotations:
+        {{- if not .Values.otel.enabled }}
+        # Prometheus scrape-discovery fallback — emitted ONLY when the OTLP push path
+        # is off. Emitting these while otel.enabled would double-count every metric
+        # series (once via scrape, once via OTLP -> collector -> remote-write).
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.service.metricsPort | quote }}
         prometheus.io/path: {{ .Values.serviceMonitor.path | default "/metrics" | quote }}
+        {{- end }}
         {{- if and .Values.otel.enabled .Values.otel.operatorInject }}
         instrumentation.opentelemetry.io/inject-sdk: "true"
         {{- end }}

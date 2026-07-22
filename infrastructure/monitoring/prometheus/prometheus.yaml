@@ -3,6 +3,17 @@
 # observability failure domain. Feeds HPA/KEDA custom metrics (§7) and the SLO
 # burn-rate release gates (§4) — so it MUST stay up independently of workloads.
 # In prod this is Prometheus + Thanos/AMP for long-term/global aggregation.
+#
+# REMOTE-WRITE RECEIVER (required by the OTLP metrics path): the OTel collector
+# pushes metrics here via `prometheusremotewrite` -> :9090/api/v1/write
+# (otel-collector-config.yaml). The Prometheus Deployment/StatefulSet that loads
+# THIS scrape config MUST therefore run with `--web.enable-remote-write-receiver`
+# (a binary flag — it belongs on the deploy manifest, not in this scrape file) or
+# every collector push is rejected. Size the WAL/TSDB for the extra ingest in prod.
+#
+# METRICS PATH (no double-count): OTLP push is canonical; the nexus-common chart
+# emits `prometheus.io/scrape` annotations ONLY when otel is disabled, so the
+# annotation-discovery job below scrapes only non-OTLP services (docs/10 §7).
 # ============================================================================
 global:
   scrape_interval: 30s

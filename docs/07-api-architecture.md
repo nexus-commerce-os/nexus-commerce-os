@@ -10,8 +10,8 @@ This document specifies how NEXUS exposes, secures, versions, and operates its A
 
 Three principles from upstream docs are load-bearing here and are treated as constraints, not aspirations:
 
-1. **"Every capability is an API before it is a screen."** ([Vision §8.5](01-vision.md#8-guiding-principles)) — the GUI is one renderer of the API, never a privileged path. Nothing may be reachable only through the web app.
-2. **Agent-first, UI-second.** ([Vision §8.3](01-vision.md#8-guiding-principles)) — the agent's tool catalog is a *first-class public surface*, not an internal shim. The same tools the NEXUS agent calls are (scope-gated) the tools a partner's agent can call.
+1. **"Every capability is an API before it is a screen."** ([Vision §8.6](01-vision.md#8-guiding-principles)) — the GUI is one renderer of the API, never a privileged path. Nothing may be reachable only through the web app.
+2. **Agent-first, UI-second.** ([Vision §8.4](01-vision.md#8-guiding-principles)) — the agent's tool catalog is a *first-class public surface*, not an internal shim. The same tools the NEXUS agent calls are (scope-gated) the tools a partner's agent can call.
 3. **The public API is a revenue stream.** The developer/agent platform is the H3 "commerce OS" horizon ([Vision §10](01-vision.md#10-3-horizon-roadmap-outcome-not-feature-framed)) and a distinct monetized product, not a free side-effect — so it is metered, tiered, and SLA-backed from the design stage.
 
 RFC-2119 keywords (**MUST**, **SHOULD**, **MAY**) are used normatively throughout.
@@ -464,9 +464,9 @@ GET /v1/config/markets                 // and GET /v1/config/markets/{country}
 { "detected_region": "US",
   "markets": [
     { "country": "US", "enabled": true,  "currency": "USD", "locales": ["en-US","es-US"],
-      "features": { "travel": true,  "cashback": true,  "watchlist_autobuy": true } },
+      "features": { "travel": true,  "cashback": true,  "watchlist_one_tap_alert": true } },
     { "country": "GB", "enabled": true,  "currency": "GBP", "locales": ["en-GB"],
-      "features": { "travel": true,  "cashback": false, "watchlist_autobuy": false } },
+      "features": { "travel": true,  "cashback": false, "watchlist_one_tap_alert": false } },
     { "country": "BD", "enabled": false, "currency": "BDT", "locales": ["bn-BD","en"],
       "features": {} }
   ] }

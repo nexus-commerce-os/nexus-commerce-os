@@ -52,3 +52,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# --- Local evidence / scratch artifacts (not part of the repo) ---
+stage-a-evidence.txt
+stage-*-evidence.txt
+*.msi

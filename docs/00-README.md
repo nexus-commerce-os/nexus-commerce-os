@@ -26,7 +26,7 @@
 | 11 | [Product Guidelines](11-product-guidelines.md) | Binding product-behavior rules (disclosure, savings states, neutrality) across all surfaces |
 | 12 | [Trust & Transparency](12-trust-and-transparency.md) | Public trust commitments and how each is enforced |
 | 13 | [Implementation Roadmap](13-implementation-roadmap.md) | P0.1–P0.8 gated build plan (post-certification) |
-| — | [ADRs](adr/) | Architecture Decision Records (the "why") — 22 ADRs, 0001–0022 |
+| — | [ADRs](adr/) | Architecture Decision Records (the "why") — 23 ADRs, 0001–0023 |
 | — | [Review](review/) | Adversarial review reports, master risk registers, scalability simulation |
 
 ## Document conventions

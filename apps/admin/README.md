@@ -1,7 +1,7 @@
 # apps/admin — Internal operator console
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/apps/`)
+**Owner:** `@nexus-commerce-os/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/apps/`)
 **Runtime / language:** Next.js (React) + Tailwind, TypeScript ([SDD §6 — Frontend](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** Clients surface over the API Gateway + BFF; renders **RBAC/ABAC-scoped** admin views ([04 §3–4](../../docs/04-system-architecture.md#3-context--container-map-c4-level-2))
 **Governing ADRs:** [ADR-0010](../../docs/adr/ADR-0010-platform-principles.md) (platform principles, rollback), [ADR-0017](../../docs/adr/ADR-0017-blast-radius-isolation.md) (operator views onto isolated failure domains)

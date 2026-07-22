@@ -40,9 +40,13 @@ module "primary" {
   }
 
   # ---- EKS ----
-  cluster_version        = "1.30"
-  endpoint_public_access = true
-  public_access_cidrs    = [] # tighten to office/VPN CIDRs before use; never 0.0.0.0/0
+  cluster_version = "1.30"
+  # Private-only control plane (matches prod). An empty public_access_cidrs with
+  # public access enabled resolves to 0.0.0.0/0 at the AWS API — never allow that.
+  # Reach the dev API via VPN/SSM/bastion; if a public endpoint is ever needed,
+  # set real office/VPN CIDRs (the module guard below rejects public + empty/0.0.0.0/0).
+  endpoint_public_access = false
+  public_access_cidrs    = []
 
   node_pools = {
     # Even in dev, keep the discovery/money split so scheduling matches prod.

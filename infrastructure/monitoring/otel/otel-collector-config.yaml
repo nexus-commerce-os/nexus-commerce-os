@@ -37,6 +37,15 @@ processors:
         - k8s.deployment.name
   # Tail-based sampling: keep 100% of errors/slow traces, sample the happy path
   # (docs/10 §7 — 100% coverage of paths without 100% volume).
+  #
+  # INVARIANT — single-owner-per-trace. tail_sampling can only decide keep/drop
+  # correctly if it sees ALL spans of a trace. A collector running this processor
+  # therefore MUST NOT be horizontally scaled behind a plain round-robin Service:
+  # spans of one trace would split across replicas, each sees a PARTIAL trace, and
+  # error/slow traces get silently dropped (the "100% error coverage" claim breaks).
+  # Deploy the sampling tier as ONE replica (StatefulSet replicas: 1). TO SCALE, use
+  # the two-tier pattern: tier-1 collectors (any replicas) -> loadbalancing exporter
+  # with routing_key: traceID -> tier-2 (this config) which owns full traces per ID.
   tail_sampling:
     decision_wait: 10s
     num_traces: 100000

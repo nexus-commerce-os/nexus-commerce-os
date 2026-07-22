@@ -1,0 +1,36 @@
+# Prettier owns the TS/TSX/JSON of the JS workspaces + root tooling config only.
+# Everything else is hand-authored, generated, or owned by another toolchain.
+
+# Dependencies / build output
+node_modules/
+**/dist/
+**/.next/
+**/coverage/
+pnpm-lock.yaml
+
+# Documentation & governance prose (hand-formatted; the doc-consistency lint owns these)
+docs/
+**/*.md
+PROJECT_MEMORY.md
+PHASE-P0.1-REPORT.md
+LICENSE
+
+# Other toolchains
+infrastructure/
+scripts/
+tests/
+.github/
+services/platform-hello/        # Go service + Helm templates (not prettier-owned)
+**/*.go
+**/go.mod
+**/go.sum
+**/*.tf
+**/*.tfvars
+**/*.rego
+# YAML (Helm/k8s/CI/compose) uses its own conventions; templates aren't valid YAML for prettier
+**/*.yaml
+**/*.yml
+
+# Local artifacts
+stage-a-evidence.txt
+*.msi

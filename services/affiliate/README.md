@@ -1,7 +1,7 @@
 # services/affiliate — Affiliate & Attribution + Referral/Deep-Link Handoff
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/commerce` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/affiliate/`)
+**Owner:** `@nexus-commerce-os/commerce` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/affiliate/`)
 **Runtime / language:** TypeScript (NestJS) — core product API ([SDD §6 — Backend core](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives)). *(The latency-critical **Affiliate Gateway** connector runtime is Go and lives as its own extracted service — [04 §6.1](../../docs/04-system-architecture.md#61-affiliate-gateway--plugin-connectors--automatic-failover); it is out of this scaffold's scope.)*
 **Certified-architecture component:** **Affiliate & Attribution** module + **Referral & Deep-Link Handoff** module ([04 §4](../../docs/04-system-architecture.md#4-component-responsibilities))
 **Governing ADRs:** [ADR-0006](../../docs/adr/ADR-0006-referral-only-model.md) (pure referral — no payment/custody), [ADR-0008](../../docs/adr/ADR-0008-affiliate-gateway.md) (gateway connectors/failover), [ADR-0011](../../docs/adr/ADR-0011-attribution-reconciliation.md) (3-way reconciliation), [ADR-0012](../../docs/adr/ADR-0012-postback-integrity.md) (provisional, dedup, order-independent postbacks), [ADR-0013](../../docs/adr/ADR-0013-ledger-per-context.md) (affiliate-accrual sub-ledger), [ADR-0018](../../docs/adr/ADR-0018-connector-security-hardening.md), [ADR-0022](../../docs/adr/ADR-0022-round2-remediation.md) (reversal-ordering NC-3)

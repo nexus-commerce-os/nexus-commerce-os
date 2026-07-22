@@ -1,0 +1,36 @@
+# NEXUS custom Semgrep ruleset (loaded by CI via `--config .semgrep`).
+# Complements the registry pack `p/owasp-top-ten`. Rules encode NEXUS-specific
+# safety invariants from the architecture docs. Keep rules high-signal (ERROR =
+# merge-blocking). Extend as real code lands (services are `export {}` at P0.1).
+rules:
+  - id: nexus-no-shell-exec-injection
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >
+      Untrusted input flowing into child_process exec/execSync is a command-injection
+      risk (ADR-0018 connector hardening). Use execFile/spawn with an argument array
+      and validate/allow-list inputs; never string-concatenate a shell command.
+    patterns:
+      - pattern-either:
+          - pattern: child_process.exec(...)
+          - pattern: child_process.execSync(...)
+          - pattern: cp.exec(...)
+          - pattern: cp.execSync(...)
+
+  - id: nexus-no-eval
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "eval()/new Function() executes arbitrary code — forbidden across the platform."
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+
+  - id: nexus-no-network-event-at-ordering
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >
+      Money-event ordering MUST use NEXUS's own monotonic receipt sequence, never the
+      attacker-suppliable network_event_at (ADR-0012 / ADR-0022 NC-3). A raw postback
+      timestamp must never order confirm/reverse state transitions.
+    patterns:
+      - pattern-regex: \bnetwork_event_at\b.*(sort|order|compare|<|>|localeCompare)

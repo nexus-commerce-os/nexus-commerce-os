@@ -3,7 +3,7 @@
 > **Purpose.** The policy-as-code rules enforced **twice** (defense-in-depth, docs/10 §5):
 > at **plan-time** in CI (`conftest test` on the `terraform plan` JSON and rendered
 > Kubernetes manifests) and at **admission-time** in-cluster (Kyverno/Gatekeeper mirror).
-> **Owner.** `@nexus/cloud-security`.
+> **Owner.** `@nexus-commerce-os/cloud-security`.
 > **Dependencies.** conftest ≥ 0.55 (OPA/Rego v1); the CI `policy` job
 > ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)); unit tests in
 > [`tests/policy`](../../../tests/policy).

@@ -27,8 +27,11 @@
 # UPGRADE DISCIPLINE:
 #   - Bump here first, then propagate to every module/env `versions.tf` in the
 #     SAME PR. CI drift-checks that no module diverges from these pins.
-#   - `.terraform.lock.hcl` is committed per env root to freeze exact versions
-#     + checksums (supply-chain integrity, deployment principle #4).
+#   - `.terraform.lock.hcl` MUST be generated and committed per env root at
+#     bootstrap (`terraform providers lock -platform=linux_amd64 -platform=darwin_arm64`)
+#     to freeze exact versions + checksums (supply-chain integrity, deployment
+#     principle #4). NOTE: lock files are generated at first `init` against a
+#     network mirror; they are NOT authored by hand and are absent until then.
 #
 # NOTE: no `provider "aws"` block lives here. Provider *configuration* (region,
 # assume-role, default_tags) is an ENV concern and lives in each

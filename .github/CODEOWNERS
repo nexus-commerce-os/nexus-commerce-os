@@ -1,5 +1,6 @@
 # CODEOWNERS — required review by the owning team on every PR (branch protection enforces this).
-# Teams are placeholders (org not yet created); replace with real GitHub teams at P0.1 org setup.
+# Handles resolve to real GitHub teams in org `nexus-commerce-os` (id 306595611): the ten
+# @nexus-commerce-os/* teams exist and hold repo write access (created 2026-07-20, Stage A).
 # Every path in the monorepo has an explicit owner — no unowned code.
 
 # Default — platform team owns anything not otherwise claimed

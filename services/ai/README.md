@@ -1,7 +1,7 @@
 # services/ai — AI Serving + Agent
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/ai` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/ai/`)
+**Owner:** `@nexus-commerce-os/ai` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/ai/`)
 **Runtime / language:** **Python (FastAPI)** — the AI layer, the third and final bounded runtime ([SDD §6 — AI/ML services](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** **AI Serving + Agent (Python/FastAPI)** ([04 §4](../../docs/04-system-architecture.md#4-component-responsibilities)) — agent loop, RAG, tool-calling, safety
 **Governing ADRs:** [ADR-0005](../../docs/adr/ADR-0005-ai-model-gateway.md) (model-agnostic router), [ADR-0009](../../docs/adr/ADR-0009-ai-cost-strategy.md) (≤ $0.01/request cascade), [ADR-0015](../../docs/adr/ADR-0015-ai-trust-cost-integrity.md) (trust/cost/integrity), [ADR-0020](../../docs/adr/ADR-0020-performance-consistency-hardening.md) (**no sync core on hot path** — reads async read-models), [ADR-0017](../../docs/adr/ADR-0017-blast-radius-isolation.md) (routing-policy canary per capability/region; warm-GPU floor)

@@ -1,7 +1,7 @@
 # packages/shared — Shared domain types & utilities
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/platform` `@nexus/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
+**Owner:** `@nexus-commerce-os/platform` `@nexus-commerce-os/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
 **Runtime / language:** TypeScript (framework-agnostic; consumed by `apps/*` and TS `services/*`)
 **Certified-architecture component:** cross-cutting shared kernel of **types only** (no cross-context business logic) ([SDD §7](../../docs/02-software-design-document.md#7-cross-cutting-concerns))
 **Governing ADRs:** [ADR-0010](../../docs/adr/ADR-0010-platform-principles.md) (replaceability), [ADR-0020](../../docs/adr/ADR-0020-performance-consistency-hardening.md) (consistency)

@@ -2,7 +2,7 @@
 
 > **Purpose.** Documents how GitHub Actions authenticates to AWS **without any static
 > credentials** — the mechanism behind every `aws-actions/configure-aws-credentials`
-> step in the workflows. **Owner.** `@nexus/devsecops` + `@nexus/cloud-security`.
+> step in the workflows. **Owner.** `@nexus-commerce-os/devsecops` + `@nexus-commerce-os/cloud-security`.
 > **Dependencies.** The IAM OIDC provider + roles are provisioned by
 > [`infrastructure/terraform`](../terraform) (IAM module) — this file is the contract that
 > module must satisfy; it does not itself apply anything.

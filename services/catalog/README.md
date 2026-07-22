@@ -1,7 +1,7 @@
 # services/catalog — Catalog & Offer
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/commerce` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/catalog/`)
+**Owner:** `@nexus-commerce-os/commerce` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/catalog/`)
 **Runtime / language:** TypeScript (NestJS) — core product API ([SDD §6 — Backend core](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** **Catalog & Offer** bounded context ([SDD §3](../../docs/02-software-design-document.md#3-domain-model-bounded-contexts), [04 §4](../../docs/04-system-architecture.md#4-component-responsibilities)) — canonical offer schema, offer/product read models
 **Governing ADRs:** [ADR-0001](../../docs/adr/ADR-0001-data-sourcing.md) (authorized-sources-only; license-tag enforcement), [ADR-0010](../../docs/adr/ADR-0010-platform-principles.md) (adapter boundary — no provider SDK in core), [ADR-0020](../../docs/adr/ADR-0020-performance-consistency-hardening.md) (own schema/role; CQRS read models)

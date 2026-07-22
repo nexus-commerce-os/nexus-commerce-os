@@ -3,7 +3,7 @@
 > **Purpose.** Defines how every deployable artifact becomes **trustworthy by construction**:
 > keyless signing, a Software Bill of Materials, SLSA provenance, and the admission control
 > that refuses anything unsigned or non-compliant.
-> **Owner.** `@nexus/cloud-security` + `@nexus/devsecops`.
+> **Owner.** `@nexus-commerce-os/cloud-security` + `@nexus-commerce-os/devsecops`.
 > **Dependencies.** cosign (Sigstore Fulcio/Rekor), Syft, GitHub OIDC (keyless identity),
 > the CI Build job ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) stage 14),
 > the CD verify step ([`cd-prod.yml`](../../../.github/workflows/cd-prod.yml)), and the
