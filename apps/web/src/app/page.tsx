@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Eyebrow, SectionHead } from "@nexus/ui";
+import {
+  Button,
+  Card,
+  Eyebrow,
+  Receipt,
+  SectionHead,
+  StatePill,
+} from "@nexus/ui";
 
 const DEFAULT_NOTE =
   "No spam — just one email the moment NEXUS opens in your region.";
@@ -224,44 +231,26 @@ export default function NexusLanding() {
               </div>
             </div>
 
-            <div
-              className="receipt reveal"
-              role="img"
-              aria-label="A verified savings receipt showing 47 dollars 12 cents saved"
-            >
-              <div className="rc-head">
-                <b>NEXUS · VERIFIED SAVINGS</b>
-                <span>RCPT&nbsp;#0007</span>
-              </div>
-              <div className="rc-row">
-                <span>Item</span>
-                <b>Sony WH-1000XM5</b>
-              </div>
-              <div className="rc-row">
-                <span>Best real price found</span>
-                <b className="mono">$328.00</b>
-              </div>
-              <div className="rc-row">
-                <span>You paid at merchant</span>
-                <b className="mono">$328.00</b>
-              </div>
-              <div className="rc-row">
-                <span>List / typical price</span>
-                <b className="mono">$375.12</b>
-              </div>
-              <div className="rc-rule" />
-              <div className="rc-total">
-                <span className="lab">Verified money saved</span>
-                <span className="val mono">
+            <Receipt
+              className="reveal"
+              ariaLabel="A verified savings receipt showing 47 dollars 12 cents saved"
+              title="NEXUS · VERIFIED SAVINGS"
+              code="RCPT #0007"
+              rows={[
+                { label: "Item", value: "Sony WH-1000XM5" },
+                { label: "Best real price found", value: "$328.00", mono: true },
+                { label: "You paid at merchant", value: "$328.00", mono: true },
+                { label: "List / typical price", value: "$375.12", mono: true },
+              ]}
+              totalLabel="Verified money saved"
+              totalValue={
+                <>
                   $<span ref={countRef}>0.00</span>
-                </span>
-              </div>
-              <div className="stamp">VERIFIED&nbsp;✓</div>
-              <div className="rc-foot">
-                Confirmed by the merchant network · past the return window ·
-                counts toward your VMS
-              </div>
-            </div>
+                </>
+              }
+              stamp="VERIFIED ✓"
+              footer="Confirmed by the merchant network · past the return window · counts toward your VMS"
+            />
           </div>
         </section>
 
@@ -342,7 +331,7 @@ export default function NexusLanding() {
               it&apos;s a fitness test enforced in CI, not a promise on a page.
             </SectionHead>
             <div className="rank">
-              <div className="rank-card reveal">
+              <Card className="rank-card reveal">
                 <h3>
                   <span className="dot" style={{ background: "var(--accent)" }} />{" "}
                   NEXUS — ranked by your value
@@ -362,8 +351,8 @@ export default function NexusLanding() {
                   <span className="price">$351.00</span>
                   <span className="tagpill">3rd</span>
                 </div>
-              </div>
-              <div className="rank-card reveal">
+              </Card>
+              <Card className="rank-card reveal">
                 <h3>
                   <span className="dot" style={{ background: "var(--amber)" }} />{" "}
                   Typical &quot;deal&quot; site — ranked by payout
@@ -383,7 +372,7 @@ export default function NexusLanding() {
                   <span className="price">$328.00</span>
                   <span className="tagpill">Buried</span>
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         </section>
@@ -399,41 +388,41 @@ export default function NexusLanding() {
               Verified Money Saved.
             </SectionHead>
             <div className="life">
-              <div className="life-card reveal">
-                <span className="st est">Estimated</span>
+              <Card className="life-card reveal">
+                <StatePill state="estimated">Estimated</StatePill>
                 <h3>Projected</h3>
                 <p>
                   Before you buy — clearly labelled an estimate, never a
                   guarantee.
                 </p>
                 <span className="arrow">→</span>
-              </div>
-              <div className="life-card reveal">
-                <span className="st pend">Pending</span>
+              </Card>
+              <Card className="life-card reveal">
+                <StatePill state="pending">Pending</StatePill>
                 <h3>Awaiting confirm</h3>
                 <p>
                   You bought; we&apos;re waiting on the network&apos;s
                   confirmation and the return window.
                 </p>
                 <span className="arrow">→</span>
-              </div>
-              <div className="life-card reveal">
-                <span className="st conf">Confirmed</span>
+              </Card>
+              <Card className="life-card reveal">
+                <StatePill state="confirmed">Confirmed</StatePill>
                 <h3>Counts toward VMS</h3>
                 <p>
                   Network-confirmed and past the hold period. The only state
                   that&apos;s truly yours.
                 </p>
                 <span className="arrow">→</span>
-              </div>
-              <div className="life-card reveal">
-                <span className="st rev">Reversed</span>
+              </Card>
+              <Card className="life-card reveal">
+                <StatePill state="reversed">Reversed</StatePill>
                 <h3>Returned</h3>
                 <p>
                   A cancellation or return reverses it — transparently, per
                   published terms.
                 </p>
-              </div>
+              </Card>
             </div>
           </div>
         </section>

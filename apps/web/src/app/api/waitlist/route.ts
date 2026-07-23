@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
+import { getWaitlistStore } from "@/lib/waitlist";
 
-// A concrete, server-side waitlist endpoint. The client posts { email }; we
-// validate on the server (never trust the client) and acknowledge.
-//
-// P0.2 TODO: persist to the waitlist store / email-service-provider behind an
-// adapter (ADR-0010 — every provider adapter-wrapped). For the P0.1 scaffold we
-// validate + accept; no PII is logged and no third-party call is made.
+// Server-side waitlist endpoint. The client posts { email }; we validate on the
+// server (never trust the client) and persist via the configured store adapter
+// (ADR-0010 — every provider adapter-wrapped; see src/lib/waitlist.ts). No PII is
+// logged here; the driver decides durability (memory by default, ESP when set).
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -30,11 +29,29 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  // (persistence intentionally deferred — see file header)
-  return NextResponse.json(
-    { ok: true, message: "You're on the list." },
-    { status: 200 },
-  );
+  try {
+    const result = await getWaitlistStore().add({
+      email,
+      source: "web",
+      createdAt: new Date().toISOString(),
+    });
+    return NextResponse.json(
+      {
+        ok: true,
+        status: result.status,
+        message:
+          result.status === "duplicate"
+            ? "You're already on the list."
+            : "You're on the list.",
+      },
+      { status: 200 },
+    );
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Could not save right now — please try again." },
+      { status: 502 },
+    );
+  }
 }
 
 export function GET(): NextResponse {
