@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { Button, Eyebrow, SectionHead } from "@nexus/ui";
 
-const DEFAULT_NOTE = "No spam — just one email the moment NEXUS opens in your region.";
+const DEFAULT_NOTE =
+  "No spam — just one email the moment NEXUS opens in your region.";
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export default function NexusLanding() {
   const countRef = useRef<HTMLSpanElement>(null);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [who, setWho] = useState("you");
   const [note, setNote] = useState(DEFAULT_NOTE);
   const [noteErr, setNoteErr] = useState(false);
@@ -21,17 +25,36 @@ export default function NexusLanding() {
     root.setAttribute("data-theme", dark ? "light" : "dark");
   };
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const v = email.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) {
+    if (!EMAIL_RE.test(v)) {
       setNote("Please enter a valid email address.");
       setNoteErr(true);
       return;
     }
-    const local = v.split("@")[0] ?? "you";
-    setWho(local.length > 18 ? "you" : local);
-    setSubmitted(true);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: v }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        const local = v.split("@")[0] ?? "you";
+        setWho(local.length > 18 ? "you" : local);
+        setSubmitted(true);
+      } else {
+        setNote(data.error ?? "Something went wrong — please try again.");
+        setNoteErr(true);
+      }
+    } catch {
+      setNote("Network error — please try again.");
+      setNoteErr(true);
+    } finally {
+      setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -164,9 +187,7 @@ export default function NexusLanding() {
           >
             ◐
           </button>
-          <a className="btn btn-primary" href="#cta">
-            Join the waitlist
-          </a>
+          <Button href="#cta">Join the waitlist</Button>
         </div>
       </header>
 
@@ -174,7 +195,7 @@ export default function NexusLanding() {
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap hero-grid">
             <div>
-              <p className="eyebrow">AI shopping · pure referral, zero custody</p>
+              <Eyebrow>AI shopping · pure referral, zero custody</Eyebrow>
               <h1>
                 We only make money <em>when you save money.</em>
               </h1>
@@ -185,12 +206,10 @@ export default function NexusLanding() {
                 by value — never by who pays us most.
               </p>
               <div className="hero-cta">
-                <a className="btn btn-primary" href="#cta">
-                  Join the waitlist →
-                </a>
-                <a className="btn btn-ghost" href="#how">
+                <Button href="#cta">Join the waitlist →</Button>
+                <Button variant="ghost" href="#how">
                   See how it works
-                </a>
+                </Button>
               </div>
               <div className="assure">
                 <span>
@@ -248,7 +267,7 @@ export default function NexusLanding() {
 
         <div className="promise-band">
           <div className="wrap">
-            <p className="eyebrow">Our promise</p>
+            <Eyebrow>Our promise</Eyebrow>
             <p className="q reveal">
               NEXUS works for the <em>buyer</em> — never for whoever pays us
               most.
@@ -264,15 +283,14 @@ export default function NexusLanding() {
 
         <section id="how">
           <div className="wrap">
-            <div className="sec-head">
-              <p className="eyebrow">The model</p>
-              <h2>A referral layer, not a checkout.</h2>
-              <p>
-                NEXUS never holds your money, your order, or your inventory. It
-                does one thing extremely well: find the best legitimate deal and
-                get out of the way.
-              </p>
-            </div>
+            <SectionHead
+              eyebrow="The model"
+              title="A referral layer, not a checkout."
+            >
+              NEXUS never holds your money, your order, or your inventory. It does
+              one thing extremely well: find the best legitimate deal and get out
+              of the way.
+            </SectionHead>
             <div className="steps">
               <div className="step reveal">
                 <div className="n">STEP 01</div>
@@ -315,15 +333,14 @@ export default function NexusLanding() {
 
         <section id="ranking">
           <div className="wrap">
-            <div className="sec-head">
-              <p className="eyebrow">Commission-blind by design</p>
-              <h2>The result that&apos;s best for you sits on top.</h2>
-              <p>
-                Most &quot;deal&quot; sites quietly sort by what pays them.
-                NEXUS&apos;s ranking function cannot see commission at all —
-                it&apos;s a fitness test enforced in CI, not a promise on a page.
-              </p>
-            </div>
+            <SectionHead
+              eyebrow="Commission-blind by design"
+              title="The result that's best for you sits on top."
+            >
+              Most &quot;deal&quot; sites quietly sort by what pays them.
+              NEXUS&apos;s ranking function cannot see commission at all —
+              it&apos;s a fitness test enforced in CI, not a promise on a page.
+            </SectionHead>
             <div className="rank">
               <div className="rank-card reveal">
                 <h3>
@@ -373,15 +390,14 @@ export default function NexusLanding() {
 
         <section id="savings">
           <div className="wrap">
-            <div className="sec-head">
-              <p className="eyebrow">Verified Money Saved · the north star</p>
-              <h2>Every saving has an honest state.</h2>
-              <p>
-                We won&apos;t show you money you might not keep. A figure moves
-                through four states, and only <b>Confirmed</b> counts toward your
-                Verified Money Saved.
-              </p>
-            </div>
+            <SectionHead
+              eyebrow="Verified Money Saved · the north star"
+              title="Every saving has an honest state."
+            >
+              We won&apos;t show you money you might not keep. A figure moves
+              through four states, and only <b>Confirmed</b> counts toward your
+              Verified Money Saved.
+            </SectionHead>
             <div className="life">
               <div className="life-card reveal">
                 <span className="st est">Estimated</span>
@@ -424,15 +440,14 @@ export default function NexusLanding() {
 
         <section id="agent">
           <div className="wrap">
-            <div className="sec-head">
-              <p className="eyebrow">Agent-first · built for developers</p>
-              <h2>Every capability is an API before it&apos;s a screen.</h2>
-              <p>
-                The tools the NEXUS agent calls are a first-class public surface —
-                the same ones a partner&apos;s assistant can call, scope-gated.
-                The web app is just one renderer.
-              </p>
-            </div>
+            <SectionHead
+              eyebrow="Agent-first · built for developers"
+              title="Every capability is an API before it's a screen."
+            >
+              The tools the NEXUS agent calls are a first-class public surface —
+              the same ones a partner&apos;s assistant can call, scope-gated. The
+              web app is just one renderer.
+            </SectionHead>
             <div className="agent-grid">
               <div>
                 <div className="agent-points">
@@ -509,10 +524,10 @@ export default function NexusLanding() {
 
         <section id="trust">
           <div className="wrap">
-            <div className="sec-head">
-              <p className="eyebrow">Trust &amp; transparency</p>
-              <h2>Promises we engineered, not just wrote.</h2>
-            </div>
+            <SectionHead
+              eyebrow="Trust & transparency"
+              title="Promises we engineered, not just wrote."
+            />
             <div className="trust">
               <div className="promise reveal">
                 <div className="ic">%</div>
@@ -596,7 +611,7 @@ export default function NexusLanding() {
               </div>
             </div>
             <div style={{ marginTop: "34px" }}>
-              <p className="eyebrow">Phased, region-before-market</p>
+              <Eyebrow>Phased, region-before-market</Eyebrow>
               <div className="rollout">
                 <span className="phase live">
                   <b>P1</b> United States
@@ -617,10 +632,10 @@ export default function NexusLanding() {
 
         <section id="faq">
           <div className="wrap">
-            <div className="sec-head">
-              <p className="eyebrow">Questions, answered plainly</p>
-              <h2>The honest FAQ.</h2>
-            </div>
+            <SectionHead
+              eyebrow="Questions, answered plainly"
+              title="The honest FAQ."
+            />
             <div className="faq">
               <details className="reveal">
                 <summary>How does NEXUS actually make money?</summary>
@@ -695,15 +710,16 @@ export default function NexusLanding() {
                       aria-label="Email address"
                       autoComplete="email"
                       value={email}
+                      disabled={busy}
                       onChange={(e) => {
                         setEmail(e.target.value);
                         setNote(DEFAULT_NOTE);
                         setNoteErr(false);
                       }}
                     />
-                    <button className="btn btn-primary" type="submit">
-                      Join the waitlist →
-                    </button>
+                    <Button type="submit" disabled={busy}>
+                      {busy ? "Joining…" : "Join the waitlist →"}
+                    </Button>
                   </form>
                   <p
                     className="wl-note"
