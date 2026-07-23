@@ -57,3 +57,7 @@ pnpm-debug.log*
 stage-a-evidence.txt
 stage-*-evidence.txt
 *.msi
+
+# --- Next.js generated ---
+next-env.d.ts
+**/next-env.d.ts
