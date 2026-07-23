@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import "./globals.css";
+import "@nexus/ui/styles.css";
 
 export const metadata: Metadata = {
   title: "NEXUS Commerce OS — the buyer's side of shopping",
