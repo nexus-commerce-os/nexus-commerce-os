@@ -1,6 +1,6 @@
 # packages/ui — React design-system primitives
 
-**Status:** 🟢 In use (10 primitives; consumed by `apps/web`)
+**Status:** 🟢 In use (14 primitives; consumed by `apps/web`)
 **Owner:** `@nexus-commerce-os/frontend` `@nexus-commerce-os/platform` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
 **Runtime / language:** TypeScript + React (consumed by `apps/web`, `apps/admin`)
 **Certified-architecture component:** shared presentation primitives for the Client tier ([04 §3](../../docs/04-system-architecture.md#3-context--container-map-c4-level-2))
@@ -49,6 +49,10 @@ the package ships raw TS (`main: src/index.ts`), the app declares
 | **`FeatureCard`** | `.promise` (icon + title + body) | `icon` · `title` · `children` · `className?` |
 | **`MetricStat`** | `.metric` (value + caption) | `value` · `label` · `className?` |
 | **`PhaseTag`** | `.phase[.live]` chip | `code` · `live?` · `children` |
+| **`Brand`** | `.brand` wordmark (`<a>` if `href`, else `<div>`) | `href?` · `className?` |
+| **`AgentPoint`** | `.apt` (marker + title + body) | `index` · `title` · `children` · `className?` |
+| **`AgentTerminal`** | `.term` window (bar + session + body) | `session` · `children` · `ariaLabel?` · `className?` |
+| **`Footer`** | `<footer>` (Brand + note + link columns + bottom bar) | `note` · `columns: FooterColumn[]` · `bottomLeft` · `bottomRight` |
 
 `SavingsState` maps to the four ratified savings states ([11 §2](../../docs/11-product-guidelines.md) · [ADR-0021](../../docs/adr/ADR-0021-legal-product-truth.md) D4).
 

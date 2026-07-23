@@ -2,10 +2,14 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
+  AgentPoint,
+  AgentTerminal,
+  Brand,
   Button,
   Card,
   Eyebrow,
   FeatureCard,
+  Footer,
   MetricStat,
   PhaseTag,
   Receipt,
@@ -179,10 +183,7 @@ export default function NexusLanding() {
     <>
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="#top" aria-label="NEXUS Commerce OS home">
-            <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce&nbsp;OS</small>
-          </a>
+          <Brand href="#top" />
           <nav className="nav-links" id="navlinks">
             <a href="#how">How it works</a>
             <a href="#ranking">Commission-blind</a>
@@ -427,73 +428,60 @@ export default function NexusLanding() {
             <div className="agent-grid">
               <div>
                 <div className="agent-points">
-                  <div className="apt reveal">
-                    <span className="k">01</span>
-                    <div>
-                      <b>Natural language in, structured deal out</b>
-                      <p>
-                        Ask in plain words; get a ranked, machine-readable offer
-                        with a signed hand-off link.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="apt reveal">
-                    <span className="k">02</span>
-                    <div>
-                      <b>Disclosure travels with the response</b>
-                      <p>
-                        Every API response carries a{" "}
-                        <span className="mono">disclosure</span> field; the agent
-                        verbalizes it before any redirect.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="apt reveal">
-                    <span className="k">03</span>
-                    <div>
-                      <b>No unverified price, ever</b>
-                      <p>
-                        Prices are deterministically verified before they&apos;re
-                        shown — a hallucinated price can&apos;t reach you.
-                      </p>
-                    </div>
-                  </div>
+                  <AgentPoint
+                    index="01"
+                    title="Natural language in, structured deal out"
+                    className="reveal"
+                  >
+                    Ask in plain words; get a ranked, machine-readable offer with a
+                    signed hand-off link.
+                  </AgentPoint>
+                  <AgentPoint
+                    index="02"
+                    title="Disclosure travels with the response"
+                    className="reveal"
+                  >
+                    Every API response carries a{" "}
+                    <span className="mono">disclosure</span> field; the agent
+                    verbalizes it before any redirect.
+                  </AgentPoint>
+                  <AgentPoint
+                    index="03"
+                    title="No unverified price, ever"
+                    className="reveal"
+                  >
+                    Prices are deterministically verified before they&apos;re shown
+                    — a hallucinated price can&apos;t reach you.
+                  </AgentPoint>
                 </div>
               </div>
-              <div
-                className="term reveal"
-                aria-label="Example conversation with the NEXUS agent"
+              <AgentTerminal
+                session="nexus-agent · session"
+                className="reveal"
+                ariaLabel="Example conversation with the NEXUS agent"
               >
-                <div className="bar">
-                  <i style={{ background: "#E5695B" }} />
-                  <i style={{ background: "#E4A94A" }} />
-                  <i style={{ background: "#2BD48F" }} />
-                  <span>nexus-agent · session</span>
+                <div>
+                  <span className="u">you ›</span> find the best price on the Sony
+                  XM5 — authorized sellers only
                 </div>
-                <div className="body">
-                  <div>
-                    <span className="u">you ›</span> find the best price on the
-                    Sony XM5 — authorized sellers only
-                  </div>
-                  <div style={{ marginTop: "10px" }}>
-                    <span className="n">nexus ›</span> Best real price:{" "}
-                    <span className="n">$328.00</span> at Merchant A
-                  </div>
-                  <div>
-                    <span className="muted2">
-                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ranked by value, not
-                      payout · verified just now
-                    </span>
-                  </div>
-                  <div className="disc" style={{ marginTop: "8px" }}>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;heads up: I may earn a
-                    commission — it never changes my pick.
-                  </div>
-                  <div>
-                    <span className="cta-line">Hand off to Merchant A →</span>
-                  </div>
+                <div style={{ marginTop: "10px" }}>
+                  <span className="n">nexus ›</span> Best real price:{" "}
+                  <span className="n">$328.00</span> at Merchant A
                 </div>
-              </div>
+                <div>
+                  <span className="muted2">
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ranked by value, not payout ·
+                    verified just now
+                  </span>
+                </div>
+                <div className="disc" style={{ marginTop: "8px" }}>
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;heads up: I may earn a
+                  commission — it never changes my pick.
+                </div>
+                <div>
+                  <span className="cta-line">Hand off to Merchant A →</span>
+                </div>
+              </AgentTerminal>
             </div>
           </div>
         </section>
@@ -673,47 +661,38 @@ export default function NexusLanding() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-grid">
-            <div>
-              <div className="brand">
-                <span className="mk" aria-hidden="true" /> NEXUS{" "}
-                <small>Commerce&nbsp;OS</small>
-              </div>
-              <p className="foot-note">
-                A pure referral + affiliate intelligence layer. Codename NEXUS —
-                consumer brand deferred. Illustrative figures shown.
-              </p>
-            </div>
-            <div>
-              <h4>Product</h4>
-              <a href="#how">How it works</a>
-              <a href="#ranking">Commission-blind</a>
-              <a href="#savings">Verified savings</a>
-              <a href="#agent">For developers</a>
-            </div>
-            <div>
-              <h4>Company</h4>
-              <a href="#trust">Trust &amp; transparency</a>
-              <a href="#faq">FAQ</a>
-              <a href="#cta">Waitlist</a>
-            </div>
-            <div>
-              <h4>Legal</h4>
-              <a href="#trust">Affiliate disclosure</a>
-              <a href="#savings">Savings terms</a>
-              <a href="#trust">Privacy</a>
-            </div>
-          </div>
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">
-              Built buyer-first · disclosed · authorized-data-only
-            </span>
-          </div>
-        </div>
-      </footer>
+      <Footer
+        note="A pure referral + affiliate intelligence layer. Codename NEXUS — consumer brand deferred. Illustrative figures shown."
+        columns={[
+          {
+            heading: "Product",
+            links: [
+              { label: "How it works", href: "#how" },
+              { label: "Commission-blind", href: "#ranking" },
+              { label: "Verified savings", href: "#savings" },
+              { label: "For developers", href: "#agent" },
+            ],
+          },
+          {
+            heading: "Company",
+            links: [
+              { label: "Trust & transparency", href: "#trust" },
+              { label: "FAQ", href: "#faq" },
+              { label: "Waitlist", href: "#cta" },
+            ],
+          },
+          {
+            heading: "Legal",
+            links: [
+              { label: "Affiliate disclosure", href: "#trust" },
+              { label: "Savings terms", href: "#savings" },
+              { label: "Privacy", href: "#trust" },
+            ],
+          },
+        ]}
+        bottomLeft="© 2026 NEXUS Commerce OS"
+        bottomRight="Built buyer-first · disclosed · authorized-data-only"
+      />
     </>
   );
 }
