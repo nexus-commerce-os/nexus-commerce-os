@@ -5,9 +5,13 @@ import {
   Button,
   Card,
   Eyebrow,
+  FeatureCard,
+  MetricStat,
+  PhaseTag,
   Receipt,
   SectionHead,
   StatePill,
+  Step,
 } from "@nexus/ui";
 
 const DEFAULT_NOTE =
@@ -281,41 +285,24 @@ export default function NexusLanding() {
               of the way.
             </SectionHead>
             <div className="steps">
-              <div className="step reveal">
-                <div className="n">STEP 01</div>
-                <h3>Ask</h3>
-                <p>
-                  Tell the agent what you want — in words. It&apos;s an API before
-                  it&apos;s a screen, so it works in chat, on the web, or inside
-                  your own assistant.
-                </p>
-              </div>
-              <div className="step reveal">
-                <div className="n">STEP 02</div>
-                <h3>Find the real price</h3>
-                <p>
-                  It searches only authorized feeds and affiliate networks —
-                  never scraping — and ranks purely by your value, blind to
-                  commission.
-                </p>
-              </div>
-              <div className="step reveal">
-                <div className="n">STEP 03</div>
-                <h3>Signed hand-off</h3>
-                <p>
-                  You&apos;re handed to the merchant&apos;s own checkout via a
-                  signed, allow-listed deep link. You pay them directly. NEXUS
-                  takes no custody.
-                </p>
-              </div>
-              <div className="step reveal">
-                <div className="n">STEP 04</div>
-                <h3>Verify the saving</h3>
-                <p>
-                  The network confirms the purchase asynchronously. Only a
-                  confirmed, past-the-window saving is counted as real.
-                </p>
-              </div>
+              <Step index="01" title="Ask" className="reveal">
+                Tell the agent what you want — in words. It&apos;s an API before
+                it&apos;s a screen, so it works in chat, on the web, or inside your
+                own assistant.
+              </Step>
+              <Step index="02" title="Find the real price" className="reveal">
+                It searches only authorized feeds and affiliate networks — never
+                scraping — and ranks purely by your value, blind to commission.
+              </Step>
+              <Step index="03" title="Signed hand-off" className="reveal">
+                You&apos;re handed to the merchant&apos;s own checkout via a signed,
+                allow-listed deep link. You pay them directly. NEXUS takes no
+                custody.
+              </Step>
+              <Step index="04" title="Verify the saving" className="reveal">
+                The network confirms the purchase asynchronously. Only a confirmed,
+                past-the-window saving is counted as real.
+              </Step>
             </div>
           </div>
         </section>
@@ -518,55 +505,31 @@ export default function NexusLanding() {
               title="Promises we engineered, not just wrote."
             />
             <div className="trust">
-              <div className="promise reveal">
-                <div className="ic">%</div>
-                <h3>Disclosed, every time</h3>
-                <p>
-                  Before any affiliate link, the agent tells you it may earn a
-                  commission — and that it never changes the recommendation
-                  (FTC-aligned).
-                </p>
-              </div>
-              <div className="promise reveal">
-                <div className="ic">⌘</div>
-                <h3>Authorized data only</h3>
-                <p>
-                  Official APIs, licensed feeds, and affiliate networks. No
-                  scraping, no copyright shortcuts — legitimacy is built in.
-                </p>
-              </div>
-              <div className="promise reveal">
-                <div className="ic">=</div>
-                <h3>Un-buyable ranking</h3>
-                <p>
-                  Sponsored placements are always labelled and visually distinct.
-                  Commission can never raise a product&apos;s rank.
-                </p>
-              </div>
-              <div className="promise reveal">
-                <div className="ic">↔</div>
-                <h3>No custody</h3>
-                <p>
-                  NEXUS never becomes merchant of record. You pay the merchant
-                  directly through a signed hand-off.
-                </p>
-              </div>
-              <div className="promise reveal">
-                <div className="ic">◈</div>
-                <h3>Your data stays yours</h3>
-                <p>
-                  Personalization is a feature, not surveillance — you can see and
-                  reset what drives your recommendations.
-                </p>
-              </div>
-              <div className="promise reveal">
-                <div className="ic">✓</div>
-                <h3>Honest by metric</h3>
-                <p>
-                  Our north star is Verified Money Saved. It counts only confirmed
-                  savings — so it&apos;s falsifiable, not marketing.
-                </p>
-              </div>
+              <FeatureCard icon="%" title="Disclosed, every time" className="reveal">
+                Before any affiliate link, the agent tells you it may earn a
+                commission — and that it never changes the recommendation
+                (FTC-aligned).
+              </FeatureCard>
+              <FeatureCard icon="⌘" title="Authorized data only" className="reveal">
+                Official APIs, licensed feeds, and affiliate networks. No scraping,
+                no copyright shortcuts — legitimacy is built in.
+              </FeatureCard>
+              <FeatureCard icon="=" title="Un-buyable ranking" className="reveal">
+                Sponsored placements are always labelled and visually distinct.
+                Commission can never raise a product&apos;s rank.
+              </FeatureCard>
+              <FeatureCard icon="↔" title="No custody" className="reveal">
+                NEXUS never becomes merchant of record. You pay the merchant
+                directly through a signed hand-off.
+              </FeatureCard>
+              <FeatureCard icon="◈" title="Your data stays yours" className="reveal">
+                Personalization is a feature, not surveillance — you can see and
+                reset what drives your recommendations.
+              </FeatureCard>
+              <FeatureCard icon="✓" title="Honest by metric" className="reveal">
+                Our north star is Verified Money Saved. It counts only confirmed
+                savings — so it&apos;s falsifiable, not marketing.
+              </FeatureCard>
             </div>
           </div>
         </section>
@@ -574,46 +537,33 @@ export default function NexusLanding() {
         <section>
           <div className="wrap">
             <div className="band reveal">
-              <div className="metric">
-                <div className="v">
-                  <em>$0.00</em>
-                </div>
-                <div className="k">Taken from your wallet — ever</div>
-              </div>
-              <div className="metric">
-                <div className="v">
-                  ≤ <em>1¢</em>
-                </div>
-                <div className="k">AI cost per request, by design</div>
-              </div>
-              <div className="metric">
-                <div className="v">
-                  <em>100%</em>
-                </div>
-                <div className="k">Disclosed affiliate relationships</div>
-              </div>
-              <div className="metric">
-                <div className="v">
-                  <em>0</em>
-                </div>
-                <div className="k">Scraped data sources</div>
-              </div>
+              <MetricStat
+                value={<em>$0.00</em>}
+                label="Taken from your wallet — ever"
+              />
+              <MetricStat
+                value={
+                  <>
+                    ≤ <em>1¢</em>
+                  </>
+                }
+                label="AI cost per request, by design"
+              />
+              <MetricStat
+                value={<em>100%</em>}
+                label="Disclosed affiliate relationships"
+              />
+              <MetricStat value={<em>0</em>} label="Scraped data sources" />
             </div>
             <div style={{ marginTop: "34px" }}>
               <Eyebrow>Phased, region-before-market</Eyebrow>
               <div className="rollout">
-                <span className="phase live">
-                  <b>P1</b> United States
-                </span>
-                <span className="phase">
-                  <b>P2</b> CA · UK · AU
-                </span>
-                <span className="phase">
-                  <b>P3</b> EU
-                </span>
-                <span className="phase">
-                  <b>P4</b> BD · IN · PK · ME
-                </span>
+                <PhaseTag code="P1" live>
+                  United States
+                </PhaseTag>
+                <PhaseTag code="P2">CA · UK · AU</PhaseTag>
+                <PhaseTag code="P3">EU</PhaseTag>
+                <PhaseTag code="P4">BD · IN · PK · ME</PhaseTag>
               </div>
             </div>
           </div>
