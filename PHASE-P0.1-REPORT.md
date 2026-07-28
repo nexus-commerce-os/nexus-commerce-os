@@ -84,13 +84,13 @@ Eight primitives + a `region-stack` composition + a `global` landing zone, insta
 |---|------|-----|------------|
 | R-1 | Placeholder AWS role ARNs / account ids not yet wired → CI can't assume roles | High (blocks first run) | Filled from the `global`/`security` Terraform outputs at org bootstrap (contract in `infrastructure/github/oidc-trust.md`); fail-closed until then |
 | R-2 | Pinned action SHAs are placeholders | Med | Verify + Renovate/Dependabot before enabling; a wrong SHA fails closed |
-| R-3 | `@nexus/*` GitHub teams don't exist yet | Med | Create org + teams at bootstrap; CODEOWNERS + prod approvers depend on them |
+| R-3 | `@nexus-commerce-os/*` GitHub teams — **RESOLVED 2026-07-20** | Med | ✅ Org `nexus-commerce-os` (id 306595611) + 10 teams live (Stage A); CODEOWNERS resolves; PR auto-requests owning team |
 | R-4 | Scanners/conftest/helm/go not runnable in this authoring env | Med | All configs validated statically; full run happens in CI (which has them) |
 | R-5 | Managed-service cost floor at low scale (sim §10) | Med | Dev uses smaller node pools/single region; burn-vs-milestone tracked |
 | R-6 | ClickHouse/managed-Prom cost + ops | Low (P0.6) | Deferred to observability phase; hooks present |
 
 ## 7. Remaining work (to actually pass the P0.1 exit gate — needs your environment)
-1. **Create GitHub org + `@nexus/*` teams**; enable branch protection from `infrastructure/github`.
+1. **Create GitHub org + `@nexus-commerce-os/*` teams**; enable branch protection from `infrastructure/github`.
 2. **Bootstrap `global` Terraform** (state backend + GitHub OIDC provider + deploy roles) in the management/prod accounts; wire the output ARNs into GitHub `vars.*`.
 3. **`terraform apply` dev → staging**; confirm a 2nd `plan` is a no-op (idempotency proof).
 4. **Run CI on a PR**; confirm all 18 jobs green (scanners + SBOM + sign + staging deploy + smoke).

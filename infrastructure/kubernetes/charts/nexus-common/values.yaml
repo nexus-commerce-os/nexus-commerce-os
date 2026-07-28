@@ -145,8 +145,12 @@ networkPolicy:
   extraEgress: []
 
 # ---- ServiceMonitor (Prometheus Operator scrape) ---------------------------
+# DEFAULT OFF: OTLP push (otel.enabled) is the ONE canonical metrics path
+# (app -> collector -> prometheusremotewrite). Enabling scrape AND OTLP double-counts
+# every series. Turn this on ONLY for a service that is not OTLP-instrumented, and
+# then also set otel.enabled=false for that service so exactly one path is active.
 serviceMonitor:
-  enabled: true
+  enabled: false
   path: /metrics
   interval: 30s
   scrapeTimeout: 10s

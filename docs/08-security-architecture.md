@@ -4,7 +4,7 @@
 
 ---
 
-> **Scope of this document.** How NEXUS stays *legitimate by construction* (Vision principle #2) under adversarial conditions: the threat model, identity and access, data protection, application and AI security, fraud/abuse defense, payments-money security, regulatory compliance, audit/IR, and security operations. It operationalizes **NFR-SEC-01** (AES-256 / TLS 1.3), **NFR-SEC-02** (OIDC + MFA, passkeys preferred), **NFR-PRIV-01** (GDPR/CCPA/DPA residency), and **NFR-COMP-01** (price-claim audit) from [SDD §5](02-software-design-document.md#5-non-functional-requirements-nfrs).
+> **Scope of this document.** How NEXUS stays *legitimate by construction* (Vision principle #3) under adversarial conditions: the threat model, identity and access, data protection, application and AI security, fraud/abuse defense, payments-money security, regulatory compliance, audit/IR, and security operations. It operationalizes **NFR-SEC-01** (AES-256 / TLS 1.3), **NFR-SEC-02** (OIDC + MFA, passkeys preferred), **NFR-PRIV-01** (GDPR/CCPA/DPA residency), and **NFR-COMP-01** (price-claim audit) from [SDD §5](02-software-design-document.md#5-non-functional-requirements-nfrs).
 >
 > **RFC-2119 keywords** (MUST, MUST NOT, SHOULD, SHOULD NOT, MAY) are used normatively throughout. A control marked MUST is a launch gate; SHOULD is expected-with-exception (exception requires a logged risk acceptance by the Security cluster).
 
@@ -579,14 +579,6 @@ Residency is a **per-region property of the rollout** ([ADR-0007](adr/ADR-0007-p
 
 - All zones ship security telemetry to a **SIEM** with correlation rules feeding the anomaly engine (§7); alerts routed to on-call Security. Trace coverage is 100% of user-facing paths (NFR-OBS-01), giving investigators end-to-end context.
 
-### 10.4 Health checks & metrics as security signals ([ADR-0010](adr/ADR-0010-platform-principles.md))
-
-Per [ADR-0010](adr/ADR-0010-platform-principles.md) (#5 health checks, #6 metrics) every component exposes liveness/readiness/dependency health and OpenTelemetry metrics. These are **security-relevant**, not merely operational:
-
-- **Availability is a security property.** Health checks drive the Gateway's failover (§5.6) and detect DoS/abuse-induced degradation; loss of a health signal is itself an alertable security event (masking an outage or a tampered component).
-- **Tamper-evidence for signals (MUST).** Health/metrics endpoints are **authenticated and integrity-protected** — they MUST NOT be spoofable to hide a compromised component or to fake readiness during a partial takeover. Metrics feeds are treated as C1 (PII/secret-scrubbed, §4) and access-controlled; anomalous *absence* or manipulation of metrics is correlated in SIEM (§10.2).
-- **No sensitive leakage.** Health/metrics payloads MUST NOT expose secrets, PII, or internal topology beyond what monitoring requires.
-
 ### 10.3 Incident response plan
 
 ```mermaid
@@ -601,6 +593,14 @@ flowchart LR
 
 - Defined severities, on-call rotation, runbooks, and named IC (incident commander). **Containment MUST** be able to instantly revoke sessions, spend grants, keys, and partner tokens.
 - **Breach notification timelines (MUST meet — driven by the active region's policy pack, §9):** **GDPR / UK-GDPR — supervisory authority (DPA / ICO) within 72 hours** of awareness (+ data subjects without undue delay if high risk); **US state laws / CCPA — without unreasonable delay** per state statute; **Canada PIPEDA — report to OPC + individuals as soon as feasible**; **Australia — Notifiable Data Breaches scheme to OAIC**; **India DPDP — Data Protection Board**; **Bangladesh DPA — per its notification requirements**; other P4/P5 markets per their pack. Legal + Security jointly own the decision to notify; per-jurisdiction templates pre-drafted.
+
+### 10.4 Health checks & metrics as security signals ([ADR-0010](adr/ADR-0010-platform-principles.md))
+
+Per [ADR-0010](adr/ADR-0010-platform-principles.md) (#5 health checks, #6 metrics) every component exposes liveness/readiness/dependency health and OpenTelemetry metrics. These are **security-relevant**, not merely operational:
+
+- **Availability is a security property.** Health checks drive the Gateway's failover (§5.6) and detect DoS/abuse-induced degradation; loss of a health signal is itself an alertable security event (masking an outage or a tampered component).
+- **Tamper-evidence for signals (MUST).** Health/metrics endpoints are **authenticated and integrity-protected** — they MUST NOT be spoofable to hide a compromised component or to fake readiness during a partial takeover. Metrics feeds are treated as C1 (PII/secret-scrubbed, §4) and access-controlled; anomalous *absence* or manipulation of metrics is correlated in SIEM (§10.2).
+- **No sensitive leakage.** Health/metrics payloads MUST NOT expose secrets, PII, or internal topology beyond what monitoring requires.
 
 ---
 

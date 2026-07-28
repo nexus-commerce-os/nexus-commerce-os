@@ -1,7 +1,7 @@
 # infrastructure/kubernetes
 
 **Purpose:** how NEXUS workloads run on EKS — a shared **library Helm chart** every service inherits, plus Kustomize base + per-environment overlays and ArgoCD GitOps manifests. Enforces the platform-principles baseline ([ADR-0010](../../docs/adr/ADR-0010-platform-principles.md)): health/readiness/liveness probes, resource limits, non-root hardening, OTel, and default-deny networking on every pod.
-**Owner:** `@nexus/platform` + `@nexus/sre` ([CODEOWNERS](../../.github/CODEOWNERS)).
+**Owner:** `@nexus-commerce-os/platform` + `@nexus-commerce-os/sre` ([CODEOWNERS](../../.github/CODEOWNERS)).
 **Dependencies:** the [`compute` Terraform module](terraform/modules/compute) (EKS + IRSA); Helm ≥ 3.14, Kustomize, ArgoCD; the [monitoring stack](../monitoring) for OTel export.
 
 ## Layout

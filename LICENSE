@@ -1,0 +1,45 @@
+NEXUS Commerce OS — Proprietary Source-Available License
+Copyright (c) 2026 NEXUS Commerce OS. All rights reserved.
+
+This repository is made publicly VIEWABLE for transparency, technical review,
+and educational reference. It is NOT open-source software, and no open-source
+license is granted.
+
+No license or right is granted to any person or entity to use, copy, modify,
+merge, publish, distribute, sublicense, create derivative works of, or sell
+any part of this software or its documentation, in source or binary form,
+except as expressly stated below:
+
+  1. You MAY view and read the contents of this repository.
+  2. You MAY fork the repository solely for the purpose of preparing and
+     submitting a contribution back to the project via a pull request, in
+     which case the "Contributions" section applies.
+
+Any other use requires the prior written permission of the copyright holder.
+
+Contributions
+-------------
+By submitting a contribution (for example, a pull request) you grant the
+copyright holder a perpetual, worldwide, non-exclusive, royalty-free,
+irrevocable license to use, reproduce, modify, sublicense, and distribute your
+contribution as part of this project, and you represent that you have the
+right to grant that license.
+
+Trademarks
+----------
+"NEXUS Commerce OS", "NEXUS", associated names, logos, and brands are the
+property of the copyright holder. This license grants no trademark rights.
+
+No Warranty
+-----------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Licensing enquiries
+-------------------
+To request a commercial license or an open-source re-licensing, contact the
+maintainers through the repository's private channels.

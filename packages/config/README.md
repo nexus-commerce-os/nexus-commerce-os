@@ -1,7 +1,7 @@
 # packages/config — Shared config + canonical money type
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/platform` `@nexus/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
+**Owner:** `@nexus-commerce-os/platform` `@nexus-commerce-os/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
 **Runtime / language:** TypeScript (consumed by `apps/*` and TS `services/*`)
 **Certified-architecture component:** cross-cutting consistency contracts ([SDD §7](../../docs/02-software-design-document.md#7-cross-cutting-concerns))
 **Governing ADRs:** [ADR-0020](../../docs/adr/ADR-0020-performance-consistency-hardening.md) (money/consistency hardening) · NFR-CONS-01 (monetary representation), NFR-CONS-02 (single contract source)

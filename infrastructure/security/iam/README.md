@@ -3,7 +3,7 @@
 > **Purpose.** The identity-and-access doctrine for machine + human access to the platform:
 > least privilege everywhere, workload identity via IRSA (no node-wide credentials), and an
 > audited, time-boxed break-glass path for incidents.
-> **Owner.** `@nexus/cloud-security`.
+> **Owner.** `@nexus-commerce-os/cloud-security`.
 > **Dependencies.** [`infrastructure/terraform`](../../terraform) (IAM module provisions the
 > roles/policies described here), [`infrastructure/github/oidc-trust.md`](../../github/oidc-trust.md)
 > (CI/CD federation), the service mesh (SPIFFE workload identity), and the §11 human-access path
@@ -49,5 +49,5 @@ Certified by docs/08 §3 (IAM, P3 least privilege), §5.5 (CI runner OIDC), docs
 ## 4. Placeholders (resolved at org bootstrap)
 
 - Concrete role ARNs / account ids are `vars.*` placeholders wired from Terraform outputs.
-- `@nexus/*` approver teams do not exist until the GitHub org is created.
+- `@nexus-commerce-os/*` approver teams do not exist until the GitHub org is created.
 - The break-glass runbook + MFA integration are provisioned with the incident-response tooling.

@@ -2,17 +2,13 @@
   "name": "nexus-commerce-os",
   "version": "0.0.0",
   "private": true,
+  "license": "LicenseRef-Proprietary",
   "description": "NEXUS Commerce OS monorepo — P0.1 Infrastructure Foundation. Platform scaffold only.",
   "packageManager": "pnpm@9.7.0",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "workspaces": [
-    "apps/*",
-    "services/*",
-    "packages/*"
-  ],
   "scripts": {
     "format": "turbo run format",
     "format:check": "prettier --check .",
@@ -24,8 +20,12 @@
     "verify": "bash scripts/verify.sh"
   },
   "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "globals": "^15.9.0",
     "prettier": "^3.3.3",
     "turbo": "^2.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.2.0"
   }
 }

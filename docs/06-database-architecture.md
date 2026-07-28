@@ -703,6 +703,13 @@ TTL observed_at + INTERVAL 24 MONTH DELETE,               -- raw retention
     observed_at + INTERVAL 3 MONTH  TO VOLUME 'cold';     -- tiered storage
 ```
 
+> **Money type here is illustrative.** The `Decimal(20,4)` columns above live in the
+> ClickHouse **analytics / price-observation** store (OLAP price history) — *not* the
+> transactional money-of-record. The canonical physical money type across the platform
+> is **integer minor-units + ISO currency** (§4 Offer, NFR-CONS-01 /
+> [ADR-0020](adr/ADR-0020-performance-consistency-hardening.md)); the wallet and ledger
+> money-of-record use that, never `Decimal`.
+
 **Retention & rollups:**
 - **Raw** observations: 24 months, tiered to object-store-backed cold volume after 3 months.
 - **Daily rollup** (`price_daily` via `AggregatingMergeTree` / materialized view): min/max/avg/close per offer per day — retained **5 years** for long-horizon drop prediction and price-claim audit (NFR-COMP-01).
@@ -1017,7 +1024,7 @@ flowchart TB
     linkStyle 6 stroke:#c33,stroke-dasharray:4;
 ```
 
-- **Write-home:** identity, wallet, ledger, referrals/attributed conversions, consent → written and stored in the user's home region only (GDPR/CCPA/Bangladesh DPA per [01 §A1](01-vision.md#11-risks-to-the-vision-top-5), NFR-PRIV-01). Cross-region access to a user's PII goes through the home region's API, not by replicating the data.
+- **Write-home:** identity, wallet, ledger, referrals/attributed conversions, consent → written and stored in the user's home region only (GDPR/CCPA/Bangladesh DPA per [01 §10.1](01-vision.md#101-geographic-rollout--internationalization-adr-0007), NFR-PRIV-01). Cross-region access to a user's PII goes through the home region's API, not by replicating the data.
 - **Read-local:** catalog/offer/price/search projections are replicated to each region — but **filtered by `license_tag.geo_restrictions`** (§4), so an offer not licensed for a region is not served there.
 - **Region pinning** is by `residency_region`; the API gateway routes money/identity mutations to the home region.
 - **Region-before-market gate (MUST, [ADR-0016](adr/ADR-0016-region-residency-lifecycle.md)):** a market's country flag **cannot** be enabled until its compliant region — **including an in-zone DR pair** — is provisioned and residency-tested; network-layer routing is **default-deny** to unlaunched regions. This re-sequences infra **ahead of** the EU/South-Asia (P3/P4) market opens that legally require it (fixes R-013, R-014, R-073); residency is resolved at signup from verified signals with a **strict default** (R-074).

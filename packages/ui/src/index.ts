@@ -1,3 +1,30 @@
 // @nexus/ui — React design-system primitives (WCAG 2.2 AA, NFR-A11Y-01).
-// P0.1 SCAFFOLD — empty export only. No components, no styles, no logic.
-export {};
+// Headless-with-global-tokens: components render the platform's CSS classes;
+// the consuming app supplies the token/CSS layer (see apps/web globals.css).
+export { Button } from "./components/Button";
+export type { ButtonProps } from "./components/Button";
+export { Eyebrow } from "./components/Eyebrow";
+export { SectionHead } from "./components/SectionHead";
+export type { SectionHeadProps } from "./components/SectionHead";
+export { Card } from "./components/Card";
+export type { CardProps } from "./components/Card";
+export { StatePill } from "./components/StatePill";
+export type { SavingsState } from "./components/StatePill";
+export { Receipt } from "./components/Receipt";
+export type { ReceiptProps, ReceiptRow } from "./components/Receipt";
+export { Step } from "./components/Step";
+export type { StepProps } from "./components/Step";
+export { FeatureCard } from "./components/FeatureCard";
+export type { FeatureCardProps } from "./components/FeatureCard";
+export { MetricStat } from "./components/MetricStat";
+export type { MetricStatProps } from "./components/MetricStat";
+export { PhaseTag } from "./components/PhaseTag";
+export type { PhaseTagProps } from "./components/PhaseTag";
+export { Brand } from "./components/Brand";
+export type { BrandProps } from "./components/Brand";
+export { AgentPoint } from "./components/AgentPoint";
+export type { AgentPointProps } from "./components/AgentPoint";
+export { AgentTerminal } from "./components/AgentTerminal";
+export type { AgentTerminalProps } from "./components/AgentTerminal";
+export { Footer } from "./components/Footer";
+export type { FooterProps, FooterColumn, FooterLink } from "./components/Footer";

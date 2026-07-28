@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/nexus-commerce-os/nexus-commerce-os/security/advisories/new
+    about: Do NOT open a public issue for security problems. Report privately here (see SECURITY.md).
+  - name: 💬 Questions & discussion
+    url: https://github.com/nexus-commerce-os/nexus-commerce-os/discussions
+    about: Ask questions and discuss ideas (enable Discussions in repo settings).

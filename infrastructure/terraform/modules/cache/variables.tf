@@ -63,11 +63,11 @@ variable "clusters" {
   }
 }
 
-variable "auth_token_secret_arns" {
-  description = "Optional map(purpose => Secrets Manager ARN) of AUTH tokens (created out-of-band, never authored here). When set for a cluster, transit encryption + AUTH are enforced."
-  type        = map(string)
-  default     = {}
-}
+# NOTE (posture honesty): ElastiCache here is TLS-encrypted (transit) + at-rest
+# encrypted + security-group-restricted, but is NOT yet application-authenticated.
+# Redis AUTH / user-group RBAC (aws_elasticache_user + user_group_ids) is a tracked
+# P0.2 wiring task. The previous `auth_token_secret_arns` variable claimed "AUTH is
+# enforced" but was never referenced — removed so code matches the real posture.
 
 variable "tags" {
   description = "Mandatory cost + ownership tags. Untagged => SCP deny."

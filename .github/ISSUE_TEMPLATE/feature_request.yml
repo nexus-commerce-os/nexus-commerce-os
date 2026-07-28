@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a capability or improvement
+title: "feat: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Architectural changes may require an **ADR** (the docs are frozen — see
+        [ADR-0023](../../docs/adr/ADR-0023-doc-freeze-and-approval-gate.md)). Describe
+        the intent; a maintainer will advise whether an ADR is needed.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What user or system problem does this solve? Avoid jumping to a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - docs / ADR
+        - services (backend)
+        - apps (frontend)
+        - infrastructure (terraform / k8s)
+        - ci-cd / security
+        - other
+    validations:
+      required: true

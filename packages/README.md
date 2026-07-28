@@ -1,7 +1,7 @@
 # packages/ — Shared workspace libraries
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/platform` `@nexus/frontend` (per [`.github/CODEOWNERS`](../.github/CODEOWNERS) `/packages/`)
+**Owner:** `@nexus-commerce-os/platform` `@nexus-commerce-os/frontend` (per [`.github/CODEOWNERS`](../.github/CODEOWNERS) `/packages/`)
 **Runtime / language:** TypeScript (consumed by `apps/*` and TS `services/*`)
 **Certified-architecture component:** cross-cutting shared contracts & primitives ([SDD §7](../docs/02-software-design-document.md#7-cross-cutting-concerns))
 **Implemented by phase:** [P0.1](../docs/13-implementation-roadmap.md) (config/shared) → P0.2+ (ui/sdk)

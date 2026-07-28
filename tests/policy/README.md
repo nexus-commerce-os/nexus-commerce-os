@@ -5,7 +5,7 @@
 > so they are unit-tested: each rule is asserted to fire on a violating fixture and stay
 > silent on a compliant one. A broken policy (one that stops denying) fails CI here before it
 > can wave a real violation through.
-> **Owner.** `@nexus/sre` + `@nexus/devsecops`.
+> **Owner.** `@nexus-commerce-os/sre` + `@nexus-commerce-os/devsecops`.
 > **Dependencies.** conftest ≥ 0.55 (OPA/Rego v1); the CI `policy` job runs `conftest verify`.
 
 Certified by docs/10 §5 ("policy test suite (`conftest verify`)" as a control).

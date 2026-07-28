@@ -1,7 +1,7 @@
 # apps/web — Shopper-facing PWA
 
 **Status:** Scaffold — not implemented
-**Owner:** `@nexus/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/apps/`)
+**Owner:** `@nexus-commerce-os/frontend` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/apps/`)
 **Runtime / language:** Next.js (React) + Tailwind, TypeScript, PWA ([SDD §6 — Frontend](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** Clients → **Web / PWA (Next.js)** ([04 §3 container map](../../docs/04-system-architecture.md#3-context--container-map-c4-level-2))
 **Governing ADRs:** [ADR-0006](../../docs/adr/ADR-0006-referral-only-model.md) (referral-only — the UI's terminal action is a deep-link handoff, never checkout), [ADR-0010](../../docs/adr/ADR-0010-platform-principles.md) (replaceability, rollback)

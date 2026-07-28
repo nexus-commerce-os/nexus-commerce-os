@@ -300,7 +300,7 @@ flowchart LR
 ## Step 7.11 — Promote the same signed digest to prod (manual-approval `cd-prod.yml`)
 
 - **Objective.** Run `cd-prod.yml` to **promote, never rebuild** — verify the identical CI-signed digest's signature + SLSA provenance + rollback-proof, pause on the `production` environment's **2-reviewer** approval + change ticket, then open the prod config-repo PR for ArgoCD to reconcile. No `docker build` occurs here ([10 §3/§11](../../10-deployment-architecture.md), [environments.yml](../../../infrastructure/github/environments.yml), [E2 AT-P01-29/30](../E2-P0.1-acceptance-tests.md)).
-- **Prerequisites.** Steps 7.5–7.10 complete for the target `<DIGEST>`; the `production` environment configured with required reviewers `@nexus/sre` + `@nexus/devsecops`, `wait_timer_minutes: 5`, `prevent_self_review: true`; `AWS_ECR_READONLY_ROLE_ARN`, `COSIGN_CI_IDENTITY_REGEXP`, `PROD_URL` wired; a `<CHANGE_TICKET>` and the `<ROLLBACK_PROOF_ID>` from Step 7.10.
+- **Prerequisites.** Steps 7.5–7.10 complete for the target `<DIGEST>`; the `production` environment configured with required reviewers `@nexus-commerce-os/sre` + `@nexus-commerce-os/devsecops`, `wait_timer_minutes: 5`, `prevent_self_review: true`; `AWS_ECR_READONLY_ROLE_ARN`, `COSIGN_CI_IDENTITY_REGEXP`, `PROD_URL` wired; a `<CHANGE_TICKET>` and the `<ROLLBACK_PROOF_ID>` from Step 7.10.
 - **Commands.**
   ```bash
   # 0. re-verify the exact digest locally before dispatch (belt-and-suspenders):

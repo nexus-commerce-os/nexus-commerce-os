@@ -6,7 +6,7 @@
 
 ## 0. Purpose & the one constraint that shapes everything
 
-This document specifies how NEXUS delivers its **agent-first** promise ([Vision §8.3](01-vision.md)) without violating the two hard walls the platform is built on:
+This document specifies how NEXUS delivers its **agent-first** promise ([Vision §8.4](01-vision.md)) without violating the two hard walls the platform is built on:
 
 1. **The Prime Directive** — the AI may only ground its claims in **authorized data sources** (official APIs, licensed feeds, affiliate networks, our own transaction ledger). No ungrounded claims, *ever*, and **no ungrounded price claims** in particular. This maps directly to `NFR-AI-01` (product-fact hallucination `< 0.5%`, grounded-only) and `NFR-COMP-01` (price-claim audit accuracy `≥ 99%`).
 2. **The neutrality wall** ([04 §5.3](04-system-architecture.md)) — no AI ranking or recommendation may be reordered by monetization. Buyer-aligned or nothing.
@@ -371,7 +371,7 @@ flowchart LR
     CTX --> LLM[LLM answer draft]
     LLM --> CV[Claim-Verification Agent]
     CV -->|every claim ↔ source| OUT[Grounded answer + citations]
-    CV -->|unsupported claim| DROP[Drop/har den claim or re-retrieve]
+    CV -->|unsupported claim| DROP[Drop / harden claim or re-retrieve]
 ```
 
 **Corpus (authorized only):** normalized offers + product facts (from licensed feeds/affiliate APIs), license-tagged review text, price history (ClickHouse), and merchant policy. **No open-web scrape enters the RAG corpus** — this is the Prime Directive expressed in the retrieval layer. The corpus is **kept fresh by events, not just re-indexed on a timer**: `offer.upserted` re-embeds offers (§4.2) and a **`review.*` event stream invalidates/refreshes the review corpus** ([ADR-0015](adr/ADR-0015-ai-trust-cost-integrity.md), closing R-052) so a revoked or edited review is never synthesized or cited after the fact.
@@ -462,7 +462,7 @@ flowchart LR
 | New item/offer | Content embeddings from catalog facts; no behavior needed |
 | Privacy | Personalization from **consented, minimized** signals ([NFR-PRIV-01](02-software-design-document.md#5-non-functional-requirements-nfrs)); on-device/session signals preferred; **no cross-context data sale** ([Business Model §9](03-business-model.md) rejects data brokerage). Federated/aggregate features SHOULD be preferred over raw PII where feasible. |
 
-Personalization is a **feature, not surveillance** ([Vision §8.6](01-vision.md)): the user MUST be able to see and reset what drives their recommendations.
+Personalization is a **feature, not surveillance** ([Vision §8.7](01-vision.md)): the user MUST be able to see and reset what drives their recommendations.
 
 ---
 

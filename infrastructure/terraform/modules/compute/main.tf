@@ -86,6 +86,20 @@ resource "aws_eks_cluster" "this" {
   tags = merge(var.tags, { Name = var.name_prefix })
 
   depends_on = [aws_iam_role_policy_attachment.cluster]
+
+  lifecycle {
+    # Guard (defense-in-depth): a public control-plane endpoint MUST carry an
+    # explicit, non-empty CIDR allow-list that never includes 0.0.0.0/0. An empty
+    # public_access_cidrs with public access enabled resolves to 0.0.0.0/0 at the
+    # AWS API — this precondition fails the plan before that can happen in any env.
+    precondition {
+      condition = (
+        !var.endpoint_public_access ||
+        (length(var.public_access_cidrs) > 0 && !contains(var.public_access_cidrs, "0.0.0.0/0"))
+      )
+      error_message = "EKS public endpoint requires a non-empty public_access_cidrs that excludes 0.0.0.0/0 (compute module guard)."
+    }
+  }
 }
 
 # ------------------------------------------------------------------ IRSA — OIDC provider
