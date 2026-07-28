@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode } from 'react';
 
 export type Tab = { id: string; label: string; content: ReactNode };
 
@@ -12,7 +12,7 @@ export type TabsProps = {
 
 /** Accessible tabbed panel (`.tabs`). The only interactive @nexus/ui primitive. */
 export function Tabs({ tabs, initial }: TabsProps) {
-  const [active, setActive] = useState(initial ?? tabs[0]?.id ?? "");
+  const [active, setActive] = useState(initial ?? tabs[0]?.id ?? '');
   const current = tabs.find((t) => t.id === active) ?? tabs[0];
 
   return (
@@ -26,7 +26,7 @@ export function Tabs({ tabs, initial }: TabsProps) {
               type="button"
               role="tab"
               aria-selected={selected}
-              className={selected ? "tab tab-active" : "tab"}
+              className={selected ? 'tab tab-active' : 'tab'}
               onClick={() => setActive(t.id)}
             >
               {t.label}

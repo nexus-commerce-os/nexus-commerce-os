@@ -6,7 +6,7 @@ export type BrandProps = {
 
 /** The NEXUS wordmark + mark. Used in the nav (as a link) and the footer. */
 export function Brand({ href, className }: BrandProps) {
-  const cls = ["brand", className].filter(Boolean).join(" ");
+  const cls = ['brand', className].filter(Boolean).join(' ');
   const inner = (
     <>
       <span className="mk" aria-hidden="true" />

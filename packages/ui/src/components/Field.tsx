@@ -1,4 +1,4 @@
-import type { ReactNode, ChangeEventHandler } from "react";
+import type { ReactNode, ChangeEventHandler } from 'react';
 
 export type FieldProps = {
   label: string;
@@ -21,7 +21,7 @@ export function Field({
   label,
   id,
   name,
-  type = "text",
+  type = 'text',
   placeholder,
   value,
   defaultValue,
@@ -39,7 +39,7 @@ export function Field({
         {label}
       </label>
       <input
-        className={["input", error ? "input-error" : ""].filter(Boolean).join(" ")}
+        className={['input', error ? 'input-error' : ''].filter(Boolean).join(' ')}
         id={inputId}
         name={name}
         type={type}

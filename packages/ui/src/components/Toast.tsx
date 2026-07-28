@@ -1,15 +1,8 @@
-"use client";
+'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 
-export type ToastTone = "neutral" | "accent" | "warning" | "danger";
+export type ToastTone = 'neutral' | 'accent' | 'warning' | 'danger';
 
 export type ToastOptions = { tone?: ToastTone; duration?: number };
 
@@ -22,7 +15,7 @@ const ToastContext = createContext<ToastApi | null>(null);
 /** Access the toast api. Must be called under a `<ToastProvider>`. */
 export function useToast(): ToastApi {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within a <ToastProvider>");
+  if (!ctx) throw new Error('useToast must be used within a <ToastProvider>');
   return ctx;
 }
 
@@ -38,10 +31,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback(
     (message: string, opts?: ToastOptions) => {
       const id = idRef.current++;
-      setItems((cur) => [
-        ...cur,
-        { id, message, tone: opts?.tone ?? "neutral" },
-      ]);
+      setItems((cur) => [...cur, { id, message, tone: opts?.tone ?? 'neutral' }]);
       window.setTimeout(() => remove(id), opts?.duration ?? 4000);
     },
     [remove],

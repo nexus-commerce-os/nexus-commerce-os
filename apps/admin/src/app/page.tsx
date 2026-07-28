@@ -8,8 +8,8 @@ import {
   StatePill,
   Table,
   Tabs,
-} from "@nexus/ui";
-import type { SavingsState, TableColumn } from "@nexus/ui";
+} from '@nexus/ui';
+import type { SavingsState, TableColumn } from '@nexus/ui';
 
 // Illustrative operator data. P0.2 wires this to the real waitlist store + analytics.
 type Signup = {
@@ -21,31 +21,49 @@ type Signup = {
 };
 
 const SIGNUPS: Signup[] = [
-  { email: "jane@example.com", region: "US", state: "confirmed", label: "Confirmed", when: "2 min ago" },
-  { email: "amir@example.pk", region: "PK", state: "pending", label: "Pending", when: "14 min ago" },
-  { email: "sofia@example.eu", region: "EU", state: "confirmed", label: "Confirmed", when: "38 min ago" },
-  { email: "ken@example.au", region: "AU", state: "pending", label: "Pending", when: "1 hr ago" },
-  { email: "li@example.com", region: "US", state: "reversed", label: "Bounced", when: "3 hr ago" },
+  {
+    email: 'jane@example.com',
+    region: 'US',
+    state: 'confirmed',
+    label: 'Confirmed',
+    when: '2 min ago',
+  },
+  {
+    email: 'amir@example.pk',
+    region: 'PK',
+    state: 'pending',
+    label: 'Pending',
+    when: '14 min ago',
+  },
+  {
+    email: 'sofia@example.eu',
+    region: 'EU',
+    state: 'confirmed',
+    label: 'Confirmed',
+    when: '38 min ago',
+  },
+  { email: 'ken@example.au', region: 'AU', state: 'pending', label: 'Pending', when: '1 hr ago' },
+  { email: 'li@example.com', region: 'US', state: 'reversed', label: 'Bounced', when: '3 hr ago' },
 ];
 
 const signupColumns: TableColumn<Signup>[] = [
   {
-    key: "email",
-    header: "Email",
+    key: 'email',
+    header: 'Email',
     render: (s) => <span className="mono">{s.email}</span>,
   },
-  { key: "region", header: "Region", render: (s) => <Badge>{s.region}</Badge> },
+  { key: 'region', header: 'Region', render: (s) => <Badge>{s.region}</Badge> },
   {
-    key: "state",
-    header: "State",
+    key: 'state',
+    header: 'State',
     render: (s) => <StatePill state={s.state}>{s.label}</StatePill>,
   },
   {
-    key: "when",
-    header: "Signed up",
-    align: "right",
+    key: 'when',
+    header: 'Signed up',
+    align: 'right',
     render: (s) => (
-      <span className="mono" style={{ color: "var(--muted)", fontSize: ".8rem" }}>
+      <span className="mono" style={{ color: 'var(--muted)', fontSize: '.8rem' }}>
         {s.when}
       </span>
     ),
@@ -58,10 +76,7 @@ export default function AdminDashboard() {
       <header className="nav">
         <div className="wrap nav-in">
           <Brand href="/" />
-          <span
-            className="eyebrow"
-            style={{ marginLeft: "auto", color: "var(--muted)" }}
-          >
+          <span className="eyebrow" style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
             Operator console
           </span>
           <Button variant="ghost">Sign out</Button>
@@ -72,11 +87,11 @@ export default function AdminDashboard() {
         <section style={{ borderTop: 0 }}>
           <div className="wrap">
             <SectionHead eyebrow="Waitlist" title="Operations">
-              Live view of waitlist signups and delivery health. Illustrative
-              data — the real store / ESP is wired in P0.2.
+              Live view of waitlist signups and delivery health. Illustrative data — the real store
+              / ESP is wired in P0.2.
             </SectionHead>
 
-            <div className="band" style={{ marginBottom: "34px" }}>
+            <div className="band" style={{ marginBottom: '34px' }}>
               <MetricStat value={<em>1,284</em>} label="Total signups" />
               <MetricStat value={<em>+96</em>} label="New this week" />
               <MetricStat value={<em>3.1%</em>} label="Duplicate rate" />
@@ -86,7 +101,7 @@ export default function AdminDashboard() {
             <Tabs
               tabs={[
                 {
-                  id: "waitlist",
+                  id: 'waitlist',
                   label: `Waitlist (${SIGNUPS.length})`,
                   content: (
                     <Table
@@ -98,14 +113,11 @@ export default function AdminDashboard() {
                   ),
                 },
                 {
-                  id: "delivery",
-                  label: "Delivery health",
+                  id: 'delivery',
+                  label: 'Delivery health',
                   content: (
                     <div className="band">
-                      <MetricStat
-                        value={<em>98.7%</em>}
-                        label="Delivery success (7d)"
-                      />
+                      <MetricStat value={<em>98.7%</em>} label="Delivery success (7d)" />
                       <MetricStat value={<em>0</em>} label="Hard bounces (24h)" />
                       <MetricStat value={<em>2</em>} label="Pending confirms" />
                       <MetricStat value="ap-southeast-2" label="Region" />
@@ -122,18 +134,18 @@ export default function AdminDashboard() {
         note="NEXUS internal operator console — access-controlled, not indexed."
         columns={[
           {
-            heading: "Console",
+            heading: 'Console',
             links: [
-              { label: "Waitlist", href: "/" },
-              { label: "Analytics", href: "/" },
-              { label: "Delivery health", href: "/" },
+              { label: 'Waitlist', href: '/' },
+              { label: 'Analytics', href: '/' },
+              { label: 'Delivery health', href: '/' },
             ],
           },
           {
-            heading: "Platform",
+            heading: 'Platform',
             links: [
-              { label: "Runbooks", href: "/" },
-              { label: "Incidents", href: "/" },
+              { label: 'Runbooks', href: '/' },
+              { label: 'Incidents', href: '/' },
             ],
           },
         ]}

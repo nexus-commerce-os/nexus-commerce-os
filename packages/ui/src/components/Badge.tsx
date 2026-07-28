@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
-export type BadgeTone = "neutral" | "accent" | "warning" | "danger";
+export type BadgeTone = 'neutral' | 'accent' | 'warning' | 'danger';
 
 export type BadgeProps = {
   tone?: BadgeTone;
@@ -9,9 +9,9 @@ export type BadgeProps = {
 };
 
 /** Small labelled status badge (`.badge .badge-{tone}`). */
-export function Badge({ tone = "neutral", children, className }: BadgeProps) {
+export function Badge({ tone = 'neutral', children, className }: BadgeProps) {
   return (
-    <span className={["badge", `badge-${tone}`, className].filter(Boolean).join(" ")}>
+    <span className={['badge', `badge-${tone}`, className].filter(Boolean).join(' ')}>
       {children}
     </span>
   );

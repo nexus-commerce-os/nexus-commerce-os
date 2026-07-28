@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ReactNode } from 'react';
 
 export type ModalProps = {
   open: boolean;
@@ -14,10 +14,10 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === 'Escape') onClose();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;
@@ -34,12 +34,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         {title ? (
           <div className="modal-head">
             <h3>{title}</h3>
-            <button
-              className="modal-close"
-              type="button"
-              aria-label="Close"
-              onClick={onClose}
-            >
+            <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
               ×
             </button>
           </div>

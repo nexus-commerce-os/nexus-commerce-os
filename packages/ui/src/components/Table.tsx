@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 export type TableColumn<T> = {
   key: string;
   header: ReactNode;
   render: (row: T) => ReactNode;
-  align?: "left" | "right";
+  align?: 'left' | 'right';
 };
 
 export type TableProps<T> = {
@@ -23,10 +23,7 @@ export function Table<T>({ columns, rows, getRowKey, empty }: TableProps<T>) {
         <thead>
           <tr>
             {columns.map((c) => (
-              <th
-                key={c.key}
-                style={c.align === "right" ? { textAlign: "right" } : undefined}
-              >
+              <th key={c.key} style={c.align === 'right' ? { textAlign: 'right' } : undefined}>
                 {c.header}
               </th>
             ))}
@@ -36,19 +33,14 @@ export function Table<T>({ columns, rows, getRowKey, empty }: TableProps<T>) {
           {rows.length === 0 ? (
             <tr>
               <td className="table-empty" colSpan={columns.length}>
-                {empty ?? "No rows."}
+                {empty ?? 'No rows.'}
               </td>
             </tr>
           ) : (
             rows.map((row) => (
               <tr key={getRowKey(row)}>
                 {columns.map((c) => (
-                  <td
-                    key={c.key}
-                    style={
-                      c.align === "right" ? { textAlign: "right" } : undefined
-                    }
-                  >
+                  <td key={c.key} style={c.align === 'right' ? { textAlign: 'right' } : undefined}>
                     {c.render(row)}
                   </td>
                 ))}
