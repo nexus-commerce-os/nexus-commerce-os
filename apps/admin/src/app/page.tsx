@@ -1,14 +1,15 @@
 import {
+  Badge,
   Brand,
   Button,
-  Card,
-  Eyebrow,
   Footer,
   MetricStat,
   SectionHead,
   StatePill,
+  Table,
+  Tabs,
 } from "@nexus/ui";
-import type { SavingsState } from "@nexus/ui";
+import type { SavingsState, TableColumn } from "@nexus/ui";
 
 // Illustrative operator data. P0.2 wires this to the real waitlist store + analytics.
 type Signup = {
@@ -27,13 +28,29 @@ const SIGNUPS: Signup[] = [
   { email: "li@example.com", region: "US", state: "reversed", label: "Bounced", when: "3 hr ago" },
 ];
 
-const rowStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr auto auto auto",
-  gap: "16px",
-  alignItems: "center",
-  padding: "13px 18px",
-} as const;
+const signupColumns: TableColumn<Signup>[] = [
+  {
+    key: "email",
+    header: "Email",
+    render: (s) => <span className="mono">{s.email}</span>,
+  },
+  { key: "region", header: "Region", render: (s) => <Badge>{s.region}</Badge> },
+  {
+    key: "state",
+    header: "State",
+    render: (s) => <StatePill state={s.state}>{s.label}</StatePill>,
+  },
+  {
+    key: "when",
+    header: "Signed up",
+    align: "right",
+    render: (s) => (
+      <span className="mono" style={{ color: "var(--muted)", fontSize: ".8rem" }}>
+        {s.when}
+      </span>
+    ),
+  },
+];
 
 export default function AdminDashboard() {
   return (
@@ -59,30 +76,44 @@ export default function AdminDashboard() {
               data — the real store / ESP is wired in P0.2.
             </SectionHead>
 
-            <div className="band">
+            <div className="band" style={{ marginBottom: "34px" }}>
               <MetricStat value={<em>1,284</em>} label="Total signups" />
               <MetricStat value={<em>+96</em>} label="New this week" />
               <MetricStat value={<em>3.1%</em>} label="Duplicate rate" />
               <MetricStat value="Memory" label="Active store driver" />
             </div>
 
-            <div style={{ marginTop: "34px" }}>
-              <Eyebrow>Recent signups</Eyebrow>
-              <div style={{ display: "grid", gap: "10px", marginTop: "16px" }}>
-                {SIGNUPS.map((s) => (
-                  <Card key={s.email} style={rowStyle}>
-                    <span className="mono">{s.email}</span>
-                    <span className="muted mono" style={{ fontSize: ".8rem" }}>
-                      {s.region}
-                    </span>
-                    <StatePill state={s.state}>{s.label}</StatePill>
-                    <span className="muted mono" style={{ fontSize: ".78rem" }}>
-                      {s.when}
-                    </span>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <Tabs
+              tabs={[
+                {
+                  id: "waitlist",
+                  label: `Waitlist (${SIGNUPS.length})`,
+                  content: (
+                    <Table
+                      columns={signupColumns}
+                      rows={SIGNUPS}
+                      getRowKey={(s) => s.email}
+                      empty="No signups yet."
+                    />
+                  ),
+                },
+                {
+                  id: "delivery",
+                  label: "Delivery health",
+                  content: (
+                    <div className="band">
+                      <MetricStat
+                        value={<em>98.7%</em>}
+                        label="Delivery success (7d)"
+                      />
+                      <MetricStat value={<em>0</em>} label="Hard bounces (24h)" />
+                      <MetricStat value={<em>2</em>} label="Pending confirms" />
+                      <MetricStat value="ap-southeast-2" label="Region" />
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </div>
         </section>
       </main>

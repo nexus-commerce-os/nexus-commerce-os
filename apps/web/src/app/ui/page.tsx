@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import {
   AgentPoint,
   AgentTerminal,
+  Badge,
   Brand,
   Button,
   Card,
   Eyebrow,
   FeatureCard,
+  Field,
   Footer,
   MetricStat,
   PhaseTag,
@@ -15,6 +17,8 @@ import {
   SectionHead,
   StatePill,
   Step,
+  Table,
+  Tabs,
 } from "@nexus/ui";
 
 export const metadata: Metadata = {
@@ -115,6 +119,24 @@ export default function Gallery() {
                   With an optional lede paragraph.
                 </SectionHead>
               </Demo>
+
+              <Demo name="Badge">
+                <Badge>Neutral</Badge>
+                <Badge tone="accent">Confirmed</Badge>
+                <Badge tone="warning">Pending</Badge>
+                <Badge tone="danger">Bounced</Badge>
+              </Demo>
+
+              <Demo name="Field">
+                <div style={{ width: "100%" }}>
+                  <Field
+                    label="Email address"
+                    type="email"
+                    placeholder="you@email.com"
+                    hint="We never spam."
+                  />
+                </div>
+              </Demo>
             </div>
 
             <div style={{ ...galleryGrid, marginTop: "18px" }}>
@@ -142,6 +164,54 @@ export default function Gallery() {
                     <span className="n">nexus ›</span> $328.00 at Merchant A
                   </div>
                 </AgentTerminal>
+              </Demo>
+
+              <Demo name="Table">
+                <div style={{ width: "100%" }}>
+                  <Table
+                    columns={[
+                      {
+                        key: "email",
+                        header: "Email",
+                        render: (r: { email: string; state: string }) => (
+                          <span className="mono">{r.email}</span>
+                        ),
+                      },
+                      {
+                        key: "state",
+                        header: "State",
+                        align: "right",
+                        render: (r: { email: string; state: string }) => (
+                          <Badge tone="accent">{r.state}</Badge>
+                        ),
+                      },
+                    ]}
+                    rows={[
+                      { email: "jane@example.com", state: "confirmed" },
+                      { email: "amir@example.pk", state: "pending" },
+                    ]}
+                    getRowKey={(r) => r.email}
+                  />
+                </div>
+              </Demo>
+
+              <Demo name="Tabs">
+                <div style={{ width: "100%" }}>
+                  <Tabs
+                    tabs={[
+                      {
+                        id: "overview",
+                        label: "Overview",
+                        content: <p className="muted">The overview panel.</p>,
+                      },
+                      {
+                        id: "activity",
+                        label: "Activity",
+                        content: <p className="muted">The activity panel.</p>,
+                      },
+                    ]}
+                  />
+                </div>
               </Demo>
             </div>
           </div>
