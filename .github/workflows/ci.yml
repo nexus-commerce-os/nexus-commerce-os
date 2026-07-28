@@ -243,7 +243,7 @@ jobs:
       - name: Build candidate image (local, not pushed)
         # why: produces the exact artifact the scanners assess; loaded to the local daemon only.
         if: steps.detect.outputs.exists == 'true'
-        uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: services/${{ matrix.service }}
           push: false
@@ -481,7 +481,7 @@ jobs:
         id: build
         if: steps.detect.outputs.exists == 'true'
         # why: docs/10 §3 — one signed image promoted across envs; immutable tag = git SHA, digest is pinned downstream.
-        uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: services/${{ matrix.service }}
           push: true
