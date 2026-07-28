@@ -256,7 +256,7 @@ jobs:
       - name: Trivy image scan
         # why: docs/10 §2 — critical OS/lib CVE with an available fix blocks (defense-in-depth vs. dep-scan).
         if: steps.detect.outputs.exists == 'true'
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: nexus/${{ matrix.service }}:${{ env.IMAGE_TAG }}
           format: sarif
