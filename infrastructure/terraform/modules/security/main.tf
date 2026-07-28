@@ -11,9 +11,10 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 # ------------------------------------------------------------------ KMS keys (per data domain)
-# nosemgrep -- false positive: rotation IS enabled. enable_key_rotation is bound to the per-key
-# input `enable_rotation`, which defaults to true (optional(bool, true) in variables.tf); the OPA
-# tag/encryption policies enforce posture. Semgrep flags it only because it cannot resolve the var.
+# False positive: rotation IS enabled. enable_key_rotation binds to the per-key input
+# `enable_rotation`, which defaults to true (optional(bool, true) in variables.tf); OPA policy
+# enforces posture. Semgrep flags it only because it cannot resolve the variable statically.
+# nosemgrep
 resource "aws_kms_key" "this" {
   for_each = var.kms_keys
 
