@@ -334,6 +334,13 @@ jobs:
   tf-plan:
     name: 10 · Terraform plan (staging, read-only)
     needs: [tf-validate]
+    # why: scaffold-safe (walking-skeleton) — until AWS is wired at Stage B, there is no cloud to
+    #   plan against, so this stage (and the policy gate that consumes its plan JSON) SKIPS when the
+    #   OIDC role var is unset. This mirrors the Dockerfile-detect skips above: fail-closed on real
+    #   content, no-op on an empty skeleton. The moment vars.AWS_TF_PLAN_ROLE_ARN is set, both stages
+    #   arm automatically and block on any real plan/policy failure. ci-gate accepts skipped (only
+    #   failure/cancelled blocks), so a not-yet-wired infra stage never gives a false green.
+    if: vars.AWS_TF_PLAN_ROLE_ARN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -372,6 +379,8 @@ jobs:
   policy:
     name: 11 · Policy validation (conftest/OPA)
     needs: [tf-plan]
+    # why: consumes tf-plan's plan JSON; skips in lock-step with tf-plan until AWS is wired (Stage B).
+    if: vars.AWS_TF_PLAN_ROLE_ARN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -625,13 +634,17 @@ jobs:
     permissions: {}
     steps:
       - name: Assert all gates green
-        # why: one required check keeps branch protection simple; any non-success blocks merge (fail-closed).
+        # why: one required check keeps branch protection simple. Fail-closed on any real problem:
+        #   a 'failure' or 'cancelled' result blocks merge. 'skipped' is accepted because the
+        #   scaffold-safe infra stages (tf-plan/policy) deliberately skip until AWS is wired at
+        #   Stage B — a not-yet-wired stage must not fake a green, but it also must not wedge the
+        #   gate shut. Once those stages arm (role var set), a real failure blocks as normal.
         run: |
           set -euo pipefail
           results="${{ join(needs.*.result, ',') }}"
           echo "Gate results: $results"
-          if echo "$results" | tr ',' '\n' | grep -vqx "success"; then
-            echo "::error::One or more CI gates did not succeed — merge blocked."
+          if echo "$results" | tr ',' '\n' | grep -qvE '^(success|skipped)$'; then
+            echo "::error::A CI gate failed or was cancelled — merge blocked."
             exit 1
           fi
-          echo "All CI gates green."
+          echo "All CI gates green (success, or scaffold-skipped until their infra is wired)."
