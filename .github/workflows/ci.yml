@@ -624,7 +624,7 @@ jobs:
         # why: one required check keeps branch protection simple; any non-success blocks merge (fail-closed).
         run: |
           set -euo pipefail
-          results='${{ join(needs.*.result, ",") }}'
+          results="${{ join(needs.*.result, ',') }}"
           echo "Gate results: $results"
           if echo "$results" | tr ',' '\n' | grep -vqx "success"; then
             echo "::error::One or more CI gates did not succeed — merge blocked."
