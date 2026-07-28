@@ -83,7 +83,7 @@ jobs:
           echo "Inputs validated: digest well-formed; rollback proof '$ROLLBACK_PROOF_ID' supplied."
       - name: Configure AWS credentials (OIDC)
         # why: short-lived, read-only creds to inspect ECR attestations; no static keys (ADR-0018 R-065).
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: ${{ vars.AWS_ECR_READONLY_ROLE_ARN }} # placeholder: ECR read-only verify role
           aws-region: ${{ env.AWS_REGION }}

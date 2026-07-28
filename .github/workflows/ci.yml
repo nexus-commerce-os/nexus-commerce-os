@@ -338,7 +338,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Configure AWS credentials (OIDC)
         # why: ADR-0018 R-065 — federated, short-lived, ref-scoped creds; PR ref cannot assume a prod/apply role.
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: ${{ vars.AWS_TF_PLAN_ROLE_ARN }} # placeholder: read-only plan role (see infrastructure/github)
           aws-region: ${{ env.AWS_REGION }}
@@ -465,7 +465,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         # why: short-lived creds to push to ECR; no static registry password ever stored.
         if: steps.detect.outputs.exists == 'true'
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }} # placeholder: ECR-push role (see infrastructure/github)
           aws-region: ${{ env.AWS_REGION }}
