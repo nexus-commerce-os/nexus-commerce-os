@@ -91,7 +91,7 @@ jobs:
       - name: ECR login
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
       - name: Install cosign
-        uses: sigstore/cosign-installer@4959ce089c160fddf62f7b42464195ba1a56d382 # v3.6.0
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Verify cosign signature (keyless identity)
         # why: docs/10 §3 — reject any image not signed by CI's OIDC identity on main (fail-closed admission).
         run: |
