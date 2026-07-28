@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 export type ReceiptRow = { label: ReactNode; value: ReactNode; mono?: boolean };
 
@@ -29,7 +29,7 @@ export function Receipt({
 }: ReceiptProps) {
   return (
     <div
-      className={["receipt", className].filter(Boolean).join(" ")}
+      className={['receipt', className].filter(Boolean).join(' ')}
       role="img"
       aria-label={ariaLabel}
     >
@@ -40,7 +40,7 @@ export function Receipt({
       {rows.map((r, i) => (
         <div className="rc-row" key={i}>
           <span>{r.label}</span>
-          <b className={r.mono ? "mono" : undefined}>{r.value}</b>
+          <b className={r.mono ? 'mono' : undefined}>{r.value}</b>
         </div>
       ))}
       <div className="rc-rule" />

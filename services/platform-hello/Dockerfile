@@ -9,7 +9,9 @@
 # ============================================================================
 
 # ---- build stage ----------------------------------------------------------
-FROM golang:1.22 AS build
+# Pinned to the current Go patch release: the stdlib baked into the static binary
+# is what Trivy scans, so an up-to-date toolchain clears the stdlib CVE class.
+FROM golang:1.26.5 AS build
 WORKDIR /src
 
 # Cache module downloads separately from source for fast rebuilds.
