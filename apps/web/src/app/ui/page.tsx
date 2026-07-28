@@ -20,6 +20,7 @@ import {
   Table,
   Tabs,
 } from "@nexus/ui";
+import { InteractiveDemos } from "./InteractiveDemos";
 
 export const metadata: Metadata = {
   title: "@nexus/ui — component gallery",
@@ -58,7 +59,7 @@ export default function Gallery() {
         <section style={{ borderTop: 0 }}>
           <div className="wrap">
             <SectionHead eyebrow="@nexus/ui" title="Component gallery">
-              14 primitives, rendered live from the package. Toggle your OS
+              21 primitives, rendered live from the package. Toggle your OS
               light/dark theme to see both.
             </SectionHead>
 
@@ -214,12 +215,16 @@ export default function Gallery() {
                 </div>
               </Demo>
             </div>
+
+            <div style={{ ...galleryGrid, marginTop: "18px" }}>
+              <InteractiveDemos />
+            </div>
           </div>
         </section>
       </main>
 
       <Footer
-        note="@nexus/ui — 14 shared design-system primitives. Headless-with-global-tokens."
+        note="@nexus/ui — 21 shared design-system primitives. Headless-with-global-tokens."
         columns={[
           {
             heading: "Docs",
