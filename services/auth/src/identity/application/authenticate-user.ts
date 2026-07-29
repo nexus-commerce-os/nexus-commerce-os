@@ -39,7 +39,14 @@ export class AuthenticateUser {
       return err(new InvalidCredentialsError());
     }
 
-    const passwordValid = await this.deps.hasher.verify(command.password, user.credential.hash);
+    const credential = user.credential;
+    if (credential === null) {
+      // federated-only account: there is no password to check, and saying so
+      // would reveal how the account signs in
+      return err(new InvalidCredentialsError());
+    }
+
+    const passwordValid = await this.deps.hasher.verify(command.password, credential.hash);
     if (!passwordValid) {
       return err(new InvalidCredentialsError());
     }

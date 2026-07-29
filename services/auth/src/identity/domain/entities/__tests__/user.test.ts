@@ -92,7 +92,7 @@ describe('User aggregate', () => {
       PasswordCredential.fromHash(PasswordHash.fromEncoded('scrypt$s2$h2'), LATER),
       LATER,
     );
-    expect(user.credential.hash.encoded).toBe('scrypt$s2$h2');
+    expect(user.credential?.hash.encoded).toBe('scrypt$s2$h2');
     expect(user.updatedAt).toEqual(LATER);
     expect(user.pullEvents().map((e) => e.type)).toEqual(['identity.user.password_changed']);
   });

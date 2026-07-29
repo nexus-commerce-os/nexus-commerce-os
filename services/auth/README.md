@@ -1,6 +1,6 @@
 # services/auth — Identity & Profile
 
-**Status:** P0.2 · Identity domain core (I-1) + session lifecycle (I-2) + email verification & password reset (I-3) implemented — User/Profile/credential, Session with rotating refresh-token family + reuse detection, VerificationToken with single-use links, use cases, in-memory/scrypt/sha256/HMAC adapters, 134 unit tests. No HTTP/DB/NestJS wiring yet (I-6/I-7).
+**Status:** P0.2 · Identity domain core (I-1) + sessions (I-2) + email verification & password reset (I-3) + passkeys & devices (I-4) + OAuth/OIDC federation (I-5) implemented — 267 unit tests. All protocol crypto (WebAuthn, OIDC) sits behind ports; no HTTP/DB/NestJS wiring yet (I-6/I-7).
 **Owner:** `@nexus-commerce-os/platform` `@nexus-commerce-os/cloud-security` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/auth/`)
 **Runtime / language:** TypeScript (NestJS) — core product API ([SDD §6 — Backend core](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** **Identity & Profile** module ([04 §4](../../docs/04-system-architecture.md#4-component-responsibilities)) — accounts, passkeys/MFA, consent, agent spend policy
@@ -56,6 +56,24 @@ Session revocation after a reset is **not** called directly — `ResetPassword`
 publishes `PasswordChanged`, and the I-7 subscriber reacts. Identity use cases
 therefore carry no dependency on the session module.
 
+### Federation rules (I-5, doc 08 §3.2)
+
+An account is resolved by the provider's **`sub`**, never by email — addresses
+are re-assignable, so binding on them would let a recycled address inherit an
+account. `(provider, subject)` is unique, so one provider account can never be
+attached to two NEXUS accounts.
+
+**Auto-linking is the takeover risk.** Attaching a provider identity to an
+existing account found by email is allowed only when *both* sides have verified
+the address (`OidcPolicy.allowsAutoLink`); otherwise the user must sign in first
+and link explicitly. `state` is stored as a hash and is single-use; `nonce` is
+matched against the pending request by the domain (not the verifier); the PKCE
+verifier is passed to the exchange and never leaves the snapshot or an event.
+
+Accounts bootstrapped from a provider have **no password factor**, which makes
+the last-factor rule live: `canRemoveFactor` counts passwords, passkeys and
+linked providers together, so unlinking the only way into an account is refused.
+
 ### Session rules (doc 08 §3.4)
 
 Refresh tokens **rotate on every use**; the presented token is consumed and a new
@@ -71,10 +89,15 @@ I-6 with no domain change.
 
 ## Scope guard
 
-I-1/I-2 deliver the **Identity domain core + session lifecycle only**. Still
-**not** present (later increments): email verification + password reset (I-3),
-passkeys/MFA + device registration (I-4 — a session stores only an opaque device
-reference), OIDC/OAuth federation (I-5), Postgres `identity`-schema adapter +
-migrations (I-6), NestJS module + HTTP endpoints and event wiring such as
-`PasswordChanged` → revoke-all-sessions (I-7). No RBAC/ABAC and no step-up
-policy evaluation (separate contexts). No JWT/access-token signing (gateway).
+I-1 … I-5 deliver the **Identity domain only**. Every external protocol sits
+behind a port with **no implementation in this module**: `WebAuthnVerifier`
+(I-4) and `OidcTokenExchanger` / `OidcTokenVerifier` (I-5) are implemented by
+adapters in **I-7**, so passkey and federated sign-in are not end-to-end
+functional yet. Test doubles for them live only under `__tests__`.
+
+Still **not** present: Postgres `identity`-schema adapter + migrations (I-6);
+NestJS module, HTTP endpoints, notification adapter and event wiring such as
+`PasswordChanged` → revoke-all-sessions (I-7). No RBAC/ABAC and no step-up or
+MFA policy evaluation — including the docs/08 §3.2 rule that a federated-only
+account must be elevated before money-moving capabilities (separate contexts).
+No JWT/access-token signing (gateway).

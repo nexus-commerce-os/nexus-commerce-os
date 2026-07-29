@@ -4,6 +4,7 @@ import { Email } from '../value-objects/email';
 import { Profile } from './profile';
 import { PasswordCredential } from './password-credential';
 import { UserRegistered } from '../events/user-registered';
+import { FederatedAccountCreated } from '../events/federated-account-created';
 import { EmailChanged } from '../events/email-changed';
 import { PasswordChanged } from '../events/password-changed';
 import { UserDeactivated } from '../events/user-deactivated';
@@ -33,6 +34,18 @@ export interface RegisterUserParams {
   now: Date;
 }
 
+export interface RegisterFederatedUserParams {
+  id: UserId;
+  email: Email;
+  profile: Profile;
+  residencyRegion: string;
+  /** Slug of the provider that vouched for this account. */
+  provider: string;
+  /** Whether the provider asserted the address as verified. */
+  emailVerified: boolean;
+  now: Date;
+}
+
 export interface ReconstituteUserParams {
   id: UserId;
   email: Email;
@@ -40,7 +53,8 @@ export interface ReconstituteUserParams {
   status: UserStatus;
   residencyRegion: string;
   profile: Profile;
-  credential: PasswordCredential;
+  /** `null` on a federated-only / passwordless account. */
+  credential: PasswordCredential | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,7 +74,7 @@ export class User {
     private _status: UserStatus,
     public readonly residencyRegion: string,
     private _profile: Profile,
-    private _credential: PasswordCredential,
+    private _credential: PasswordCredential | null,
     public readonly createdAt: Date,
     private _updatedAt: Date,
   ) {}
@@ -79,6 +93,33 @@ export class User {
       params.now,
     );
     user._events.push(new UserRegistered(params.id, params.email.value, params.now));
+    return user;
+  }
+
+  /**
+   * Bootstrap an account from a provider sign-in: **no password credential**, and
+   * the address counts as verified only when the provider asserted it.
+   *
+   * Records `UserRegistered` (it is still a new account) plus
+   * `FederatedAccountCreated`, which tells downstream policy that this account
+   * currently has no password factor (docs/08 §3.2 elevation rule).
+   */
+  static registerFederated(params: RegisterFederatedUserParams): User {
+    const user = new User(
+      params.id,
+      params.email,
+      params.emailVerified,
+      'active',
+      params.residencyRegion,
+      params.profile,
+      null,
+      params.now,
+      params.now,
+    );
+    user._events.push(new UserRegistered(params.id, params.email.value, params.now));
+    user._events.push(
+      new FederatedAccountCreated(params.id, params.provider, params.emailVerified, params.now),
+    );
     return user;
   }
 
@@ -113,7 +154,8 @@ export class User {
     return this._profile;
   }
 
-  get credential(): PasswordCredential {
+  /** The password credential, or `null` on a federated-only / passwordless account. */
+  get credential(): PasswordCredential | null {
     return this._credential;
   }
 
@@ -127,11 +169,11 @@ export class User {
 
   /**
    * Whether a password credential is set — one input to the last-factor rule
-   * (see `canRemovePasskey`). Every account created today has one; federated-only
-   * and passwordless accounts will report `false` without changing the rule.
+   * (see `canRemoveFactor`). Password-registered accounts report `true`;
+   * federated-only accounts report `false` and rely on their linked providers.
    */
   hasPasswordFactor(): boolean {
-    return this._credential !== null && this._credential !== undefined;
+    return this._credential !== null;
   }
 
   /** Change email; resets verification and records `EmailChanged`. No-op if equal. */

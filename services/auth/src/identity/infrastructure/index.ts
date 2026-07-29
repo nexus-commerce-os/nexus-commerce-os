@@ -14,3 +14,5 @@ export * from './in-memory-verification-token-repository';
 export * from './in-memory-webauthn-challenge-repository';
 export * from './in-memory-passkey-credential-repository';
 export * from './in-memory-device-repository';
+export * from './in-memory-oauth-authorization-request-repository';
+export * from './in-memory-federated-identity-repository';

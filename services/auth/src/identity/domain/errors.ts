@@ -199,6 +199,64 @@ export class DeviceNotFoundError {
   }
 }
 
+export class InvalidOidcStateError {
+  readonly _tag = 'InvalidOidcStateError';
+  get message(): string {
+    return 'The sign-in request is not valid. Start again.';
+  }
+}
+
+export class OidcStateExpiredError {
+  readonly _tag = 'OidcStateExpiredError';
+  constructor(public readonly requestId: string) {}
+  get message(): string {
+    return 'The sign-in request has expired. Start again.';
+  }
+}
+
+export class OidcTokenExchangeFailedError {
+  readonly _tag = 'OidcTokenExchangeFailedError';
+  constructor(public readonly reason: string) {}
+  get message(): string {
+    return `Could not exchange the authorization code: ${this.reason}.`;
+  }
+}
+
+export class InvalidOidcTokenError {
+  readonly _tag = 'InvalidOidcTokenError';
+  constructor(public readonly reason: string) {}
+  get message(): string {
+    return `The provider's identity token was rejected: ${this.reason}.`;
+  }
+}
+
+export class FederatedIdentityAlreadyLinkedError {
+  readonly _tag = 'FederatedIdentityAlreadyLinkedError';
+  constructor(
+    public readonly provider: string,
+    public readonly subject: string,
+  ) {}
+  get message(): string {
+    return `This ${this.provider} account is already linked to a NEXUS account.`;
+  }
+}
+
+export class FederatedIdentityNotFoundError {
+  readonly _tag = 'FederatedIdentityNotFoundError';
+  constructor(public readonly reference: string) {}
+  get message(): string {
+    return `No linked identity found for "${this.reference}".`;
+  }
+}
+
+export class AccountLinkRequiresAuthenticationError {
+  readonly _tag = 'AccountLinkRequiresAuthenticationError';
+  constructor(public readonly email: string) {}
+  get message(): string {
+    return 'An account already exists for this address. Sign in first, then link this provider.';
+  }
+}
+
 export type IdentityError =
   | InvalidEmailError
   | WeakPasswordError
@@ -223,4 +281,11 @@ export type IdentityError =
   | DuplicateCredentialError
   | PasskeyCloneDetectedError
   | LastFactorRemovalError
-  | DeviceNotFoundError;
+  | DeviceNotFoundError
+  | InvalidOidcStateError
+  | OidcStateExpiredError
+  | OidcTokenExchangeFailedError
+  | InvalidOidcTokenError
+  | FederatedIdentityAlreadyLinkedError
+  | FederatedIdentityNotFoundError
+  | AccountLinkRequiresAuthenticationError;

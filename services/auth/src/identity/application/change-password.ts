@@ -45,10 +45,14 @@ export class ChangePassword {
       return err(new UserNotFoundError(command.userId));
     }
 
-    const currentValid = await this.deps.hasher.verify(
-      command.currentPassword,
-      user.credential.hash,
-    );
+    const credential = user.credential;
+    if (credential === null) {
+      // no password set (federated-only): nothing to verify, so this is the
+      // wrong flow — the user must use password reset to establish one
+      return err(new InvalidCredentialsError());
+    }
+
+    const currentValid = await this.deps.hasher.verify(command.currentPassword, credential.hash);
     if (!currentValid) {
       return err(new InvalidCredentialsError());
     }

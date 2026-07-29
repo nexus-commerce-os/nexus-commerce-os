@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Device } from '../device';
 import { toUserId } from '../../value-objects/user-id';
 import { toDeviceId } from '../../value-objects/device-id';
-import { canRemovePasskey } from '../../value-objects/authentication-factor-policy';
+import { canRemoveFactor } from '../../value-objects/authentication-factor-policy';
 
 const ID = toDeviceId('66666666-6666-4666-8666-666666666666');
 const USER = toUserId('11111111-1111-4111-8111-111111111111');
@@ -88,20 +88,67 @@ describe('Device', () => {
   });
 });
 
-describe('canRemovePasskey (last-factor rule)', () => {
-  it('allows removal while a password remains', () => {
-    expect(canRemovePasskey({ activePasskeys: 1, hasPasswordFactor: true })).toBe(true);
+describe('canRemoveFactor (last-factor rule)', () => {
+  it('allows removing a passkey while a password remains', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 1, hasPasswordFactor: true, activeFederatedIdentities: 0 },
+        'passkey',
+      ),
+    ).toBe(true);
   });
 
-  it('allows removal while another passkey remains', () => {
-    expect(canRemovePasskey({ activePasskeys: 2, hasPasswordFactor: false })).toBe(true);
+  it('allows removing a passkey while another passkey remains', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 2, hasPasswordFactor: false, activeFederatedIdentities: 0 },
+        'passkey',
+      ),
+    ).toBe(true);
   });
 
-  it('refuses removal of the only factor on a passwordless account', () => {
-    expect(canRemovePasskey({ activePasskeys: 1, hasPasswordFactor: false })).toBe(false);
+  it('allows removing a passkey while a linked provider remains', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 1, hasPasswordFactor: false, activeFederatedIdentities: 1 },
+        'passkey',
+      ),
+    ).toBe(true);
   });
 
-  it('refuses when there is nothing to remove and no password', () => {
-    expect(canRemovePasskey({ activePasskeys: 0, hasPasswordFactor: false })).toBe(false);
+  it('refuses removing the only passkey on a passwordless, unlinked account', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 1, hasPasswordFactor: false, activeFederatedIdentities: 0 },
+        'passkey',
+      ),
+    ).toBe(false);
+  });
+
+  it('refuses unlinking the only provider on a federated-only account', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 0, hasPasswordFactor: false, activeFederatedIdentities: 1 },
+        'federated_identity',
+      ),
+    ).toBe(false);
+  });
+
+  it('allows unlinking a provider when a passkey remains', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 1, hasPasswordFactor: false, activeFederatedIdentities: 1 },
+        'federated_identity',
+      ),
+    ).toBe(true);
+  });
+
+  it('refuses when there is nothing to remove and no other factor', () => {
+    expect(
+      canRemoveFactor(
+        { activePasskeys: 0, hasPasswordFactor: false, activeFederatedIdentities: 0 },
+        'passkey',
+      ),
+    ).toBe(false);
   });
 });

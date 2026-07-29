@@ -5,9 +5,10 @@ import {
   isPasskeyCredentialId,
   toPasskeyCredentialId,
 } from '../domain/value-objects/passkey-credential-id';
-import { canRemovePasskey } from '../domain/value-objects/authentication-factor-policy';
+import { canRemoveFactor } from '../domain/value-objects/authentication-factor-policy';
 import type { UserRepository } from '../domain/ports/user-repository';
 import type { PasskeyCredentialRepository } from '../domain/ports/passkey-credential-repository';
+import type { FederatedIdentityRepository } from '../domain/ports/federated-identity-repository';
 import type { EventPublisher } from '../domain/ports/event-publisher';
 import { PasskeyRevoked } from '../domain/events/passkey-revoked';
 import { PasskeyNotFoundError, LastFactorRemovalError, UserNotFoundError } from '../domain/errors';
@@ -22,6 +23,7 @@ export type RevokePasskeyError = UserNotFoundError | PasskeyNotFoundError | Last
 export interface RevokePasskeyDeps {
   users: UserRepository;
   passkeys: PasskeyCredentialRepository;
+  federatedIdentities: FederatedIdentityRepository;
   clock: Clock;
   events: EventPublisher;
 }
@@ -32,9 +34,9 @@ export interface RevokePasskeyDeps {
  * Ownership is checked here and a foreign passkey is reported as
  * `PasskeyNotFoundError`, so the response cannot be used to probe other
  * accounts' credentials. The **last-factor rule** is enforced through
- * `canRemovePasskey`, which counts the account's remaining factors — today every
- * account also has a password, so the guard passes; it becomes load-bearing the
- * moment passwordless accounts exist, with nothing here to change.
+ * `canRemoveFactor`, which counts every remaining factor — password, other
+ * passkeys and linked providers. A federated-only account with one passkey and
+ * no provider left therefore cannot strip its last way in.
  */
 export class RevokePasskey {
   constructor(private readonly deps: RevokePasskeyDeps) {}
@@ -58,7 +60,18 @@ export class RevokePasskey {
     }
 
     const activePasskeys = await this.deps.passkeys.countActiveByUser(user.id);
-    if (!canRemovePasskey({ activePasskeys, hasPasswordFactor: user.hasPasswordFactor() })) {
+    const activeFederatedIdentities = await this.deps.federatedIdentities.countActiveByUser(
+      user.id,
+    );
+    const removable = canRemoveFactor(
+      {
+        activePasskeys,
+        hasPasswordFactor: user.hasPasswordFactor(),
+        activeFederatedIdentities,
+      },
+      'passkey',
+    );
+    if (!removable) {
       return err(new LastFactorRemovalError(user.id));
     }
 
