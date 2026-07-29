@@ -7,6 +7,7 @@ import { UserRegistered } from '../events/user-registered';
 import { EmailChanged } from '../events/email-changed';
 import { PasswordChanged } from '../events/password-changed';
 import { UserDeactivated } from '../events/user-deactivated';
+import { EmailVerified } from '../events/email-verified';
 
 export type UserStatus = 'active' | 'deactivated';
 
@@ -133,6 +134,19 @@ export class User {
     this._emailVerified = false;
     this._touch(now);
     this._events.push(new EmailChanged(this.id, newEmail.value, now));
+  }
+
+  /**
+   * Mark the current address as proven and record `EmailVerified`. Idempotent —
+   * re-verifying an already-verified address records nothing.
+   */
+  verifyEmail(now: Date): void {
+    if (this._emailVerified) {
+      return;
+    }
+    this._emailVerified = true;
+    this._touch(now);
+    this._events.push(new EmailVerified(this.id, this._email.value, now));
   }
 
   /** Replace the password credential and record `PasswordChanged`. */

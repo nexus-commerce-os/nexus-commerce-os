@@ -7,7 +7,7 @@ import { InMemoryEventPublisher } from '../../infrastructure/in-memory-event-pub
 import { ScryptPasswordHasher } from '../../infrastructure/scrypt-password-hasher';
 import { UuidIdGenerator } from '../../infrastructure/uuid-id-generator';
 import { toUserId } from '../../domain/value-objects/user-id';
-import { FixedClock, STRONG_PASSWORD, OTHER_STRONG_PASSWORD } from '../../__tests__/support';
+import { FakeClock, STRONG_PASSWORD, OTHER_STRONG_PASSWORD } from '../../__tests__/support';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
 
@@ -24,7 +24,7 @@ describe('AuthenticateUser', () => {
       hasher,
       policy: new DefaultPasswordPolicy(),
       ids: new UuidIdGenerator(),
-      clock: new FixedClock(NOW),
+      clock: new FakeClock(NOW),
       events: new InMemoryEventPublisher(),
     });
     const created = await register.execute({

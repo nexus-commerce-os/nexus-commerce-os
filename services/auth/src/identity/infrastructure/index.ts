@@ -9,3 +9,5 @@ export * from './uuid-id-generator';
 export * from './in-memory-session-repository';
 export * from './random-token-generator';
 export * from './sha256-token-hasher';
+export * from './hmac-token-hasher';
+export * from './in-memory-verification-token-repository';

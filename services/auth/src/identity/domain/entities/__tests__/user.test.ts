@@ -65,6 +65,26 @@ describe('User aggregate', () => {
     expect(user.pullEvents()).toHaveLength(0);
   });
 
+  it('verifyEmail flips the flag and records EmailVerified (idempotent)', () => {
+    const user = buildUser();
+    user.pullEvents();
+    user.verifyEmail(LATER);
+    expect(user.emailVerified).toBe(true);
+    expect(user.updatedAt).toEqual(LATER);
+    expect(user.pullEvents().map((e) => e.type)).toEqual(['identity.user.email_verified']);
+
+    user.verifyEmail(LATER);
+    expect(user.pullEvents()).toHaveLength(0);
+  });
+
+  it('changeEmail un-verifies a previously verified address', () => {
+    const user = buildUser();
+    user.verifyEmail(NOW);
+    user.pullEvents();
+    user.changeEmail(emailOf('new@example.com'), LATER);
+    expect(user.emailVerified).toBe(false);
+  });
+
   it('changePassword records PasswordChanged and bumps updatedAt', () => {
     const user = buildUser();
     user.pullEvents();

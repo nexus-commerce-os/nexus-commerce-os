@@ -101,6 +101,37 @@ export class InvalidRefreshTokenError {
   }
 }
 
+export class InvalidVerificationTokenError {
+  readonly _tag = 'InvalidVerificationTokenError';
+  get message(): string {
+    return 'The verification link is not valid.';
+  }
+}
+
+export class VerificationTokenExpiredError {
+  readonly _tag = 'VerificationTokenExpiredError';
+  constructor(public readonly tokenId: string) {}
+  get message(): string {
+    return 'The verification link has expired. Request a new one.';
+  }
+}
+
+export class VerificationTokenAlreadyUsedError {
+  readonly _tag = 'VerificationTokenAlreadyUsedError';
+  constructor(public readonly tokenId: string) {}
+  get message(): string {
+    return 'The verification link has already been used.';
+  }
+}
+
+export class EmailAlreadyVerifiedError {
+  readonly _tag = 'EmailAlreadyVerifiedError';
+  constructor(public readonly userId: string) {}
+  get message(): string {
+    return `The email address for "${this.userId}" is already verified.`;
+  }
+}
+
 export type IdentityError =
   | InvalidEmailError
   | WeakPasswordError
@@ -113,4 +144,8 @@ export type IdentityError =
   | SessionExpiredError
   | SessionRevokedError
   | RefreshTokenReusedError
-  | InvalidRefreshTokenError;
+  | InvalidRefreshTokenError
+  | InvalidVerificationTokenError
+  | VerificationTokenExpiredError
+  | VerificationTokenAlreadyUsedError
+  | EmailAlreadyVerifiedError;
