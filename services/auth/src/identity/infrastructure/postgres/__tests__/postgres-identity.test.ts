@@ -270,8 +270,24 @@ describe.skipIf(!PG_TESTS_ENABLED)('Postgres identity adapters', () => {
   });
 });
 
-describe.skipIf(PG_TESTS_ENABLED)('Postgres identity adapters (skipped)', () => {
-  it('needs Docker — set NEXUS_PG_TESTS=1 to run them (CI always does)', () => {
-    expect(PG_TESTS_ENABLED).toBe(false);
+describe('Postgres adapter suite gating', () => {
+  /**
+   * A skipped suite reports green, so the gate itself has to be asserted.
+   *
+   * This already caught one false pass: CI set `NEXUS_PG_TESTS=1`, but turbo
+   * strips environment variables a task has not declared, so vitest never saw
+   * it and all 14 database tests skipped inside a green build. The variable is
+   * now declared in `turbo.json`, and this test makes any future regression of
+   * that plumbing a hard failure instead of a silent skip.
+   */
+  it('runs the database tests whenever it is running in CI', () => {
+    if (process.env['CI'] === 'true') {
+      expect(
+        PG_TESTS_ENABLED,
+        'NEXUS_PG_TESTS did not reach vitest — check the turbo `test` task env allowlist',
+      ).toBe(true);
+    } else {
+      expect(typeof PG_TESTS_ENABLED).toBe('boolean');
+    }
   });
 });

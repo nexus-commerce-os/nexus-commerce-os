@@ -7,6 +7,11 @@
     "typecheck": { "dependsOn": ["^build"], "outputs": [] },
     "lint": { "outputs": [] },
     "format": { "cache": false },
-    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] }
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "//": "NEXUS_PG_TESTS must be declared or turbo strips it and the Postgres suites silently skip.",
+      "env": ["NEXUS_PG_TESTS", "CI"]
+    }
   }
 }
