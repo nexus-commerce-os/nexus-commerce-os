@@ -130,6 +130,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Unit tests + coverage
         # why: docs/10 §2 — fails on test failure OR coverage below threshold; money paths gated hardest.
+        # NEXUS_PG_TESTS=1 makes the Postgres adapter suites mandatory here: they start a real
+        # database via testcontainers (this runner has Docker), which is the only way the unique
+        # indexes and concurrent single-use guarantees are actually proven. Without the flag they
+        # skip loudly on a workstation with no Docker rather than passing silently.
+        env:
+          NEXUS_PG_TESTS: '1'
         run: pnpm -s test
 
   # ---------------------------------------------------------------------------
@@ -424,6 +430,10 @@ jobs:
       - name: doc_consistency_lint
         # why: docs/10 §2 — banned/retired terms, dangling anchors, broken links block merge (zero-dep, certified).
         run: python scripts/doc_consistency_lint.py
+      - name: migration_boundary_lint
+        # why: docs/06 §4 — each context owns one Postgres schema under its own DB role; CI greps
+        #      migrations for cross-schema DDL so the boundary is a build failure, not a review note.
+        run: python scripts/migration_boundary_lint.py
 
   # ---------------------------------------------------------------------------
   # 13. MERMAID VALIDATION — every diagram parses (docs/10 §2 gate).

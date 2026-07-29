@@ -27,6 +27,8 @@ services/platform-hello/        # Go service + Helm templates (not prettier-owne
 **/*.tf
 **/*.tfvars
 **/*.rego
+# Hand-authored migrations; the migration-boundary lint owns these
+**/*.sql
 # YAML (Helm/k8s/CI/compose) uses its own conventions; templates aren't valid YAML for prettier
 **/*.yaml
 **/*.yml
