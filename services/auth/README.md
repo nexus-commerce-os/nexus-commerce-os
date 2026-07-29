@@ -1,6 +1,6 @@
 # services/auth — Identity & Profile
 
-**Status:** Scaffold — not implemented
+**Status:** P0.2 · Identity domain core (I-1) implemented — User/Profile/credential aggregate, use cases, in-memory + scrypt adapters, 43 unit tests. No HTTP/DB/NestJS wiring yet (I-6/I-7).
 **Owner:** `@nexus-commerce-os/platform` `@nexus-commerce-os/cloud-security` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/services/auth/`)
 **Runtime / language:** TypeScript (NestJS) — core product API ([SDD §6 — Backend core](../../docs/02-software-design-document.md#6-technology-stack--decisions-with-alternatives))
 **Certified-architecture component:** **Identity & Profile** module ([04 §4](../../docs/04-system-architecture.md#4-component-responsibilities)) — accounts, passkeys/MFA, consent, agent spend policy
@@ -16,6 +16,28 @@ Owns authentication, authorization (RBAC + ABAC), user profile, consent, and the
 - `packages/shared`, `packages/config` (canonical types)
 - Data: PostgreSQL (own schema), Redis (money/auth cluster — isolated from catalog cache, [ADR-0017](../../docs/adr/ADR-0017-blast-radius-isolation.md))
 
+## Structure (hexagonal, framework-agnostic domain)
+
+```
+src/
+  kernel/          Result, branded Id, DomainEvent, Clock + IdGenerator ports
+  identity/
+    domain/        entities (User, Profile, PasswordCredential), value objects
+                   (Email, UserId, PasswordHash, PasswordPolicy), events, typed
+                   errors, ports (UserRepository, PasswordHasher, EventPublisher)
+    application/   use cases: RegisterUser, AuthenticateUser, ChangePassword
+    infrastructure/ real adapters: scrypt hasher, in-memory repo + event bus,
+                   system clock, uuid id-generator
+```
+
+The domain and use cases import no framework and no concrete adapter (dependency
+inversion); adapters implement the ports. Persistence swaps in-memory→Postgres at
+I-6 with no domain change.
+
 ## Scope guard
 
-Scaffold only — **no OIDC, no passkeys/MFA, no RBAC/ABAC, no endpoints, no token issuance.** `src/` documents intent for P0.2.
+I-1 delivers the **Identity domain core only**. Still **not** present (later
+increments): OIDC/OAuth, passkeys/MFA, email verification, password reset, device
+registration, session lifecycle (I-2…I-5); Postgres `identity`-schema adapter +
+migrations (I-6); NestJS module + HTTP endpoints (I-7). No RBAC/ABAC (separate
+context). No token issuance.
