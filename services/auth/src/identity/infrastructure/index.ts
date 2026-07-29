@@ -6,3 +6,6 @@ export * from './in-memory-user-repository';
 export * from './in-memory-event-publisher';
 export * from './system-clock';
 export * from './uuid-id-generator';
+export * from './in-memory-session-repository';
+export * from './random-token-generator';
+export * from './sha256-token-hasher';

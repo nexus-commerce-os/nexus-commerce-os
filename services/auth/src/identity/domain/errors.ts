@@ -59,6 +59,48 @@ export class UserDeactivatedError {
   }
 }
 
+export class SessionNotFoundError {
+  readonly _tag = 'SessionNotFoundError';
+  constructor(public readonly sessionId: string) {}
+  get message(): string {
+    return `No session found for "${this.sessionId}".`;
+  }
+}
+
+export class SessionExpiredError {
+  readonly _tag = 'SessionExpiredError';
+  constructor(
+    public readonly sessionId: string,
+    public readonly kind: 'idle' | 'absolute',
+  ) {}
+  get message(): string {
+    return `Session "${this.sessionId}" has passed its ${this.kind} lifetime.`;
+  }
+}
+
+export class SessionRevokedError {
+  readonly _tag = 'SessionRevokedError';
+  constructor(public readonly sessionId: string) {}
+  get message(): string {
+    return `Session "${this.sessionId}" has been revoked.`;
+  }
+}
+
+export class RefreshTokenReusedError {
+  readonly _tag = 'RefreshTokenReusedError';
+  constructor(public readonly sessionId: string) {}
+  get message(): string {
+    return `A consumed refresh token was presented for session "${this.sessionId}"; the token family has been revoked.`;
+  }
+}
+
+export class InvalidRefreshTokenError {
+  readonly _tag = 'InvalidRefreshTokenError';
+  get message(): string {
+    return 'The refresh token is not valid.';
+  }
+}
+
 export type IdentityError =
   | InvalidEmailError
   | WeakPasswordError
@@ -66,4 +108,9 @@ export type IdentityError =
   | EmailAlreadyInUseError
   | UserNotFoundError
   | InvalidCredentialsError
-  | UserDeactivatedError;
+  | UserDeactivatedError
+  | SessionNotFoundError
+  | SessionExpiredError
+  | SessionRevokedError
+  | RefreshTokenReusedError
+  | InvalidRefreshTokenError;
