@@ -11,3 +11,6 @@ export * from './random-token-generator';
 export * from './sha256-token-hasher';
 export * from './hmac-token-hasher';
 export * from './in-memory-verification-token-repository';
+export * from './in-memory-webauthn-challenge-repository';
+export * from './in-memory-passkey-credential-repository';
+export * from './in-memory-device-repository';

@@ -132,6 +132,73 @@ export class EmailAlreadyVerifiedError {
   }
 }
 
+export class InvalidChallengeError {
+  readonly _tag = 'InvalidChallengeError';
+  get message(): string {
+    return 'The WebAuthn challenge is not valid.';
+  }
+}
+
+export class ChallengeExpiredError {
+  readonly _tag = 'ChallengeExpiredError';
+  constructor(public readonly challengeId: string) {}
+  get message(): string {
+    return 'The WebAuthn challenge has expired. Start the ceremony again.';
+  }
+}
+
+export class WebAuthnVerificationFailedError {
+  readonly _tag = 'WebAuthnVerificationFailedError';
+  constructor(public readonly reason: string) {}
+  get message(): string {
+    return `WebAuthn verification failed: ${this.reason}.`;
+  }
+}
+
+export class PasskeyNotFoundError {
+  readonly _tag = 'PasskeyNotFoundError';
+  constructor(public readonly reference: string) {}
+  get message(): string {
+    return `No usable passkey found for "${this.reference}".`;
+  }
+}
+
+export class DuplicateCredentialError {
+  readonly _tag = 'DuplicateCredentialError';
+  constructor(public readonly credentialId: string) {}
+  get message(): string {
+    return 'This authenticator is already registered.';
+  }
+}
+
+export class PasskeyCloneDetectedError {
+  readonly _tag = 'PasskeyCloneDetectedError';
+  constructor(
+    public readonly passkeyId: string,
+    public readonly storedSignCount: number,
+    public readonly presentedSignCount: number,
+  ) {}
+  get message(): string {
+    return `Signature counter regressed for "${this.passkeyId}" (stored ${this.storedSignCount}, presented ${this.presentedSignCount}) — possible cloned authenticator.`;
+  }
+}
+
+export class LastFactorRemovalError {
+  readonly _tag = 'LastFactorRemovalError';
+  constructor(public readonly userId: string) {}
+  get message(): string {
+    return 'This is the last authentication factor on the account and cannot be removed.';
+  }
+}
+
+export class DeviceNotFoundError {
+  readonly _tag = 'DeviceNotFoundError';
+  constructor(public readonly deviceId: string) {}
+  get message(): string {
+    return `No device found for "${this.deviceId}".`;
+  }
+}
+
 export type IdentityError =
   | InvalidEmailError
   | WeakPasswordError
@@ -148,4 +215,12 @@ export type IdentityError =
   | InvalidVerificationTokenError
   | VerificationTokenExpiredError
   | VerificationTokenAlreadyUsedError
-  | EmailAlreadyVerifiedError;
+  | EmailAlreadyVerifiedError
+  | InvalidChallengeError
+  | ChallengeExpiredError
+  | WebAuthnVerificationFailedError
+  | PasskeyNotFoundError
+  | DuplicateCredentialError
+  | PasskeyCloneDetectedError
+  | LastFactorRemovalError
+  | DeviceNotFoundError;

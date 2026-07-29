@@ -5,7 +5,20 @@ import {
   DefaultVerificationPolicy,
   type VerificationPolicy,
 } from '../domain/value-objects/verification-policy';
+import {
+  DefaultWebAuthnPolicy,
+  type WebAuthnPolicy,
+} from '../domain/value-objects/webauthn-policy';
+import { ok } from '../../kernel/result';
 import { InMemoryUserRepository } from '../infrastructure/in-memory-user-repository';
+import { InMemoryWebAuthnChallengeRepository } from '../infrastructure/in-memory-webauthn-challenge-repository';
+import { InMemoryPasskeyCredentialRepository } from '../infrastructure/in-memory-passkey-credential-repository';
+import { InMemoryDeviceRepository } from '../infrastructure/in-memory-device-repository';
+import {
+  StubWebAuthnVerifier,
+  verifiedRegistration,
+  verifiedAuthentication,
+} from './webauthn-doubles';
 import { InMemorySessionRepository } from '../infrastructure/in-memory-session-repository';
 import { InMemoryVerificationTokenRepository } from '../infrastructure/in-memory-verification-token-repository';
 import { InMemoryEventPublisher } from '../infrastructure/in-memory-event-publisher';
@@ -71,6 +84,66 @@ export async function buildSessionFixture(
     clock,
     policy: options.policy ?? new DefaultSessionPolicy(),
     userId: registered.value.id,
+  };
+}
+
+export interface PasskeyFixture {
+  users: InMemoryUserRepository;
+  challenges: InMemoryWebAuthnChallengeRepository;
+  passkeys: InMemoryPasskeyCredentialRepository;
+  devices: InMemoryDeviceRepository;
+  events: InMemoryEventPublisher;
+  secrets: RandomTokenGenerator;
+  tokenHasher: HmacTokenHasher;
+  verifier: StubWebAuthnVerifier;
+  webauthnPolicy: WebAuthnPolicy;
+  ids: UuidIdGenerator;
+  clock: FakeClock;
+  userId: string;
+  email: string;
+}
+
+/**
+ * Wire the passkey/device use cases against real in-memory adapters plus the
+ * WebAuthn verifier double, and register one active user. Shared by the I-4
+ * suites so the object graph is built in exactly one place.
+ */
+export async function buildPasskeyFixture(
+  options: { now?: Date; webauthnPolicy?: WebAuthnPolicy } = {},
+): Promise<PasskeyFixture> {
+  const clock = new FakeClock(options.now ?? new Date('2026-01-01T00:00:00.000Z'));
+  const users = new InMemoryUserRepository();
+  const events = new InMemoryEventPublisher();
+  const ids = new UuidIdGenerator();
+
+  const registered = await new RegisterUser({
+    users,
+    hasher: new ScryptPasswordHasher(),
+    policy: new DefaultPasswordPolicy(),
+    ids,
+    clock,
+    events,
+  }).execute({ email: 'jane@example.com', password: STRONG_PASSWORD, displayName: 'Jane' });
+
+  if (!registered.ok) {
+    throw new Error('fixture invariant broken: user registration failed');
+  }
+  events.drain();
+
+  return {
+    users,
+    challenges: new InMemoryWebAuthnChallengeRepository(),
+    passkeys: new InMemoryPasskeyCredentialRepository(),
+    devices: new InMemoryDeviceRepository(),
+    events,
+    secrets: new RandomTokenGenerator(),
+    tokenHasher: new HmacTokenHasher(TEST_TOKEN_PEPPER),
+    verifier: new StubWebAuthnVerifier(ok(verifiedRegistration()), ok(verifiedAuthentication())),
+    webauthnPolicy: options.webauthnPolicy ?? new DefaultWebAuthnPolicy(),
+    ids,
+    clock,
+    userId: registered.value.id,
+    email: registered.value.email,
   };
 }
 

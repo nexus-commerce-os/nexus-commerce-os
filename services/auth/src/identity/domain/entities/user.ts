@@ -125,6 +125,15 @@ export class User {
     return this._status === 'active';
   }
 
+  /**
+   * Whether a password credential is set — one input to the last-factor rule
+   * (see `canRemovePasskey`). Every account created today has one; federated-only
+   * and passwordless accounts will report `false` without changing the rule.
+   */
+  hasPasswordFactor(): boolean {
+    return this._credential !== null && this._credential !== undefined;
+  }
+
   /** Change email; resets verification and records `EmailChanged`. No-op if equal. */
   changeEmail(newEmail: Email, now: Date): void {
     if (this._email.equals(newEmail)) {
