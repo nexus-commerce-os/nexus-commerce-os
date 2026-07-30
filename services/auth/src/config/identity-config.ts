@@ -15,6 +15,15 @@ export interface IdentityConfig {
   readonly tokenPepper: string;
   readonly port: number;
   readonly nodeEnv: 'development' | 'test' | 'production';
+  /**
+   * WebAuthn relying party. `rpId` must be the site's registrable domain (a
+   * credential is scoped to it and cannot be used elsewhere), and `origin` is
+   * matched verbatim against the one the browser signed — the two together are
+   * what make a passkey phishing-resistant, so neither may be guessed at
+   * runtime.
+   */
+  readonly rpId: string;
+  readonly rpOrigin: string;
 }
 
 export class ConfigError extends Error {
@@ -64,6 +73,20 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     }
   }
 
+  const rpId = (env['WEBAUTHN_RP_ID'] ?? '').trim();
+  if (rpId.length === 0) {
+    problems.push('WEBAUTHN_RP_ID is required');
+  } else if (!/^[a-z0-9.-]+$/i.test(rpId) || rpId.includes('/')) {
+    problems.push('WEBAUTHN_RP_ID must be a bare domain, not a URL');
+  }
+
+  const rpOrigin = (env['WEBAUTHN_RP_ORIGIN'] ?? '').trim();
+  if (rpOrigin.length === 0) {
+    problems.push('WEBAUTHN_RP_ORIGIN is required');
+  } else if (!/^https:\/\//.test(rpOrigin) && !rpOrigin.startsWith('http://localhost')) {
+    problems.push('WEBAUTHN_RP_ORIGIN must be https:// (http:// allowed only for localhost)');
+  }
+
   const rawEnv = env['NODE_ENV'] ?? 'development';
   if (!(ENVIRONMENTS as readonly string[]).includes(rawEnv)) {
     problems.push(`NODE_ENV must be one of ${ENVIRONMENTS.join(', ')}`);
@@ -77,5 +100,7 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     tokenPepper,
     port,
     nodeEnv: rawEnv as IdentityConfig['nodeEnv'],
+    rpId,
+    rpOrigin,
   });
 }

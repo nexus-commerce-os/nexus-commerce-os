@@ -11,11 +11,14 @@ import { PostgresUserRepository } from '../identity/infrastructure/postgres/post
 import { PostgresSessionRepository } from '../identity/infrastructure/postgres/postgres-session-repository';
 import { PostgresVerificationTokenRepository } from '../identity/infrastructure/postgres/postgres-verification-token-repository';
 import { PostgresPasskeyCredentialRepository } from '../identity/infrastructure/postgres/postgres-passkey-credential-repository';
+import { PostgresWebAuthnChallengeRepository } from '../identity/infrastructure/postgres/postgres-webauthn-challenge-repository';
+import { SimpleWebAuthnVerifier } from '../identity/infrastructure/webauthn/simplewebauthn-verifier';
 import { PostgresDeviceRepository } from '../identity/infrastructure/postgres/postgres-device-repository';
 import { PostgresFederatedIdentityRepository } from '../identity/infrastructure/postgres/postgres-federated-identity-repository';
 import { DefaultPasswordPolicy } from '../identity/domain/value-objects/password-policy';
 import { DefaultSessionPolicy } from '../identity/domain/value-objects/session-policy';
 import { DefaultVerificationPolicy } from '../identity/domain/value-objects/verification-policy';
+import { DefaultWebAuthnPolicy } from '../identity/domain/value-objects/webauthn-policy';
 import { RegisterUser } from '../identity/application/register-user';
 import { AuthenticateUser } from '../identity/application/authenticate-user';
 import { ChangePassword } from '../identity/application/change-password';
@@ -27,6 +30,10 @@ import { RequestEmailVerification } from '../identity/application/request-email-
 import { VerifyEmail } from '../identity/application/verify-email';
 import { RequestPasswordReset } from '../identity/application/request-password-reset';
 import { ResetPassword } from '../identity/application/reset-password';
+import { StartPasskeyRegistration } from '../identity/application/start-passkey-registration';
+import { CompletePasskeyRegistration } from '../identity/application/complete-passkey-registration';
+import { StartPasskeyAuthentication } from '../identity/application/start-passkey-authentication';
+import { CompletePasskeyAuthentication } from '../identity/application/complete-passkey-authentication';
 import { RevokePasskey } from '../identity/application/revoke-passkey';
 import { ListUserPasskeys } from '../identity/application/list-user-passkeys';
 import { RevokeDevice } from '../identity/application/revoke-device';
@@ -49,6 +56,10 @@ export interface IdentityContainer {
     readonly verifyEmail: VerifyEmail;
     readonly requestPasswordReset: RequestPasswordReset;
     readonly resetPassword: ResetPassword;
+    readonly startPasskeyRegistration: StartPasskeyRegistration;
+    readonly completePasskeyRegistration: CompletePasskeyRegistration;
+    readonly startPasskeyAuthentication: StartPasskeyAuthentication;
+    readonly completePasskeyAuthentication: CompletePasskeyAuthentication;
     readonly revokePasskey: RevokePasskey;
     readonly listUserPasskeys: ListUserPasskeys;
     readonly revokeDevice: RevokeDevice;
@@ -68,10 +79,11 @@ export interface ContainerOptions {
  * each port. Everything above it — aggregates, use cases — sees only interfaces,
  * which is what has kept the domain unchanged from I-1 through I-6.
  *
- * Passkey and OIDC *ceremony* use cases are deliberately absent: they need the
- * `WebAuthnVerifier` and OIDC ports, whose real adapters arrive in I-7c/I-7d.
- * Wiring them to a stand-in here would be exactly the fake verification Path A
- * forbids, so the container exposes only what can genuinely run today.
+ * Passkey ceremonies are wired as of I-7c, now that a real `WebAuthnVerifier`
+ * exists. The OIDC ceremony use cases remain absent until I-7d supplies real
+ * token-exchange and JWT verification: wiring them to a stand-in would be
+ * exactly the fake verification Path A forbids, so the container exposes only
+ * what can genuinely run today.
  */
 export function createIdentityContainer(
   config: IdentityConfig,
@@ -94,12 +106,15 @@ export function createIdentityContainer(
   const sessions = new PostgresSessionRepository(pool);
   const tokens = new PostgresVerificationTokenRepository(pool);
   const passkeys = new PostgresPasskeyCredentialRepository(pool);
+  const challenges = new PostgresWebAuthnChallengeRepository(pool);
   const devices = new PostgresDeviceRepository(pool);
   const federatedIdentities = new PostgresFederatedIdentityRepository(pool);
 
   const passwordPolicy = new DefaultPasswordPolicy();
   const sessionPolicy = new DefaultSessionPolicy();
   const verificationPolicy = new DefaultVerificationPolicy();
+  const webauthnPolicy = new DefaultWebAuthnPolicy();
+  const verifier = new SimpleWebAuthnVerifier({ rpId: config.rpId, origin: config.rpOrigin });
 
   const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
 
@@ -154,6 +169,45 @@ export function createIdentityContainer(
       hasher,
       tokenHasher,
       policy: passwordPolicy,
+      clock,
+      events,
+    }),
+    startPasskeyRegistration: new StartPasskeyRegistration({
+      users,
+      challenges,
+      secrets,
+      tokenHasher,
+      webauthnPolicy,
+      ids,
+      clock,
+    }),
+    completePasskeyRegistration: new CompletePasskeyRegistration({
+      users,
+      challenges,
+      passkeys,
+      devices,
+      verifier,
+      tokenHasher,
+      ids,
+      clock,
+      events,
+    }),
+    startPasskeyAuthentication: new StartPasskeyAuthentication({
+      users,
+      challenges,
+      secrets,
+      tokenHasher,
+      webauthnPolicy,
+      ids,
+      clock,
+    }),
+    completePasskeyAuthentication: new CompletePasskeyAuthentication({
+      users,
+      challenges,
+      passkeys,
+      devices,
+      verifier,
+      tokenHasher,
       clock,
       events,
     }),
