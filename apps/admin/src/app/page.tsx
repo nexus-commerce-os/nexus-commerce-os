@@ -86,6 +86,9 @@ export default function AdminDashboard() {
       <main>
         <section style={{ borderTop: 0 }}>
           <div className="wrap">
+            {/* the console needs a top-level heading; SectionHead renders an h2
+                and left the document with none */}
+            <h1 className="sr-only">NEXUS operator console</h1>
             <SectionHead eyebrow="Waitlist" title="Operations">
               Live view of waitlist signups and delivery health. Illustrative data — the real store
               / ESP is wired in P0.2.

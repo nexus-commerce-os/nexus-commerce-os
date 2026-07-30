@@ -24,7 +24,8 @@ export function Footer({ note, columns, bottomLeft, bottomRight }: FooterProps) 
           </div>
           {columns.map((col) => (
             <div key={col.heading}>
-              <h4>{col.heading}</h4>
+              {/* h3: the preceding section heading is an h2, so h4 would skip a level */}
+              <h3>{col.heading}</h3>
               {col.links.map((l) => (
                 <a key={`${l.label}:${l.href}`} href={l.href}>
                   {l.label}

@@ -21,6 +21,9 @@ import {
 const DEFAULT_NOTE = 'No spam — just one email the moment NEXUS opens in your region.';
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+/** The one figure the receipt shows; the count-up animates to exactly this. */
+const VERIFIED_SAVINGS = 47.12;
+
 export default function NexusLanding() {
   const countRef = useRef<HTMLSpanElement>(null);
   const [email, setEmail] = useState('');
@@ -77,7 +80,7 @@ export default function NexusLanding() {
     // --- Verified-savings count-up (with resilience if the observer is throttled) ---
     const el = countRef.current;
     if (el) {
-      const targetVal = 47.12;
+      const targetVal = VERIFIED_SAVINGS;
       const fmt = (n: number) => n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       if (reduce) {
         el.textContent = fmt(targetVal);
@@ -241,7 +244,10 @@ export default function NexusLanding() {
               totalLabel="Verified money saved"
               totalValue={
                 <>
-                  $<span ref={countRef}>0.00</span>
+                  {/* Rendered with the real figure so a crawler, a social-preview bot,
+                      a throttled tab or JS-off never shows the headline proof as
+                      "$0.00 saved"; the count-up overwrites it from ~0 once it runs. */}
+                  $<span ref={countRef}>{VERIFIED_SAVINGS.toFixed(2)}</span>
                 </>
               }
               stamp="VERIFIED ✓"

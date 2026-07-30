@@ -58,6 +58,9 @@ export default function Gallery() {
       <main>
         <section style={{ borderTop: 0 }}>
           <div className="wrap">
+            {/* the gallery is a page in its own right, so it needs a top-level
+                heading; SectionHead renders an h2 and left the document with none */}
+            <h1 className="sr-only">@nexus/ui component gallery</h1>
             <SectionHead eyebrow="@nexus/ui" title="Component gallery">
               21 primitives, rendered live from the package. Toggle your OS light/dark theme to see
               both.
