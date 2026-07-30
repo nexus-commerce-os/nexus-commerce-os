@@ -13,12 +13,16 @@ import { PostgresVerificationTokenRepository } from '../identity/infrastructure/
 import { PostgresPasskeyCredentialRepository } from '../identity/infrastructure/postgres/postgres-passkey-credential-repository';
 import { PostgresWebAuthnChallengeRepository } from '../identity/infrastructure/postgres/postgres-webauthn-challenge-repository';
 import { SimpleWebAuthnVerifier } from '../identity/infrastructure/webauthn/simplewebauthn-verifier';
+import { PostgresOAuthAuthorizationRequestRepository } from '../identity/infrastructure/postgres/postgres-oauth-authorization-request-repository';
+import { JoseOidcTokenVerifier } from '../identity/infrastructure/oidc/jose-oidc-token-verifier';
+import { HttpOidcTokenExchanger } from '../identity/infrastructure/oidc/http-oidc-token-exchanger';
 import { PostgresDeviceRepository } from '../identity/infrastructure/postgres/postgres-device-repository';
 import { PostgresFederatedIdentityRepository } from '../identity/infrastructure/postgres/postgres-federated-identity-repository';
 import { DefaultPasswordPolicy } from '../identity/domain/value-objects/password-policy';
 import { DefaultSessionPolicy } from '../identity/domain/value-objects/session-policy';
 import { DefaultVerificationPolicy } from '../identity/domain/value-objects/verification-policy';
 import { DefaultWebAuthnPolicy } from '../identity/domain/value-objects/webauthn-policy';
+import { DefaultOidcPolicy } from '../identity/domain/value-objects/oidc-policy';
 import { RegisterUser } from '../identity/application/register-user';
 import { AuthenticateUser } from '../identity/application/authenticate-user';
 import { ChangePassword } from '../identity/application/change-password';
@@ -37,6 +41,8 @@ import { CompletePasskeyAuthentication } from '../identity/application/complete-
 import { RevokePasskey } from '../identity/application/revoke-passkey';
 import { ListUserPasskeys } from '../identity/application/list-user-passkeys';
 import { RevokeDevice } from '../identity/application/revoke-device';
+import { StartOidcLogin } from '../identity/application/start-oidc-login';
+import { CompleteOidcLogin } from '../identity/application/complete-oidc-login';
 import { UnlinkFederatedIdentity } from '../identity/application/unlink-federated-identity';
 import { ListFederatedIdentities } from '../identity/application/list-federated-identities';
 
@@ -63,6 +69,8 @@ export interface IdentityContainer {
     readonly revokePasskey: RevokePasskey;
     readonly listUserPasskeys: ListUserPasskeys;
     readonly revokeDevice: RevokeDevice;
+    readonly startOidcLogin: StartOidcLogin;
+    readonly completeOidcLogin: CompleteOidcLogin;
     readonly unlinkFederatedIdentity: UnlinkFederatedIdentity;
     readonly listFederatedIdentities: ListFederatedIdentities;
   };
@@ -79,11 +87,12 @@ export interface ContainerOptions {
  * each port. Everything above it — aggregates, use cases — sees only interfaces,
  * which is what has kept the domain unchanged from I-1 through I-6.
  *
- * Passkey ceremonies are wired as of I-7c, now that a real `WebAuthnVerifier`
- * exists. The OIDC ceremony use cases remain absent until I-7d supplies real
- * token-exchange and JWT verification: wiring them to a stand-in would be
- * exactly the fake verification Path A forbids, so the container exposes only
- * what can genuinely run today.
+ * As of I-7d every use case is wired against a real adapter — the last two
+ * verifier ports deferred by Path A (WebAuthn in I-7c, OIDC here) now have
+ * genuine implementations, so nothing in this graph is a stand-in.
+ *
+ * With no providers configured, federated sign-in refuses cleanly as an unknown
+ * provider rather than half-attempting a ceremony it cannot finish.
  */
 export function createIdentityContainer(
   config: IdentityConfig,
@@ -107,6 +116,7 @@ export function createIdentityContainer(
   const tokens = new PostgresVerificationTokenRepository(pool);
   const passkeys = new PostgresPasskeyCredentialRepository(pool);
   const challenges = new PostgresWebAuthnChallengeRepository(pool);
+  const oauthRequests = new PostgresOAuthAuthorizationRequestRepository(pool);
   const devices = new PostgresDeviceRepository(pool);
   const federatedIdentities = new PostgresFederatedIdentityRepository(pool);
 
@@ -115,6 +125,9 @@ export function createIdentityContainer(
   const verificationPolicy = new DefaultVerificationPolicy();
   const webauthnPolicy = new DefaultWebAuthnPolicy();
   const verifier = new SimpleWebAuthnVerifier({ rpId: config.rpId, origin: config.rpOrigin });
+  const oidcPolicy = new DefaultOidcPolicy();
+  const oidcVerifier = new JoseOidcTokenVerifier(config.oidcProviders);
+  const exchanger = new HttpOidcTokenExchanger(config.oidcProviders);
 
   const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
 
@@ -214,6 +227,27 @@ export function createIdentityContainer(
     revokePasskey: new RevokePasskey({ users, passkeys, federatedIdentities, clock, events }),
     listUserPasskeys: new ListUserPasskeys({ passkeys }),
     revokeDevice: new RevokeDevice({ devices, clock, events }),
+    startOidcLogin: new StartOidcLogin({
+      users,
+      oauthRequests,
+      secrets,
+      tokenHasher,
+      oidcPolicy,
+      ids,
+      clock,
+    }),
+    completeOidcLogin: new CompleteOidcLogin({
+      users,
+      oauthRequests,
+      federatedIdentities,
+      exchanger,
+      verifier: oidcVerifier,
+      tokenHasher,
+      oidcPolicy,
+      ids,
+      clock,
+      events,
+    }),
     unlinkFederatedIdentity: new UnlinkFederatedIdentity({
       users,
       federatedIdentities,

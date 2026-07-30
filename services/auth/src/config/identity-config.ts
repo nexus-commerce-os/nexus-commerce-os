@@ -1,4 +1,8 @@
 import { type Result, ok, err } from '../kernel/result';
+import {
+  DEFAULT_ALLOWED_ALGORITHMS,
+  type OidcProviderRegistry,
+} from '../identity/infrastructure/oidc/oidc-provider-registry';
 
 /**
  * Everything the Identity module needs from its environment. Validated once at
@@ -24,6 +28,15 @@ export interface IdentityConfig {
    */
   readonly rpId: string;
   readonly rpOrigin: string;
+  /**
+   * Identity providers, keyed by slug, from `OIDC_PROVIDERS` (JSON).
+   *
+   * Empty by default: with nothing configured, a federated sign-in is refused
+   * as an unknown provider rather than half-attempted. Endpoints are supplied
+   * explicitly instead of discovered at request time, so an unreachable or
+   * tampered discovery document cannot silently repoint us at another issuer.
+   */
+  readonly oidcProviders: OidcProviderRegistry;
 }
 
 export class ConfigError extends Error {
@@ -87,6 +100,11 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     problems.push('WEBAUTHN_RP_ORIGIN must be https:// (http:// allowed only for localhost)');
   }
 
+  const providersResult = parseOidcProviders(env['OIDC_PROVIDERS']);
+  if (!providersResult.ok) {
+    problems.push(...providersResult.error);
+  }
+
   const rawEnv = env['NODE_ENV'] ?? 'development';
   if (!(ENVIRONMENTS as readonly string[]).includes(rawEnv)) {
     problems.push(`NODE_ENV must be one of ${ENVIRONMENTS.join(', ')}`);
@@ -102,5 +120,63 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     nodeEnv: rawEnv as IdentityConfig['nodeEnv'],
     rpId,
     rpOrigin,
+    oidcProviders: providersResult.ok ? providersResult.value : {},
   });
+}
+
+const REQUIRED_PROVIDER_FIELDS = [
+  'issuer',
+  'jwksUri',
+  'tokenEndpoint',
+  'clientId',
+  'clientSecret',
+] as const;
+
+/** Parses and validates `OIDC_PROVIDERS`; absent means "no providers", not an error. */
+function parseOidcProviders(raw: string | undefined): Result<OidcProviderRegistry, string[]> {
+  if (raw === undefined || raw.trim().length === 0) {
+    return ok({});
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return err(['OIDC_PROVIDERS must be valid JSON']);
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return err(['OIDC_PROVIDERS must be a JSON object keyed by provider slug']);
+  }
+
+  const problems: string[] = [];
+  const registry: Record<string, OidcProviderRegistry[string]> = {};
+
+  for (const [slug, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof value !== 'object' || value === null) {
+      problems.push(`OIDC_PROVIDERS.${slug} must be an object`);
+      continue;
+    }
+    const entry = value as Record<string, unknown>;
+    const missing = REQUIRED_PROVIDER_FIELDS.filter(
+      (field) => typeof entry[field] !== 'string' || (entry[field] as string).length === 0,
+    );
+    if (missing.length > 0) {
+      problems.push(`OIDC_PROVIDERS.${slug} is missing ${missing.join(', ')}`);
+      continue;
+    }
+    const algorithms = entry['allowedAlgorithms'];
+    registry[slug.toLowerCase()] = {
+      issuer: entry['issuer'] as string,
+      jwksUri: entry['jwksUri'] as string,
+      tokenEndpoint: entry['tokenEndpoint'] as string,
+      clientId: entry['clientId'] as string,
+      clientSecret: entry['clientSecret'] as string,
+      allowedAlgorithms:
+        Array.isArray(algorithms) && algorithms.every((a) => typeof a === 'string')
+          ? (algorithms as string[])
+          : DEFAULT_ALLOWED_ALGORITHMS,
+    };
+  }
+
+  return problems.length > 0 ? err(problems) : ok(registry);
 }

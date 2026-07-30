@@ -96,4 +96,48 @@ describe('loadIdentityConfig', () => {
       true,
     );
   });
+  it('defaults to no OIDC providers, so federated sign-in refuses cleanly', () => {
+    const result = loadIdentityConfig(VALID);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.oidcProviders).toEqual({});
+    }
+  });
+
+  it('parses a configured provider and lower-cases its slug', () => {
+    const result = loadIdentityConfig({
+      ...VALID,
+      OIDC_PROVIDERS: JSON.stringify({
+        Google: {
+          issuer: 'https://accounts.google.com',
+          jwksUri: 'https://www.googleapis.com/oauth2/v3/certs',
+          tokenEndpoint: 'https://oauth2.googleapis.com/token',
+          clientId: 'client',
+          clientSecret: 'secret',
+        },
+      }),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(Object.keys(result.value.oidcProviders)).toEqual(['google']);
+      expect(result.value.oidcProviders['google']?.allowedAlgorithms).toEqual(['RS256', 'ES256']);
+    }
+  });
+
+  it('rejects a provider that is missing credentials or endpoints', () => {
+    const result = loadIdentityConfig({
+      ...VALID,
+      OIDC_PROVIDERS: JSON.stringify({ google: { issuer: 'https://x' } }),
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('jwksUri');
+      expect(result.error.message).toContain('clientSecret');
+    }
+  });
+
+  it('rejects malformed OIDC_PROVIDERS json', () => {
+    expect(loadIdentityConfig({ ...VALID, OIDC_PROVIDERS: 'not json' }).ok).toBe(false);
+    expect(loadIdentityConfig({ ...VALID, OIDC_PROVIDERS: '[]' }).ok).toBe(false);
+  });
 });
