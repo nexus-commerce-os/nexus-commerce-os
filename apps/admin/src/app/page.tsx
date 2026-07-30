@@ -63,7 +63,7 @@ const signupColumns: TableColumn<Signup>[] = [
     header: 'Signed up',
     align: 'right',
     render: (s) => (
-      <span className="mono" style={{ color: 'var(--muted)', fontSize: '.8rem' }}>
+      <span className="mono" style={{ color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
         {s.when}
       </span>
     ),
