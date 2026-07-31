@@ -149,7 +149,12 @@ describe('convergence — passkey authentication', () => {
 
   it('binds the session to the device the credential belongs to', async () => {
     const response = await signIn();
-    expect(response.body.session.deviceBinding).not.toBeNull();
+    // Asserted as a uuid rather than merely "not null": a renamed or absent
+    // field would read as `undefined`, and `undefined` is not null, so a
+    // weaker assertion would pass while testing nothing.
+    expect(response.body.session.deviceId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
   });
 
   it('issues an access token that works on an authenticated route', async () => {

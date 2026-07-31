@@ -31,7 +31,7 @@
 | I-7d | Real OIDC verifier + token exchanger | COMPLETE | COMPLETE | COMPLETE | PENDING |
 | I-7e | Outbound email notification adapter | COMPLETE | COMPLETE | COMPLETE | **PENDING — FU-1** |
 | **I-7b** | **Identity HTTP layer (20 operations)** | **COMPLETE** | **COMPLETE** | **COMPLETE** | **PENDING — FU-2** |
-| I-7f | Strong Device/Session binding | — | NOT STARTED | — | — |
+| **I-7f** | **Strong Device/Session binding** | **COMPLETE** | **COMPLETE** | **COMPLETE** | **PENDING** |
 | I-7g | Distributed abuse protection / rate limiting | DESIGN COMPLETE | NOT STARTED | — | — |
 
 "Production verification PENDING" is the honest default for every row: no increment has yet run
@@ -72,6 +72,41 @@ Audit/Admin boundary.
 
 **Device revocation is excluded from I-7b** and moved to I-7f.
 
+## 2b. I-7f — COMPLETE AND ACCEPTED (CTO, 2026-07-31)
+
+Architecture COMPLETE · Implementation COMPLETE · Automated Verification COMPLETE ·
+Production Verification PENDING.
+
+**Evidence** — commit `9b74bae`, CI run `30605899321`, `ci-gate` SUCCESS:
+
+| Item | Result |
+|------|--------|
+| Tests (CI, `NEXUS_PG_TESTS=1`) | **484 passed · 0 failed · 0 skipped** |
+| Migration `0002_device_session_binding` | applied successfully against a real Postgres in CI |
+| Migration boundary lint | OK (2 files) |
+| OpenAPI validation | **PASS** (3.1.0, 20 operations, 28 schemas) |
+| Typecheck · Lint · Build · Prettier | 9/9 · 0 errors · 5/5 · clean |
+
+**All invariants verified.** A session references at most one device; a device owns many; only the
+owner may bind; rotation inherits the binding and cannot replace it — enforced twice, structurally
+(no command field) and persistently (the upsert omits `device_id` from `ON CONFLICT`); all three
+login paths use one binding policy; `DeviceRevoked` revokes only explicitly-bound sessions; the
+device aggregate never mutates a session.
+
+**Accepted security corrections.** The client can no longer nominate a `DeviceId` — device identity
+is established exclusively by the server, removing the type-confusion and cross-device binding
+vulnerability. Ownership is validated before binding, and a device that is absent, owned by someone
+else, or revoked all answer identically.
+
+**Accepted behaviour change.** Submitting the removed `deviceBinding` field now returns
+`400 ContractViolation` rather than being ignored. Recorded in the
+[API changelog](services/auth/openapi/CHANGELOG.md).
+
+**Accepted operational risk — `NOT VERIFIED`.** Without an outbox, `DeviceRevoked` may succeed while
+the downstream session revocation fails. This is the correct failure direction: the device aggregate
+stays authoritative and revoked. The failure surfaces through the bus handler-error path and must
+remain visible to operational monitoring. No synchronous rollback is attempted.
+
 ## 3. Tracked work outside the completed increments
 
 ### FU-1 · Real SMTP integration verification — `NOT VERIFIED`
@@ -85,12 +120,6 @@ link rendering, UTF-8 subjects and bodies, and behaviour across Gmail, SES, Mail
 
 Nothing has run against deployed infrastructure. The chain to verify:
 HTTP → use case → notification port → SMTP → user receives the message → link consumed successfully.
-
-### I-7f · Strong Device/Session Binding — `NOT STARTED`
-
-Design required before implementation; see [DESIGN-I-7f-device-session-binding.md](DESIGN-I-7f-device-session-binding.md).
-`Session.deviceBinding` is currently an opaque, nullable, unvalidated string with no referential link
-to the Device aggregate, which is why device revocation was deferred rather than cascaded.
 
 ### I-7g · Distributed Abuse Protection — `DESIGN COMPLETE · IMPLEMENTATION NOT STARTED`
 
@@ -111,7 +140,7 @@ P0.2 comprises six pillars. One is complete:
 
 | Pillar | State |
 |--------|-------|
-| Identity (authentication, passkeys, OIDC, sessions, recovery, HTTP surface) | COMPLETE (automated verification) |
+| Identity (authentication, passkeys, OIDC, sessions, recovery, device binding, HTTP surface) | **FUNCTIONALLY COMPLETE** (automated verification) |
 | RBAC (+ABAC) | NOT STARTED |
 | Organization | NOT STARTED |
 | Settings | NOT STARTED |
@@ -120,8 +149,11 @@ P0.2 comprises six pillars. One is complete:
 
 ## 5. Next priority
 
-**I-7f — Strong Device/Session Binding**, design first. No production code until the design is
-approved.
+**I-7g — Distributed Abuse Protection**, implementing the approved design only: distributed rate
+limiting, abuse detection, trusted-proxy handling, `Retry-After` policy, a Redis-backed limiter, and
+metrics with operational visibility.
 
-**Explicitly not authorized:** I-7g implementation, RBAC, Organization, Audit, Feature Flags,
-Commerce, Merchant connectors, Money Integrity, AI, or unrelated refactoring.
+Identity has **no remaining architectural blockers**. The outstanding work is FU-1, FU-2 and I-7g.
+
+**Explicitly not authorized:** RBAC, Organization, Audit, Feature Flags, Commerce, Merchant
+connectors, Money Integrity, AI, or unrelated refactoring.
