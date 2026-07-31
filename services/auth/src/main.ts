@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { loadIdentityConfig } from './config/identity-config';
-import { IdentityModule } from './nest/identity.module';
+import { IdentityModule, API_PREFIX } from './nest/identity.module';
 
 /**
  * Process entry point. Deliberately thin: everything it does beyond starting a
@@ -21,6 +21,9 @@ async function bootstrap(): Promise<void> {
   }
 
   const app = await NestFactory.create(IdentityModule.forRoot(config.value));
+  // The contract declares `servers: /v1`; the prefix belongs here, not in a
+  // route string, so a version bump is one line rather than every controller.
+  app.setGlobalPrefix(API_PREFIX);
   app.enableShutdownHooks();
   await app.listen(config.value.port);
 }

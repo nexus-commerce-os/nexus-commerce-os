@@ -108,6 +108,11 @@ jobs:
       - name: Typecheck
         # why: tsc/go vet/mypy catch correctness defects before tests run (docs/10 §2 Typecheck gate).
         run: pnpm -s typecheck
+      - name: OpenAPI contract validation
+        # why: ADR-0020 ruling (2026-07-31) — the OpenAPI document is the canonical HTTP
+        # contract, so a malformed or drifting spec must fail the build on its own, not
+        # only when a test happens to touch it.
+        run: pnpm --filter @nexus/auth run openapi:validate
 
   # ---------------------------------------------------------------------------
   # 3. UNIT TESTS — correctness + coverage gate (core ≥80%, ledger/attr ≥90%).

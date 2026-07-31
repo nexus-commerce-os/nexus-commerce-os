@@ -1,0 +1,257 @@
+# Canonical HTTP contract for the Identity service (ADR-0020 ruling, 2026-07-31).
+#
+# This document is the source of truth. NestJS controllers implement it; the
+# runtime request validator reads its schemas directly, and a conformance test
+# asserts every declared operation is routed and every response body validates
+# against the schema declared here. Controller decorators are never authoritative.
+openapi: 3.1.0
+
+info:
+  title: NEXUS Identity API
+  version: 0.1.0
+  description: |
+    Authentication and credential lifecycle for NEXUS Commerce OS.
+
+    Sessions belong to NEXUS. External identity providers authenticate a person;
+    they never own an application session. Every authentication mechanism
+    converges on the same Session aggregate, which owns creation, rotation,
+    refresh-token lifecycle, reuse detection, revocation and device binding.
+
+servers:
+  - url: /v1
+    description: Version prefix
+
+tags:
+  - name: registration
+  - name: session
+  - name: email
+  - name: password
+
+paths:
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [registration]
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: The account was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisteredUser' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [session]
+      summary: Exchange a password for a NEXUS session
+      description: |
+        On success a session is started on the NEXUS Session aggregate. A wrong
+        password and an unknown account are deliberately indistinguishable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: A session was started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionIssued' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /auth/session/refresh:
+    post:
+      operationId: refreshSession
+      tags: [session]
+      summary: Rotate a refresh token
+      description: |
+        The presented token is consumed and a replacement issued. Presenting an
+        already-rotated token is treated as theft: the session is revoked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: The session was refreshed and the token rotated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionIssued' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/email/verify:
+    post:
+      operationId: verifyEmail
+      tags: [email]
+      summary: Consume an email-verification link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '204':
+          description: The address is verified.
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /auth/password/reset-requests:
+    post:
+      operationId: requestPasswordReset
+      tags: [password]
+      summary: Ask for a password-reset link
+      description: |
+        Always answers 202, whether or not the address exists and whether or not
+        the message could be delivered. Any other behaviour would let a caller
+        enumerate accounts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetRequest' }
+      responses:
+        '202':
+          description: If the address matches an account, a link has been sent.
+        '400': { $ref: '#/components/responses/Problem' }
+
+  /auth/password/reset:
+    post:
+      operationId: resetPassword
+      tags: [password]
+      summary: Consume a reset link and set a new password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetConfirm' }
+      responses:
+        '204':
+          description: The password was changed and every session revoked.
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+components:
+  responses:
+    Problem:
+      description: RFC 9457 problem detail.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, displayName]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 1024 }
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        locale:
+          type: string
+          description: BCP-47 tag. Defaults to en-US.
+          pattern: '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+        residencyRegion:
+          type: string
+          description: Data-residency region (ADR-0007). Defaults to us-east-1.
+          pattern: '^[a-z]{2}-[a-z]+-[0-9]$'
+
+    RegisteredUser:
+      type: object
+      additionalProperties: false
+      required: [id, email, emailVerified]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        emailVerified: { type: boolean }
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, maxLength: 254 }
+        password: { type: string, maxLength: 1024 }
+        deviceBinding:
+          type: string
+          description: Opaque device reference to bind the session to.
+          maxLength: 200
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, minLength: 1, maxLength: 512 }
+
+    TokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, minLength: 1, maxLength: 512 }
+
+    PasswordResetRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, maxLength: 254 }
+
+    PasswordResetConfirm:
+      type: object
+      additionalProperties: false
+      required: [token, newPassword]
+      properties:
+        token: { type: string, minLength: 1, maxLength: 512 }
+        newPassword: { type: string, minLength: 12, maxLength: 1024 }
+
+    SessionIssued:
+      type: object
+      additionalProperties: false
+      required: [session, refreshToken]
+      properties:
+        session: { $ref: '#/components/schemas/Session' }
+        refreshToken:
+          type: string
+          description: Returned once. Only its hash is stored.
+
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+        [id, userId, status, deviceBinding, createdAt, lastUsedAt, idleExpiresAt, absoluteExpiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        status: { type: string, enum: [active, revoked] }
+        deviceBinding: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+        idleExpiresAt: { type: string, format: date-time }
+        absoluteExpiresAt: { type: string, format: date-time }
+
+    ProblemDetail:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }

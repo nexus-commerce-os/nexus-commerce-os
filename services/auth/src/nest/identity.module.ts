@@ -1,7 +1,10 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { IdentityConfig } from '../config/identity-config';
 import { createIdentityContainer, type IdentityContainer } from '../composition/identity-container';
+import { APP_FILTER } from '@nestjs/core';
 import { HealthController } from './health.controller';
+import { AuthController } from './auth.controller';
+import { ProblemDetailsFilter } from './problem-details.filter';
 import { IDENTITY_CONFIG, IDENTITY_CONTAINER, IDENTITY_POOL } from './tokens';
 
 /**
@@ -24,8 +27,9 @@ export class IdentityModule {
   static forContainer(container: IdentityContainer, config?: IdentityConfig): DynamicModule {
     return {
       module: IdentityModule,
-      controllers: [HealthController],
+      controllers: [HealthController, AuthController],
       providers: [
+        { provide: APP_FILTER, useClass: ProblemDetailsFilter },
         { provide: IDENTITY_CONTAINER, useValue: container },
         { provide: IDENTITY_POOL, useValue: container.pool },
         ...(config === undefined ? [] : [{ provide: IDENTITY_CONFIG, useValue: config }]),
@@ -34,3 +38,9 @@ export class IdentityModule {
     };
   }
 }
+
+/**
+ * Version prefix. The contract declares `servers: /v1`; a conformance test
+ * asserts this constant and that declaration agree, so they cannot drift.
+ */
+export const API_PREFIX = 'v1';
