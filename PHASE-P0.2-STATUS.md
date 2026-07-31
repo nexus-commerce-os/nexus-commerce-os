@@ -138,6 +138,12 @@ not been exercised.
 
 ### FU-1 · Real SMTP verification — `PARTIALLY VERIFIED`
 
+| Dimension | Status |
+|---|---|
+| Automated verification | **COMPLETE** (CTO-accepted, 2026-07-31) |
+| Production provider verification | `NOT VERIFIED` |
+| **Overall** | **PARTIALLY VERIFIED** |
+
 **Verified automatically in CI** (`NEXUS_SMTP_TESTS=1`): the production SMTP factory, against a real
 SMTP server, **refuses to send when STARTTLS is absent**. No credentials, no envelope and no message
 cross the wire — AUTH, MAIL FROM, RCPT TO and DATA are never reached, and neither the link secret nor
@@ -157,8 +163,13 @@ after one real provider is exercised, the checklist is complete, and the evidenc
 
 ### FU-2 · Live end-to-end deployed verification — `NOT VERIFIED`
 
-Nothing has run against deployed infrastructure. The chain to verify:
-HTTP → use case → notification port → SMTP → user receives the message → link consumed successfully.
+Nothing has run against deployed infrastructure, and **no repository change can satisfy this**: the
+P0.1 exit gate is itself unverified because the AWS account has never been activated. The chain to
+verify: HTTP → use case → notification port → SMTP → user receives the message → link consumed
+successfully.
+
+Procedure, checklist and evidence template are prepared and awaiting infrastructure:
+[FU-2-DEPLOYED-E2E-VERIFICATION.md](FU-2-DEPLOYED-E2E-VERIFICATION.md).
 
 ### I-7g · Distributed Abuse Protection — `COMPLETE` (see §2c)
 
@@ -193,16 +204,25 @@ only two things standing in its way are verification activities, not code:
 
 | Blocker | Status |
 |---|---|
-| FU-1 · Real SMTP verification | `PARTIALLY VERIFIED` — provider interoperability outstanding |
-| FU-2 · Live deployed end-to-end verification | `NOT VERIFIED` |
+| FU-1 · Real SMTP verification | `PARTIALLY VERIFIED` — automated COMPLETE, provider interoperability outstanding |
+| FU-2 · Live deployed end-to-end verification | `NOT VERIFIED` — blocked on AWS activation |
 
 Once both succeed and the **P0.2 Production Verification Report** is produced, P0.2 may be promoted
 to `PRODUCTION VERIFIED`.
 
-## 6. Next priority
+## 6. Next priority — operational, not architectural
 
-**FU-1 and FU-2 only.** No new feature development is authorized until both are complete and the
-Production Verification Report exists.
+No new feature development is authorized. The remaining work is execution against real
+infrastructure:
+
+| # | Activity | Owner | Blocked on |
+|---|----------|-------|-----------|
+| 1 | Real hosted SMTP provider verification | Operator | provider account + credentials |
+| 2 | AWS environment activation | Founder / Operator | account activation |
+| 3 | FU-2 deployed end-to-end verification | Operator | (2) |
+| 4 | [P0.2 Production Verification Report](P0.2-PRODUCTION-VERIFICATION-REPORT.md) | AI-DOS, on evidence | (1) and (3) |
+
+Only once all four complete may P0.2 be promoted to `PRODUCTION VERIFIED`.
 
 Only after those gates are satisfied may work begin on RBAC, Organization, Audit or Feature Flags.
 Commerce, Merchant Connectors, Money Integrity and AI remain outside P0.2 scope entirely.
