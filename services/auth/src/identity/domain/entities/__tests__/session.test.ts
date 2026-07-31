@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { toDeviceId, type DeviceId } from '../../value-objects/device-id';
 import { Session } from '../session';
 import { TokenHash } from '../../value-objects/token-hash';
 import { DefaultSessionPolicy, type SessionPolicy } from '../../value-objects/session-policy';
@@ -12,11 +13,13 @@ const policy: SessionPolicy = new DefaultSessionPolicy();
 
 const hash = (value: string): TokenHash => TokenHash.fromHex(value);
 
-function startSession(deviceBinding: string | null = 'device-1'): Session {
+const DEVICE = toDeviceId('11111111-1111-4111-8111-111111111111');
+
+function startSession(deviceId: DeviceId | null = DEVICE): Session {
   return Session.start({
     id: SESSION_ID,
     userId: USER_ID,
-    deviceBinding,
+    deviceId,
     initialTokenHash: hash('gen1'),
     policy,
     now: START,
@@ -42,7 +45,7 @@ describe('Session aggregate', () => {
     const session = Session.start({
       id: SESSION_ID,
       userId: USER_ID,
-      deviceBinding: null,
+      deviceId: null,
       initialTokenHash: hash('gen1'),
       policy: shortAbsolute,
       now: START,
@@ -115,7 +118,7 @@ describe('Session aggregate', () => {
     const session = Session.start({
       id: SESSION_ID,
       userId: USER_ID,
-      deviceBinding: null,
+      deviceId: null,
       initialTokenHash: hash('gen1'),
       policy: shortAbsolute,
       now: START,
@@ -167,11 +170,11 @@ describe('Session aggregate', () => {
   });
 
   it('snapshot reflects current state', () => {
-    const session = startSession('device-9');
+    const session = startSession(DEVICE);
     expect(session.snapshot()).toMatchObject({
       id: SESSION_ID,
       userId: USER_ID,
-      deviceBinding: 'device-9',
+      deviceId: DEVICE,
       status: 'active',
       revocationReason: null,
       createdAt: START,
@@ -182,7 +185,7 @@ describe('Session aggregate', () => {
     const session = Session.reconstitute({
       id: SESSION_ID,
       userId: USER_ID,
-      deviceBinding: null,
+      deviceId: null,
       status: 'active',
       revocationReason: null,
       tokens: [{ hash: hash('gen1'), status: 'active', issuedAt: START }],

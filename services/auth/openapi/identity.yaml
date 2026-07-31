@@ -479,10 +479,6 @@ components:
       properties:
         email: { type: string, maxLength: 254 }
         password: { type: string, maxLength: 1024 }
-        deviceBinding:
-          type: string
-          description: Opaque device reference to bind the session to.
-          maxLength: 200
 
     RefreshRequest:
       type: object
@@ -538,12 +534,16 @@ components:
       type: object
       additionalProperties: false
       required:
-        [id, userId, status, deviceBinding, createdAt, lastUsedAt, idleExpiresAt, absoluteExpiresAt]
+        [id, userId, status, deviceId, createdAt, lastUsedAt, idleExpiresAt, absoluteExpiresAt]
       properties:
         id: { type: string, format: uuid }
         userId: { type: string, format: uuid }
         status: { type: string, enum: [active, revoked] }
-        deviceBinding: { type: [string, 'null'] }
+        deviceId:
+          type: [string, 'null']
+          description: |
+            The verified device this session is bound to, or null when unbound.
+            Established by the server; a client can never nominate it.
         createdAt: { type: string, format: date-time }
         lastUsedAt: { type: string, format: date-time }
         idleExpiresAt: { type: string, format: date-time }

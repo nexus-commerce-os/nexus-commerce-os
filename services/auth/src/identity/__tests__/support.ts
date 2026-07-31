@@ -42,6 +42,7 @@ export const OTHER_STRONG_PASSWORD = 'An0ther-Str0ng-Pw!';
 export interface SessionFixture {
   users: InMemoryUserRepository;
   sessions: InMemorySessionRepository;
+  devices: InMemoryDeviceRepository;
   events: InMemoryEventPublisher;
   tokens: RandomTokenGenerator;
   tokenHasher: Sha256TokenHasher;
@@ -82,6 +83,7 @@ export async function buildSessionFixture(
   return {
     users,
     sessions,
+    devices: new InMemoryDeviceRepository(),
     events,
     tokens: new RandomTokenGenerator(),
     tokenHasher: new Sha256TokenHasher(),
@@ -220,6 +222,7 @@ export async function buildVerificationFixture(
 
 export interface OidcFixture {
   users: InMemoryUserRepository;
+  devices: InMemoryDeviceRepository;
   oauthRequests: InMemoryOAuthAuthorizationRequestRepository;
   federatedIdentities: InMemoryFederatedIdentityRepository;
   passkeys: InMemoryPasskeyCredentialRepository;
@@ -284,6 +287,7 @@ export async function buildOidcFixture(
 
   return {
     users,
+    devices: new InMemoryDeviceRepository(),
     oauthRequests: new InMemoryOAuthAuthorizationRequestRepository(),
     federatedIdentities: new InMemoryFederatedIdentityRepository(),
     passkeys: new InMemoryPasskeyCredentialRepository(),

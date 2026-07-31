@@ -14,16 +14,12 @@ describe('StartSession', () => {
   });
 
   it('opens a session, returns the raw refresh token once, and publishes SessionStarted', async () => {
-    const result = await startSession.execute({
-      userId: fixture.userId,
-      deviceBinding: 'device-1',
-    });
+    const result = await startSession.execute({ userId: fixture.userId });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(isSessionId(result.value.session.id)).toBe(true);
       expect(result.value.session.status).toBe('active');
-      expect(result.value.session.deviceBinding).toBe('device-1');
       expect(result.value.refreshToken.length).toBeGreaterThan(20);
     }
     expect(fixture.sessions.size).toBe(1);
@@ -43,17 +39,17 @@ describe('StartSession', () => {
     expect(stored?.tokens[0].hash.value).not.toBe(result.value.refreshToken);
   });
 
-  it('defaults deviceBinding to null when not supplied', async () => {
+  it('leaves the session unbound when no device is supplied', async () => {
     const result = await startSession.execute({ userId: fixture.userId });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.session.deviceBinding).toBeNull();
+      expect(result.value.session.deviceId).toBeNull();
     }
   });
 
   it('issues independent sessions per device', async () => {
-    const first = await startSession.execute({ userId: fixture.userId, deviceBinding: 'a' });
-    const second = await startSession.execute({ userId: fixture.userId, deviceBinding: 'b' });
+    const first = await startSession.execute({ userId: fixture.userId });
+    const second = await startSession.execute({ userId: fixture.userId });
     expect(first.ok && second.ok).toBe(true);
     if (first.ok && second.ok) {
       expect(first.value.session.id).not.toBe(second.value.session.id);

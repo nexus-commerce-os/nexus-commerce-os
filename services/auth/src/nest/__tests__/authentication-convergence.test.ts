@@ -101,6 +101,7 @@ describe('convergence — passkey authentication', () => {
     const startSession = new StartSession({
       sessions,
       users: fx.users,
+      devices: fx.devices,
       tokens: fx.secrets,
       tokenHasher: fx.tokenHasher,
       policy: new DefaultSessionPolicy(),
@@ -216,6 +217,7 @@ describe('convergence — federated (OIDC) authentication', () => {
     const startSession = new StartSession({
       sessions,
       users: fx.users,
+      devices: fx.devices,
       tokens: fx.secrets,
       tokenHasher: fx.tokenHasher,
       policy: new DefaultSessionPolicy(),

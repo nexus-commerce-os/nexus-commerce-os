@@ -207,7 +207,7 @@ describe.skipIf(!PG_TESTS_ENABLED)('Postgres identity adapters', () => {
       return Session.start({
         id: toSessionId(SESSION),
         userId: toUserId(USER),
-        deviceBinding: 'device-1',
+        deviceId: null,
         initialTokenHash: TokenHash.fromHex(hash),
         policy,
         now: START,
@@ -219,7 +219,7 @@ describe.skipIf(!PG_TESTS_ENABLED)('Postgres identity adapters', () => {
 
       const found = await sessions.findById(toSessionId(SESSION));
       expect(found?.status).toBe('active');
-      expect(found?.deviceBinding).toBe('device-1');
+      expect(found?.deviceId).toBeNull();
       expect(found?.tokens.map((t) => t.hash.value)).toEqual(['gen1']);
     });
 
@@ -254,7 +254,7 @@ describe.skipIf(!PG_TESTS_ENABLED)('Postgres identity adapters', () => {
       const other = Session.start({
         id: toSessionId('55555555-5555-4555-8555-555555555555'),
         userId: toUserId(USER),
-        deviceBinding: null,
+        deviceId: null,
         initialTokenHash: TokenHash.fromHex('shared-hash'),
         policy,
         now: START,

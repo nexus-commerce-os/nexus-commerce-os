@@ -9,6 +9,8 @@ export type SessionRevocationReason =
   | 'user_revoked'
   | 'admin_revoked'
   | 'password_changed'
+  /** Set only by the DeviceRevoked subscriber, never requested directly. */
+  | 'device_revoked'
   | 'reuse_detected'
   | 'idle_expired'
   | 'absolute_expired';

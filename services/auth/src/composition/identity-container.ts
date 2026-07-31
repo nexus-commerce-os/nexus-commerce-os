@@ -56,6 +56,7 @@ import type { NotificationDeliveryError } from '../identity/domain/ports/notific
 import type { AccessTokenService } from '../identity/domain/ports/access-token-service';
 import { JoseAccessTokenService } from '../identity/infrastructure/tokens/jose-access-token-service';
 import { AuthorizeRequest } from '../identity/application/authorize-request';
+import { RevokeSessionsForDevice } from '../identity/application/revoke-sessions-for-device';
 
 /** Everything the HTTP layer is allowed to reach for. */
 export interface IdentityContainer {
@@ -89,6 +90,7 @@ export interface IdentityContainer {
     readonly sendEmailVerification: SendEmailVerification;
     readonly sendPasswordReset: SendPasswordReset;
     readonly authorizeRequest: AuthorizeRequest;
+    readonly revokeSessionsForDevice: RevokeSessionsForDevice;
   };
   close(): Promise<void>;
 }
@@ -157,6 +159,7 @@ export function createIdentityContainer(
   const exchanger = new HttpOidcTokenExchanger(config.oidcProviders);
 
   const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
+  const revokeSessionsForDevice = new RevokeSessionsForDevice({ sessions, clock, events });
   const accessTokens = new JoseAccessTokenService(config.accessToken, clock);
 
   const mailTransport =
@@ -210,6 +213,7 @@ export function createIdentityContainer(
     startSession: new StartSession({
       sessions,
       users,
+      devices,
       tokens: secrets,
       tokenHasher,
       policy: sessionPolicy,
@@ -317,9 +321,10 @@ export function createIdentityContainer(
       onDeliveryFailure: onNotificationFailure,
     }),
     authorizeRequest: new AuthorizeRequest({ accessTokens, sessions, clock }),
+    revokeSessionsForDevice,
   } as const;
 
-  registerIdentitySubscribers(events, revokeAllUserSessions);
+  registerIdentitySubscribers(events, revokeAllUserSessions, revokeSessionsForDevice);
 
   return {
     pool,
@@ -345,11 +350,22 @@ export function createIdentityContainer(
 export function registerIdentitySubscribers(
   events: InProcessEventBus,
   revokeAllUserSessions: RevokeAllUserSessions,
+  revokeSessionsForDevice: RevokeSessionsForDevice,
 ): void {
   events.subscribe('identity.user.password_changed', async (event) => {
     await revokeAllUserSessions.execute({
       userId: event.aggregateId,
       reason: 'password_changed',
     });
+  });
+
+  // `DeviceRevoked` -> revoke the sessions bound to it (I-7f). The reaction
+  // lives here rather than inside `RevokeDevice` so the device aggregate never
+  // mutates a session. Revoking the device is the business action and has
+  // already committed; if this cascade fails the bus reports it and the device
+  // stays revoked, because a device that cannot be un-revoked is safe while a
+  // rolled-back revocation is not.
+  events.subscribe('identity.device.revoked', async (event) => {
+    await revokeSessionsForDevice.execute({ deviceId: event.aggregateId });
   });
 }

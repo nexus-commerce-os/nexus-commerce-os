@@ -16,8 +16,8 @@ describe('RevokeAllUserSessions', () => {
     const startSession = new StartSession(fixture);
     tokens = [];
     sessionIds = [];
-    for (const device of ['laptop', 'phone', 'tablet']) {
-      const started = await startSession.execute({ userId: fixture.userId, deviceBinding: device });
+    for (let i = 0; i < 3; i += 1) {
+      const started = await startSession.execute({ userId: fixture.userId });
       if (!started.ok) {
         throw new Error('fixture invariant broken');
       }

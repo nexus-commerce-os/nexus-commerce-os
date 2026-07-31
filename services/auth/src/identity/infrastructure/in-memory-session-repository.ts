@@ -2,6 +2,7 @@ import type { Session } from '../domain/entities/session';
 import type { SessionId } from '../domain/value-objects/session-id';
 import type { TokenHash } from '../domain/value-objects/token-hash';
 import type { UserId } from '../domain/value-objects/user-id';
+import type { DeviceId } from '../domain/value-objects/device-id';
 import type { SessionRepository } from '../domain/ports/session-repository';
 
 /**
@@ -32,6 +33,16 @@ export class InMemorySessionRepository implements SessionRepository {
     const matches: Session[] = [];
     for (const session of this.byId.values()) {
       if (session.userId === userId) {
+        matches.push(session);
+      }
+    }
+    return Promise.resolve(matches);
+  }
+
+  listActiveByDevice(deviceId: DeviceId): Promise<Session[]> {
+    const matches: Session[] = [];
+    for (const session of this.byId.values()) {
+      if (session.deviceId === deviceId && session.status === 'active') {
         matches.push(session);
       }
     }

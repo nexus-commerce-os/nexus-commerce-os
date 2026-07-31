@@ -3,6 +3,7 @@ import { type Result, ok, err } from '../../../kernel/result';
 import type { SessionId } from '../value-objects/session-id';
 import type { UserId } from '../value-objects/user-id';
 import type { TokenHash } from '../value-objects/token-hash';
+import type { DeviceId } from '../value-objects/device-id';
 import type { SessionPolicy } from '../value-objects/session-policy';
 import type { SessionRevocationReason } from '../value-objects/session-revocation-reason';
 import { RefreshToken, type RefreshTokenStatus } from './refresh-token';
@@ -31,7 +32,7 @@ export type RotateSessionError =
 export interface SessionSnapshot {
   readonly id: SessionId;
   readonly userId: UserId;
-  readonly deviceBinding: string | null;
+  readonly deviceId: DeviceId | null;
   readonly status: SessionStatus;
   readonly revocationReason: SessionRevocationReason | null;
   readonly createdAt: Date;
@@ -43,8 +44,14 @@ export interface SessionSnapshot {
 export interface StartSessionParams {
   id: SessionId;
   userId: UserId;
-  /** Opaque reference to the device/passkey this session is bound to (I-4 owns the device record). */
-  deviceBinding: string | null;
+  /**
+   * The device this session is bound to, or null when it is unbound.
+   *
+   * A real {@link DeviceId} (I-7f), never a client-supplied string: ownership is
+   * verified before binding, which is what lets device revocation revoke exactly
+   * the sessions belonging to it and nothing else.
+   */
+  deviceId: DeviceId | null;
   initialTokenHash: TokenHash;
   policy: SessionPolicy;
   now: Date;
@@ -53,7 +60,7 @@ export interface StartSessionParams {
 export interface ReconstituteSessionParams {
   id: SessionId;
   userId: UserId;
-  deviceBinding: string | null;
+  deviceId: DeviceId | null;
   status: SessionStatus;
   revocationReason: SessionRevocationReason | null;
   tokens: readonly { hash: TokenHash; status: RefreshTokenStatus; issuedAt: Date }[];
@@ -82,7 +89,7 @@ export class Session {
   private constructor(
     public readonly id: SessionId,
     public readonly userId: UserId,
-    public readonly deviceBinding: string | null,
+    public readonly deviceId: DeviceId | null,
     private _status: SessionStatus,
     private _revocationReason: SessionRevocationReason | null,
     private readonly _tokens: RefreshToken[],
@@ -102,7 +109,7 @@ export class Session {
     const session = new Session(
       params.id,
       params.userId,
-      params.deviceBinding,
+      params.deviceId,
       'active',
       null,
       [RefreshToken.issue(params.initialTokenHash, params.now)],
@@ -120,7 +127,7 @@ export class Session {
     return new Session(
       params.id,
       params.userId,
-      params.deviceBinding,
+      params.deviceId,
       params.status,
       params.revocationReason,
       params.tokens.map((t) => RefreshToken.reconstitute(t.hash, t.status, t.issuedAt)),
@@ -232,7 +239,7 @@ export class Session {
     return {
       id: this.id,
       userId: this.userId,
-      deviceBinding: this.deviceBinding,
+      deviceId: this.deviceId,
       status: this._status,
       revocationReason: this._revocationReason,
       createdAt: this.createdAt,

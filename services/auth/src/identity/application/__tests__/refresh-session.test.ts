@@ -13,7 +13,6 @@ describe('RefreshSession', () => {
     fixture = await buildSessionFixture();
     const started = await new StartSession(fixture).execute({
       userId: fixture.userId,
-      deviceBinding: 'device-1',
     });
     if (!started.ok) {
       throw new Error('fixture invariant broken');

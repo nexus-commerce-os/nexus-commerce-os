@@ -4,6 +4,7 @@ import type { RefreshTokenStatus } from '../../domain/entities/refresh-token';
 import { TokenHash } from '../../domain/value-objects/token-hash';
 import { toSessionId, type SessionId } from '../../domain/value-objects/session-id';
 import { toUserId, type UserId } from '../../domain/value-objects/user-id';
+import { toDeviceId, type DeviceId } from '../../domain/value-objects/device-id';
 import type { SessionRevocationReason } from '../../domain/value-objects/session-revocation-reason';
 import type { SessionRepository } from '../../domain/ports/session-repository';
 import { withTransaction, type SqlExecutor } from './connection';
@@ -11,7 +12,9 @@ import { withTransaction, type SqlExecutor } from './connection';
 interface SessionRow extends QueryResultRow {
   id: string;
   user_id: string;
+  /** Deprecated (I-7f): opaque and unvalidated. Never read for authorization. */
   device_binding: string | null;
+  device_id: string | null;
   status: string;
   revocation_reason: string | null;
   created_at: Date;
@@ -56,6 +59,28 @@ export class PostgresSessionRepository implements SessionRepository {
     return this.hydrate(result.rows[0]);
   }
 
+  /**
+   * Active sessions bound to one device. `device_id IS NOT NULL` is implicit in
+   * the equality, so legacy rows — which carry no device reference — are never
+   * returned and cannot be swept by a device revocation.
+   */
+  async listActiveByDevice(deviceId: DeviceId): Promise<Session[]> {
+    const result = await this.pool.query<SessionRow>(
+      `SELECT * FROM identity.session
+        WHERE device_id = $1 AND status = 'active'
+        ORDER BY created_at`,
+      [deviceId],
+    );
+    const sessions: Session[] = [];
+    for (const row of result.rows) {
+      const session = await this.hydrate(row);
+      if (session !== null) {
+        sessions.push(session);
+      }
+    }
+    return sessions;
+  }
+
   async listByUser(userId: UserId): Promise<Session[]> {
     const result = await this.pool.query<SessionRow>(
       'SELECT * FROM identity.session WHERE user_id = $1 ORDER BY created_at',
@@ -77,8 +102,11 @@ export class PostgresSessionRepository implements SessionRepository {
       await tx.query(
         `INSERT INTO identity.session
            (id, user_id, device_binding, status, revocation_reason,
-            created_at, last_used_at, idle_expires_at, absolute_expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            created_at, last_used_at, idle_expires_at, absolute_expires_at, device_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         -- device_id is deliberately absent from the update: the binding is
+         -- fixed when the session is created, so a later write (a rotation or a
+         -- revocation) can never move a session onto another device.
          ON CONFLICT (id) DO UPDATE SET
            status            = EXCLUDED.status,
            revocation_reason = EXCLUDED.revocation_reason,
@@ -87,13 +115,16 @@ export class PostgresSessionRepository implements SessionRepository {
         [
           snapshot.id,
           snapshot.userId,
-          snapshot.deviceBinding,
+          // Legacy column: written null from I-7f onward and never read for
+          // authorization. Retained so a rollback loses nothing.
+          null,
           snapshot.status,
           snapshot.revocationReason,
           snapshot.createdAt,
           snapshot.lastUsedAt,
           snapshot.idleExpiresAt,
           snapshot.absoluteExpiresAt,
+          snapshot.deviceId,
         ],
       );
       for (const token of session.tokens) {
@@ -129,7 +160,7 @@ export class PostgresSessionRepository implements SessionRepository {
     return Session.reconstitute({
       id: toSessionId(row.id),
       userId: toUserId(row.user_id),
-      deviceBinding: row.device_binding,
+      deviceId: row.device_id === null ? null : toDeviceId(row.device_id),
       status: row.status as SessionStatus,
       revocationReason: row.revocation_reason as SessionRevocationReason | null,
       tokens: tokens.map((token) => ({

@@ -18,7 +18,6 @@ interface RegisterBody {
 interface LoginBody {
   email: string;
   password: string;
-  deviceBinding?: string;
 }
 interface RefreshBody {
   refreshToken: string;
@@ -104,10 +103,10 @@ export class AuthController {
     const command = this.contract.validateRequest<LoginBody>('login', body);
     const user = unwrap(await this.container.useCases.authenticateUser.execute(command));
     const started = unwrap(
-      await this.container.useCases.startSession.execute({
-        userId: user.id,
-        ...(command.deviceBinding === undefined ? {} : { deviceBinding: command.deviceBinding }),
-      }),
+      // No device binding from a password login: the client cannot be trusted to
+      // nominate one, and there is nothing else here that establishes device
+      // identity (I-7f).
+      await this.container.useCases.startSession.execute({ userId: user.id }),
     );
     return this.issue(started.session, started.refreshToken);
   }
@@ -273,7 +272,7 @@ export class AuthController {
     const started = unwrap(
       await this.container.useCases.startSession.execute({
         userId: authenticated.userId,
-        ...(authenticated.deviceId === null ? {} : { deviceBinding: authenticated.deviceId }),
+        ...(authenticated.deviceId === null ? {} : { deviceId: authenticated.deviceId }),
       }),
     );
     return this.issue(started.session, started.refreshToken);
@@ -444,7 +443,7 @@ export interface SessionView {
   id: string;
   userId: string;
   status: string;
-  deviceBinding: string | null;
+  deviceId: string | null;
   createdAt: string;
   lastUsedAt: string;
   idleExpiresAt: string;
@@ -520,7 +519,7 @@ function sessionIssued(
       id: session.id,
       userId: session.userId,
       status: session.status,
-      deviceBinding: session.deviceBinding,
+      deviceId: session.deviceId,
       createdAt: session.createdAt.toISOString(),
       lastUsedAt: session.lastUsedAt.toISOString(),
       idleExpiresAt: session.idleExpiresAt.toISOString(),

@@ -11,6 +11,7 @@ import {
   InMemoryUserRepository,
   InMemorySessionRepository,
   InMemoryVerificationTokenRepository,
+  InMemoryDeviceRepository,
   InMemoryNotificationSender,
   ScryptPasswordHasher,
   Sha256TokenHasher,
@@ -35,6 +36,7 @@ import { RevokeSession } from '../../identity/application/revoke-session';
 import { RevokeAllUserSessions } from '../../identity/application/revoke-all-user-sessions';
 import { ChangePassword } from '../../identity/application/change-password';
 import { AuthorizeRequest } from '../../identity/application/authorize-request';
+import { RevokeSessionsForDevice } from '../../identity/application/revoke-sessions-for-device';
 import { JoseAccessTokenService } from '../../identity/infrastructure/tokens/jose-access-token-service';
 import { SessionAuthGuard } from '../session-auth.guard';
 import { InProcessEventBus } from '../../identity/infrastructure/in-process-event-bus';
@@ -64,6 +66,7 @@ function buildContainer(): IdentityContainer {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
   const tokens = new InMemoryVerificationTokenRepository();
+  const devices = new InMemoryDeviceRepository();
   // The real bus, with the real subscribers: PasswordChanged -> revoke every
   // session is a production behaviour, and a harness that omitted it would
   // quietly assert the wrong thing.
@@ -82,7 +85,8 @@ function buildContainer(): IdentityContainer {
 
   const accessTokens = new JoseAccessTokenService(ACCESS_TOKEN_SETTINGS, clock);
   const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
-  registerIdentitySubscribers(events, revokeAllUserSessions);
+  const revokeSessionsForDevice = new RevokeSessionsForDevice({ sessions, clock, events });
+  registerIdentitySubscribers(events, revokeAllUserSessions, revokeSessionsForDevice);
 
   const requestPasswordReset = new RequestPasswordReset({
     users,
@@ -109,6 +113,7 @@ function buildContainer(): IdentityContainer {
       startSession: new StartSession({
         sessions,
         users,
+        devices,
         tokens: secrets,
         tokenHasher,
         policy: sessionPolicy,
@@ -246,12 +251,24 @@ describe('AuthController — session lifecycle', () => {
     expect(response.body.refreshToken.length).toBeGreaterThan(20);
   });
 
-  it('binds the session to a device when one is supplied', async () => {
+  /**
+   * I-7f security correction. A password login establishes no device identity,
+   * so it may not bind one — and a client naming a device is refused by the
+   * contract rather than quietly ignored, because silently dropping the field
+   * would leave callers believing a binding exists.
+   */
+  it('refuses a client-nominated device and leaves the session unbound', async () => {
     await register();
-    const response = await http()
+
+    const nominated = await http()
       .post('/auth/login')
-      .send({ email: EMAIL, password: PASSWORD, deviceBinding: 'device-1' });
-    expect(response.body.session.deviceBinding).toBe('device-1');
+      .send({ email: EMAIL, password: PASSWORD, deviceId: 'device-1' });
+    expect(nominated.status).toBe(400);
+    expect(nominated.body.code).toBe('ContractViolation');
+
+    const clean = await http().post('/auth/login').send({ email: EMAIL, password: PASSWORD });
+    expect(clean.status).toBe(200);
+    expect(clean.body.session.deviceId).toBeNull();
   });
 
   /** A wrong password and an unknown account must be indistinguishable. */
