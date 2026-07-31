@@ -7,6 +7,11 @@ const VALID = {
   NODE_ENV: 'test',
   WEBAUTHN_RP_ID: 'nexus.example',
   WEBAUTHN_RP_ORIGIN: 'https://nexus.example',
+  MAIL_SMTP_HOST: 'smtp.example.com',
+  MAIL_SMTP_USERNAME: 'mailer',
+  MAIL_SMTP_PASSWORD: 'test-only-smtp-password',
+  MAIL_FROM_ADDRESS: 'no-reply@nexus.example',
+  APP_BASE_URL: 'https://app.nexus.example',
 };
 
 describe('loadIdentityConfig', () => {
@@ -28,8 +33,9 @@ describe('loadIdentityConfig', () => {
     const result = loadIdentityConfig({ DATABASE_URL: '', TOKEN_PEPPER: 'short', PORT: 'abc' });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      // database url, pepper, port, rp id, rp origin
-      expect(result.error.problems).toHaveLength(5);
+      // database url, pepper, port, rp id, rp origin,
+      // + smtp host/username/password, from address, app base url
+      expect(result.error.problems).toHaveLength(10);
       expect(result.error.message).toContain('DATABASE_URL');
       expect(result.error.message).toContain('TOKEN_PEPPER');
       expect(result.error.message).toContain('PORT');
@@ -139,5 +145,86 @@ describe('loadIdentityConfig', () => {
   it('rejects malformed OIDC_PROVIDERS json', () => {
     expect(loadIdentityConfig({ ...VALID, OIDC_PROVIDERS: 'not json' }).ok).toBe(false);
     expect(loadIdentityConfig({ ...VALID, OIDC_PROVIDERS: '[]' }).ok).toBe(false);
+  });
+});
+
+describe('loadIdentityConfig — mail', () => {
+  it('defaults the port to STARTTLS-on-587 and the sender name', () => {
+    const result = loadIdentityConfig(VALID);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.mail.port).toBe(587);
+      expect(result.value.mail.secure).toBe(false);
+      expect(result.value.mail.fromName).toBe('NEXUS');
+      expect(result.value.mail.host).toBe('smtp.example.com');
+    }
+  });
+
+  it('reports every missing mail variable at once, not just the first', () => {
+    const withoutMail = Object.fromEntries(
+      Object.entries(VALID).filter(([key]) => !key.startsWith('MAIL_') && key !== 'APP_BASE_URL'),
+    );
+
+    const result = loadIdentityConfig(withoutMail);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      for (const name of [
+        'MAIL_SMTP_HOST',
+        'MAIL_SMTP_USERNAME',
+        'MAIL_SMTP_PASSWORD',
+        'MAIL_FROM_ADDRESS',
+        'APP_BASE_URL',
+      ]) {
+        expect(result.error.message).toContain(name);
+      }
+    }
+  });
+
+  it('accepts an explicit implicit-TLS configuration', () => {
+    const result = loadIdentityConfig({
+      ...VALID,
+      MAIL_SMTP_PORT: '465',
+      MAIL_SMTP_SECURE: 'TRUE',
+      MAIL_FROM_NAME: 'NEXUS Security',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.mail.port).toBe(465);
+      expect(result.value.mail.secure).toBe(true);
+      expect(result.value.mail.fromName).toBe('NEXUS Security');
+    }
+  });
+
+  it('rejects a non-boolean MAIL_SMTP_SECURE rather than guessing', () => {
+    expect(loadIdentityConfig({ ...VALID, MAIL_SMTP_SECURE: 'yes' }).ok).toBe(false);
+  });
+
+  it('rejects an out-of-range mail port', () => {
+    for (const port of ['0', '70000', 'smtp']) {
+      expect(loadIdentityConfig({ ...VALID, MAIL_SMTP_PORT: port }).ok).toBe(false);
+    }
+  });
+
+  it('rejects a host given as a URL', () => {
+    expect(loadIdentityConfig({ ...VALID, MAIL_SMTP_HOST: 'smtp://smtp.example.com' }).ok).toBe(
+      false,
+    );
+  });
+
+  it('rejects a sender that is not an email address', () => {
+    expect(loadIdentityConfig({ ...VALID, MAIL_FROM_ADDRESS: 'no-reply' }).ok).toBe(false);
+  });
+
+  it('requires APP_BASE_URL to be https outside localhost, and trims trailing slashes', () => {
+    expect(loadIdentityConfig({ ...VALID, APP_BASE_URL: 'http://app.nexus.example' }).ok).toBe(
+      false,
+    );
+    expect(loadIdentityConfig({ ...VALID, APP_BASE_URL: 'http://localhost:3000' }).ok).toBe(true);
+
+    const trailing = loadIdentityConfig({ ...VALID, APP_BASE_URL: 'https://app.nexus.example/' });
+    expect(trailing.ok).toBe(true);
+    if (trailing.ok) {
+      expect(trailing.value.mail.appBaseUrl).toBe('https://app.nexus.example');
+    }
   });
 });

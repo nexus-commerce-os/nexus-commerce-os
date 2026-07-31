@@ -37,6 +37,26 @@ export interface IdentityConfig {
    * tampered discovery document cannot silently repoint us at another issuer.
    */
   readonly oidcProviders: OidcProviderRegistry;
+  /**
+   * Outbound mail. Required, not optional: a deployment that cannot send is one
+   * where nobody can verify an address or recover an account, and that should
+   * fail at boot rather than at the first person who needs a reset link.
+   */
+  readonly mail: MailSettings;
+}
+
+export interface MailSettings {
+  readonly host: string;
+  readonly port: number;
+  /** Implicit TLS (465). When false the connection must upgrade via STARTTLS. */
+  readonly secure: boolean;
+  readonly username: string;
+  readonly password: string;
+  readonly fromAddress: string;
+  /** Also the product name used in the message body. */
+  readonly fromName: string;
+  /** Origin the action links point at. */
+  readonly appBaseUrl: string;
 }
 
 export class ConfigError extends Error {
@@ -105,12 +125,20 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     problems.push(...providersResult.error);
   }
 
+  const mailResult = parseMailSettings(env);
+  if (!mailResult.ok) {
+    problems.push(...mailResult.error);
+  }
+
   const rawEnv = env['NODE_ENV'] ?? 'development';
   if (!(ENVIRONMENTS as readonly string[]).includes(rawEnv)) {
     problems.push(`NODE_ENV must be one of ${ENVIRONMENTS.join(', ')}`);
   }
 
-  if (problems.length > 0) {
+  // `!mailResult.ok` is redundant with `problems` — it only ever fails having
+  // pushed one — but it is what narrows `mailResult` for the return below,
+  // which beats inventing a fallback that could never be used.
+  if (problems.length > 0 || !mailResult.ok) {
     return err(new ConfigError(problems));
   }
   return ok({
@@ -121,7 +149,76 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     rpId,
     rpOrigin,
     oidcProviders: providersResult.ok ? providersResult.value : {},
+    mail: mailResult.value,
   });
+}
+
+const DEFAULT_SMTP_PORT = 587;
+const DEFAULT_FROM_NAME = 'NEXUS';
+
+/** Reads `MAIL_*` and `APP_BASE_URL`, collecting every problem it finds. */
+function parseMailSettings(env: Env): Result<MailSettings, string[]> {
+  const problems: string[] = [];
+
+  const host = (env['MAIL_SMTP_HOST'] ?? '').trim();
+  if (host.length === 0) {
+    problems.push('MAIL_SMTP_HOST is required');
+  } else if (host.includes('/')) {
+    problems.push('MAIL_SMTP_HOST must be a bare hostname, not a URL');
+  }
+
+  let port = DEFAULT_SMTP_PORT;
+  const rawPort = env['MAIL_SMTP_PORT'];
+  if (rawPort !== undefined && rawPort.trim().length > 0) {
+    const parsed = Number(rawPort);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+      problems.push('MAIL_SMTP_PORT must be an integer between 1 and 65535');
+    } else {
+      port = parsed;
+    }
+  }
+
+  let secure = false;
+  const rawSecure = env['MAIL_SMTP_SECURE'];
+  if (rawSecure !== undefined && rawSecure.trim().length > 0) {
+    const normalized = rawSecure.trim().toLowerCase();
+    if (normalized !== 'true' && normalized !== 'false') {
+      problems.push("MAIL_SMTP_SECURE must be 'true' or 'false'");
+    } else {
+      secure = normalized === 'true';
+    }
+  }
+
+  const username = env['MAIL_SMTP_USERNAME'] ?? '';
+  if (username.length === 0) {
+    problems.push('MAIL_SMTP_USERNAME is required');
+  }
+
+  const password = env['MAIL_SMTP_PASSWORD'] ?? '';
+  if (password.length === 0) {
+    problems.push('MAIL_SMTP_PASSWORD is required');
+  }
+
+  const fromAddress = (env['MAIL_FROM_ADDRESS'] ?? '').trim();
+  if (fromAddress.length === 0) {
+    problems.push('MAIL_FROM_ADDRESS is required');
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromAddress)) {
+    problems.push('MAIL_FROM_ADDRESS must be an email address');
+  }
+
+  const fromName = (env['MAIL_FROM_NAME'] ?? '').trim() || DEFAULT_FROM_NAME;
+
+  const appBaseUrl = (env['APP_BASE_URL'] ?? '').trim().replace(/\/+$/, '');
+  if (appBaseUrl.length === 0) {
+    problems.push('APP_BASE_URL is required');
+  } else if (!/^https:\/\//.test(appBaseUrl) && !appBaseUrl.startsWith('http://localhost')) {
+    problems.push('APP_BASE_URL must be https:// (http:// allowed only for localhost)');
+  }
+
+  if (problems.length > 0) {
+    return err(problems);
+  }
+  return ok({ host, port, secure, username, password, fromAddress, fromName, appBaseUrl });
 }
 
 const REQUIRED_PROVIDER_FIELDS = [

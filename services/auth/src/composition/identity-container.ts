@@ -45,6 +45,14 @@ import { StartOidcLogin } from '../identity/application/start-oidc-login';
 import { CompleteOidcLogin } from '../identity/application/complete-oidc-login';
 import { UnlinkFederatedIdentity } from '../identity/application/unlink-federated-identity';
 import { ListFederatedIdentities } from '../identity/application/list-federated-identities';
+import { SendEmailVerification } from '../identity/application/send-email-verification';
+import { SendPasswordReset } from '../identity/application/send-password-reset';
+import { SmtpNotificationSender } from '../identity/infrastructure/notifications/smtp-notification-sender';
+import {
+  createSmtpTransport,
+  type ClosableMailTransport,
+} from '../identity/infrastructure/notifications/nodemailer-transport';
+import type { NotificationDeliveryError } from '../identity/domain/ports/notification-sender';
 
 /** Everything the HTTP layer is allowed to reach for. */
 export interface IdentityContainer {
@@ -73,6 +81,8 @@ export interface IdentityContainer {
     readonly completeOidcLogin: CompleteOidcLogin;
     readonly unlinkFederatedIdentity: UnlinkFederatedIdentity;
     readonly listFederatedIdentities: ListFederatedIdentities;
+    readonly sendEmailVerification: SendEmailVerification;
+    readonly sendPasswordReset: SendPasswordReset;
   };
   close(): Promise<void>;
 }
@@ -80,6 +90,17 @@ export interface IdentityContainer {
 export interface ContainerOptions {
   /** Reported when a subscriber throws; the publishing write is already committed. */
   onHandlerError?: (event: DomainEvent, error: unknown) => void;
+  /**
+   * Reported when a password-reset mail cannot be delivered. It is a callback
+   * rather than a returned error because surfacing it to the requester would
+   * reveal that the address exists — see {@link SendPasswordReset}.
+   */
+  onNotificationFailure?: (error: NotificationDeliveryError) => void;
+  /**
+   * Mail transport override. Tests supply a recording double; production leaves
+   * it unset and gets SMTP.
+   */
+  mailTransport?: ClosableMailTransport;
 }
 
 /**
@@ -131,6 +152,50 @@ export function createIdentityContainer(
 
   const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
 
+  const mailTransport =
+    options.mailTransport ??
+    createSmtpTransport({
+      host: config.mail.host,
+      port: config.mail.port,
+      secure: config.mail.secure,
+      username: config.mail.username,
+      password: config.mail.password,
+    });
+  const notifications = new SmtpNotificationSender(mailTransport, {
+    fromAddress: config.mail.fromAddress,
+    fromName: config.mail.fromName,
+    appBaseUrl: config.mail.appBaseUrl,
+    productName: config.mail.fromName,
+  });
+  const onNotificationFailure =
+    options.onNotificationFailure ??
+    ((error: NotificationDeliveryError): void => {
+      console.error(`[identity] ${error.message}`);
+    });
+
+  // Hoisted: the send-* orchestrators compose these rather than re-deriving
+  // them, so the token rules stay in exactly one place.
+  const requestEmailVerification = new RequestEmailVerification({
+    users,
+    tokens,
+    secrets,
+    tokenHasher,
+    policy: verificationPolicy,
+    ids,
+    clock,
+    events,
+  });
+  const requestPasswordReset = new RequestPasswordReset({
+    users,
+    tokens,
+    secrets,
+    tokenHasher,
+    policy: verificationPolicy,
+    ids,
+    clock,
+    events,
+  });
+
   const useCases = {
     registerUser: new RegisterUser({ users, hasher, policy: passwordPolicy, ids, clock, events }),
     authenticateUser: new AuthenticateUser({ users, hasher }),
@@ -155,27 +220,9 @@ export function createIdentityContainer(
     }),
     revokeSession: new RevokeSession({ sessions, clock, events }),
     revokeAllUserSessions,
-    requestEmailVerification: new RequestEmailVerification({
-      users,
-      tokens,
-      secrets,
-      tokenHasher,
-      policy: verificationPolicy,
-      ids,
-      clock,
-      events,
-    }),
+    requestEmailVerification,
     verifyEmail: new VerifyEmail({ users, tokens, tokenHasher, clock, events }),
-    requestPasswordReset: new RequestPasswordReset({
-      users,
-      tokens,
-      secrets,
-      tokenHasher,
-      policy: verificationPolicy,
-      ids,
-      clock,
-      events,
-    }),
+    requestPasswordReset,
     resetPassword: new ResetPassword({
       users,
       tokens,
@@ -256,6 +303,12 @@ export function createIdentityContainer(
       events,
     }),
     listFederatedIdentities: new ListFederatedIdentities({ federatedIdentities }),
+    sendEmailVerification: new SendEmailVerification({ requestEmailVerification, notifications }),
+    sendPasswordReset: new SendPasswordReset({
+      requestPasswordReset,
+      notifications,
+      onDeliveryFailure: onNotificationFailure,
+    }),
   } as const;
 
   registerIdentitySubscribers(events, revokeAllUserSessions);
@@ -265,6 +318,7 @@ export function createIdentityContainer(
     events,
     useCases,
     close: async (): Promise<void> => {
+      mailTransport.close();
       await pool.end();
     },
   };
