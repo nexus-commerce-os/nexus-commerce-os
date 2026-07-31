@@ -298,7 +298,7 @@ function parseOidcProviders(raw: string | undefined): Result<OidcProviderRegistr
 }
 
 const MIN_ACCESS_SECRET_LENGTH = 32;
-const DEFAULT_ACCESS_TTL_SECONDS = 900;
+const DEFAULT_ACCESS_TTL_SECONDS = 600;
 const MAX_ACCESS_TTL_SECONDS = 3600;
 
 /**
