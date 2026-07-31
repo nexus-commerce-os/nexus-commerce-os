@@ -257,6 +257,14 @@ export class AccountLinkRequiresAuthenticationError {
   }
 }
 
+export class InvalidAccessTokenError {
+  readonly _tag = 'InvalidAccessTokenError';
+  constructor(public readonly reason: string) {}
+  get message(): string {
+    return 'The access token is not valid.';
+  }
+}
+
 export type IdentityError =
   | InvalidEmailError
   | WeakPasswordError
@@ -288,4 +296,5 @@ export type IdentityError =
   | InvalidOidcTokenError
   | FederatedIdentityAlreadyLinkedError
   | FederatedIdentityNotFoundError
-  | AccountLinkRequiresAuthenticationError;
+  | AccountLinkRequiresAuthenticationError
+  | InvalidAccessTokenError;

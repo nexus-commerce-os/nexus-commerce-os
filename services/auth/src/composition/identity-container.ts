@@ -53,11 +53,16 @@ import {
   type ClosableMailTransport,
 } from '../identity/infrastructure/notifications/nodemailer-transport';
 import type { NotificationDeliveryError } from '../identity/domain/ports/notification-sender';
+import type { AccessTokenService } from '../identity/domain/ports/access-token-service';
+import { JoseAccessTokenService } from '../identity/infrastructure/tokens/jose-access-token-service';
+import { AuthorizeRequest } from '../identity/application/authorize-request';
 
 /** Everything the HTTP layer is allowed to reach for. */
 export interface IdentityContainer {
   readonly pool: Pool;
   readonly events: InProcessEventBus;
+  /** Mints the short-lived credential derived from a session. */
+  readonly accessTokens: AccessTokenService;
   readonly useCases: {
     readonly registerUser: RegisterUser;
     readonly authenticateUser: AuthenticateUser;
@@ -83,6 +88,7 @@ export interface IdentityContainer {
     readonly listFederatedIdentities: ListFederatedIdentities;
     readonly sendEmailVerification: SendEmailVerification;
     readonly sendPasswordReset: SendPasswordReset;
+    readonly authorizeRequest: AuthorizeRequest;
   };
   close(): Promise<void>;
 }
@@ -151,6 +157,7 @@ export function createIdentityContainer(
   const exchanger = new HttpOidcTokenExchanger(config.oidcProviders);
 
   const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
+  const accessTokens = new JoseAccessTokenService(config.accessToken, clock);
 
   const mailTransport =
     options.mailTransport ??
@@ -309,6 +316,7 @@ export function createIdentityContainer(
       notifications,
       onDeliveryFailure: onNotificationFailure,
     }),
+    authorizeRequest: new AuthorizeRequest({ accessTokens, sessions, clock }),
   } as const;
 
   registerIdentitySubscribers(events, revokeAllUserSessions);
@@ -316,6 +324,7 @@ export function createIdentityContainer(
   return {
     pool,
     events,
+    accessTokens,
     useCases,
     close: async (): Promise<void> => {
       mailTransport.close();

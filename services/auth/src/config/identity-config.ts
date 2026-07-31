@@ -43,6 +43,19 @@ export interface IdentityConfig {
    * fail at boot rather than at the first person who needs a reset link.
    */
   readonly mail: MailSettings;
+  /**
+   * The short-lived credential presented on every authenticated request
+   * (ruling of 2026-07-31). Derived from the Session aggregate, which stays
+   * authoritative for revocation.
+   */
+  readonly accessToken: AccessTokenSettings;
+}
+
+export interface AccessTokenSettings {
+  readonly secret: string;
+  readonly issuer: string;
+  readonly audience: string;
+  readonly ttlSeconds: number;
 }
 
 export interface MailSettings {
@@ -130,6 +143,11 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     problems.push(...mailResult.error);
   }
 
+  const accessTokenResult = parseAccessTokenSettings(env);
+  if (!accessTokenResult.ok) {
+    problems.push(...accessTokenResult.error);
+  }
+
   const rawEnv = env['NODE_ENV'] ?? 'development';
   if (!(ENVIRONMENTS as readonly string[]).includes(rawEnv)) {
     problems.push(`NODE_ENV must be one of ${ENVIRONMENTS.join(', ')}`);
@@ -138,7 +156,7 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
   // `!mailResult.ok` is redundant with `problems` — it only ever fails having
   // pushed one — but it is what narrows `mailResult` for the return below,
   // which beats inventing a fallback that could never be used.
-  if (problems.length > 0 || !mailResult.ok) {
+  if (problems.length > 0 || !mailResult.ok || !accessTokenResult.ok) {
     return err(new ConfigError(problems));
   }
   return ok({
@@ -150,6 +168,7 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     rpOrigin,
     oidcProviders: providersResult.ok ? providersResult.value : {},
     mail: mailResult.value,
+    accessToken: accessTokenResult.value,
   });
 }
 
@@ -276,4 +295,57 @@ function parseOidcProviders(raw: string | undefined): Result<OidcProviderRegistr
   }
 
   return problems.length > 0 ? err(problems) : ok(registry);
+}
+
+const MIN_ACCESS_SECRET_LENGTH = 32;
+const DEFAULT_ACCESS_TTL_SECONDS = 900;
+const MAX_ACCESS_TTL_SECONDS = 3600;
+
+/**
+ * Reads `ACCESS_TOKEN_*`. The TTL is capped: an access token cannot be
+ * revoked directly, so the window between a session being revoked and every
+ * derived token lapsing is exactly this value. A long-lived one would quietly
+ * undo logout.
+ */
+function parseAccessTokenSettings(env: Env): Result<AccessTokenSettings, string[]> {
+  const problems: string[] = [];
+
+  const secret = env['ACCESS_TOKEN_SECRET'] ?? '';
+  if (secret.length === 0) {
+    problems.push('ACCESS_TOKEN_SECRET is required');
+  } else if (secret.length < MIN_ACCESS_SECRET_LENGTH) {
+    problems.push(`ACCESS_TOKEN_SECRET must be at least ${MIN_ACCESS_SECRET_LENGTH} characters`);
+  } else if (secret === (env['TOKEN_PEPPER'] ?? '')) {
+    // Distinct duties, distinct keys: one signs bearer credentials, the other
+    // protects stored hashes. Sharing them means one leak costs both.
+    problems.push('ACCESS_TOKEN_SECRET must not be the same value as TOKEN_PEPPER');
+  }
+
+  const issuer = (env['ACCESS_TOKEN_ISSUER'] ?? '').trim();
+  if (issuer.length === 0) {
+    problems.push('ACCESS_TOKEN_ISSUER is required');
+  }
+
+  const audience = (env['ACCESS_TOKEN_AUDIENCE'] ?? '').trim();
+  if (audience.length === 0) {
+    problems.push('ACCESS_TOKEN_AUDIENCE is required');
+  }
+
+  let ttlSeconds = DEFAULT_ACCESS_TTL_SECONDS;
+  const rawTtl = env['ACCESS_TOKEN_TTL_SECONDS'];
+  if (rawTtl !== undefined && rawTtl.trim().length > 0) {
+    const parsed = Number(rawTtl);
+    if (!Number.isInteger(parsed) || parsed < 60 || parsed > MAX_ACCESS_TTL_SECONDS) {
+      problems.push(
+        `ACCESS_TOKEN_TTL_SECONDS must be an integer between 60 and ${MAX_ACCESS_TTL_SECONDS}`,
+      );
+    } else {
+      ttlSeconds = parsed;
+    }
+  }
+
+  if (problems.length > 0) {
+    return err(problems);
+  }
+  return ok({ secret, issuer, audience, ttlSeconds });
 }

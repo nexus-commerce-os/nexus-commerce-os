@@ -5,7 +5,7 @@ import request from 'supertest';
 import { AuthController } from '../auth.controller';
 import { ProblemDetailsFilter } from '../problem-details.filter';
 import { HealthController } from '../health.controller';
-import { Contract } from '../openapi/contract';
+import { Contract, ContractViolation } from '../openapi/contract';
 import { API_PREFIX } from '../identity.module';
 import { IDENTITY_CONTAINER, IDENTITY_POOL } from '../tokens';
 import type { IdentityContainer } from '../../composition/identity-container';
@@ -53,10 +53,17 @@ afterAll(async () => {
 
 describe('OpenAPI contract', () => {
   it('is a 3.1 document and every $ref resolves', () => {
-    expect(contract.document.openapi).toMatch(/^3\.1/);
+    expect(contract.document.openapi).toMatch(/^3.1/);
     for (const [operationId] of contract.operations()) {
-      // compiling the request schema forces every $ref on that path to resolve
-      expect(() => contract.validateRequest(operationId, {})).toThrow();
+      // Compiling the request schema forces every $ref on that path to resolve.
+      // A body may legitimately be accepted or rejected here; what must never
+      // happen is a failure to resolve the schema at all.
+      try {
+        contract.validateRequest(operationId, {});
+      } catch (error) {
+        expect(String(error)).not.toMatch(/does not resolve/);
+        expect(error).toBeInstanceOf(ContractViolation);
+      }
     }
   });
 
@@ -72,21 +79,38 @@ describe('OpenAPI contract', () => {
   });
 
   /**
-   * Every published operation must be reachable. An unrouted one answers 404;
-   * a routed one rejects the empty body as a contract violation, because every
-   * operation here requires a body.
+   * Every published operation must be reachable, and its declared security must
+   * actually be enforced. An unrouted operation answers 404. A routed one that
+   * declares `security` answers 401 without a token — proving the guard is
+   * really attached, not merely documented — and one that does not answers 400,
+   * because the empty body fails its schema.
    */
-  it('routes every operation the document declares', async () => {
-    for (const [operationId, { method, path }] of contract.operations()) {
+  it('routes every operation and enforces the security it declares', async () => {
+    for (const [operationId, { method, path, operation }] of contract.operations()) {
       expect(method).toBe('post');
       const response = await request(app.getHttpServer()).post(path).send({});
-      expect(
-        response.status,
-        `${operationId} (${method.toUpperCase()} ${path}) is declared but not routed`,
-      ).not.toBe(404);
-      expect(response.status).toBe(400);
-      expect(response.body.code).toBe('ContractViolation');
+      const where = `${operationId} (${method.toUpperCase()} ${path})`;
+
+      expect(response.status, `${where} is declared but not routed`).not.toBe(404);
+
+      const secured = (operation as { security?: unknown[] }).security !== undefined;
+      if (secured) {
+        expect(response.status, `${where} declares security but did not challenge`).toBe(401);
+        expect(response.body.code).toBe('InvalidAccessTokenError');
+      } else {
+        expect(response.status, `${where} should reject an empty body`).toBe(400);
+        expect(response.body.code).toBe('ContractViolation');
+      }
     }
+  });
+
+  it('declares security on every operation that needs a principal', () => {
+    const secured = [...contract.operations()]
+      .filter(([, o]) => (o.operation as { security?: unknown[] }).security !== undefined)
+      .map(([id]) => id);
+    expect(secured.sort()).toEqual(
+      ['changePassword', 'logout', 'logoutAll', 'requestEmailVerification'].sort(),
+    );
   });
 
   /**

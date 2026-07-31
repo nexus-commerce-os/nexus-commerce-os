@@ -41,6 +41,7 @@ const STATUS_BY_TAG: Readonly<Record<string, number>> = {
 
   // 401 — authentication failed; deliberately indistinguishable
   InvalidCredentialsError: 401,
+  InvalidAccessTokenError: 401,
 
   // 403 — identified, but not permitted in this state
   UserDeactivatedError: 403,

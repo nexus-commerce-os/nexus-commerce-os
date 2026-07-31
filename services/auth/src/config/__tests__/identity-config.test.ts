@@ -12,6 +12,9 @@ const VALID = {
   MAIL_SMTP_PASSWORD: 'test-only-smtp-password',
   MAIL_FROM_ADDRESS: 'no-reply@nexus.example',
   APP_BASE_URL: 'https://app.nexus.example',
+  ACCESS_TOKEN_SECRET: 'test-only-access-secret-not-real-00000000',
+  ACCESS_TOKEN_ISSUER: 'https://identity.nexus.example',
+  ACCESS_TOKEN_AUDIENCE: 'nexus-api',
 };
 
 describe('loadIdentityConfig', () => {
@@ -34,8 +37,9 @@ describe('loadIdentityConfig', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       // database url, pepper, port, rp id, rp origin,
-      // + smtp host/username/password, from address, app base url
-      expect(result.error.problems).toHaveLength(10);
+      // + smtp host/username/password, from address, app base url,
+      // + access-token secret, issuer, audience
+      expect(result.error.problems).toHaveLength(13);
       expect(result.error.message).toContain('DATABASE_URL');
       expect(result.error.message).toContain('TOKEN_PEPPER');
       expect(result.error.message).toContain('PORT');

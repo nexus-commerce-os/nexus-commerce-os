@@ -5,6 +5,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { HealthController } from './health.controller';
 import { AuthController } from './auth.controller';
 import { ProblemDetailsFilter } from './problem-details.filter';
+import { SessionAuthGuard } from './session-auth.guard';
 import { IDENTITY_CONFIG, IDENTITY_CONTAINER, IDENTITY_POOL } from './tokens';
 
 /**
@@ -30,6 +31,7 @@ export class IdentityModule {
       controllers: [HealthController, AuthController],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },
+        SessionAuthGuard,
         { provide: IDENTITY_CONTAINER, useValue: container },
         { provide: IDENTITY_POOL, useValue: container.pool },
         ...(config === undefined ? [] : [{ provide: IDENTITY_CONFIG, useValue: config }]),

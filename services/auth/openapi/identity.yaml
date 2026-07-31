@@ -146,7 +146,90 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
 
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [session]
+      summary: End the current session
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmptyRequest' }
+      responses:
+        '204':
+          description: The session is revoked.
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/logout-all:
+    post:
+      operationId: logoutAll
+      tags: [session]
+      summary: End every session for the user
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogoutAllRequest' }
+      responses:
+        '204':
+          description: Every matching session is revoked.
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /auth/password/change:
+    post:
+      operationId: changePassword
+      tags: [password]
+      summary: Change the password of the signed-in account
+      description: Every session is revoked afterwards, including this one.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '204':
+          description: The password was changed.
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/email/verification-requests:
+    post:
+      operationId: requestEmailVerification
+      tags: [email]
+      summary: Send a fresh verification link to the signed-in account
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmptyRequest' }
+      responses:
+        '202':
+          description: A verification link has been sent.
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '502': { $ref: '#/components/responses/Problem' }
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        The short-lived access token from `login` or `session/refresh`. The
+        refresh token is never accepted here.
+
   responses:
     Problem:
       description: RFC 9457 problem detail.
@@ -225,12 +308,23 @@ components:
     SessionIssued:
       type: object
       additionalProperties: false
-      required: [session, refreshToken]
+      required: [session, accessToken, expiresAt, refreshToken]
       properties:
         session: { $ref: '#/components/schemas/Session' }
+        accessToken:
+          type: string
+          description: |
+            Short-lived JWT presented on every authenticated request. Derived
+            from the session; the session stays authoritative for revocation.
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the access token lapses.
         refreshToken:
           type: string
-          description: Returned once. Only its hash is stored.
+          description: |
+            Rotating secret, returned once, used only to obtain a new access
+            token. Never presented as a request credential.
 
     Session:
       type: object
@@ -246,6 +340,27 @@ components:
         lastUsedAt: { type: string, format: date-time }
         idleExpiresAt: { type: string, format: date-time }
         absoluteExpiresAt: { type: string, format: date-time }
+
+    EmptyRequest:
+      type: object
+      additionalProperties: false
+      description: No fields; the principal comes from the bearer token.
+
+    LogoutAllRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        exceptCurrent:
+          type: boolean
+          description: Keep this session alive — "sign out everywhere else".
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, maxLength: 1024 }
+        newPassword: { type: string, minLength: 12, maxLength: 1024 }
 
     ProblemDetail:
       type: object

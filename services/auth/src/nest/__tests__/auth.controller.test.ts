@@ -11,7 +11,6 @@ import {
   InMemoryUserRepository,
   InMemorySessionRepository,
   InMemoryVerificationTokenRepository,
-  InMemoryEventPublisher,
   InMemoryNotificationSender,
   ScryptPasswordHasher,
   Sha256TokenHasher,
@@ -30,6 +29,23 @@ import { VerifyEmail } from '../../identity/application/verify-email';
 import { ResetPassword } from '../../identity/application/reset-password';
 import { RequestPasswordReset } from '../../identity/application/request-password-reset';
 import { SendPasswordReset } from '../../identity/application/send-password-reset';
+import { RequestEmailVerification } from '../../identity/application/request-email-verification';
+import { SendEmailVerification } from '../../identity/application/send-email-verification';
+import { RevokeSession } from '../../identity/application/revoke-session';
+import { RevokeAllUserSessions } from '../../identity/application/revoke-all-user-sessions';
+import { ChangePassword } from '../../identity/application/change-password';
+import { AuthorizeRequest } from '../../identity/application/authorize-request';
+import { JoseAccessTokenService } from '../../identity/infrastructure/tokens/jose-access-token-service';
+import { SessionAuthGuard } from '../session-auth.guard';
+import { InProcessEventBus } from '../../identity/infrastructure/in-process-event-bus';
+import { registerIdentitySubscribers } from '../../composition/identity-container';
+
+const ACCESS_TOKEN_SETTINGS = {
+  secret: 'test-only-access-secret-not-real-00000000',
+  issuer: 'https://identity.test',
+  audience: 'nexus-api',
+  ttlSeconds: 900,
+};
 
 const PASSWORD = 'Correct-Horse-9!';
 const EMAIL = 'jane@example.com';
@@ -48,7 +64,12 @@ function buildContainer(): IdentityContainer {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
   const tokens = new InMemoryVerificationTokenRepository();
-  const events = new InMemoryEventPublisher();
+  // The real bus, with the real subscribers: PasswordChanged -> revoke every
+  // session is a production behaviour, and a harness that omitted it would
+  // quietly assert the wrong thing.
+  const events = new InProcessEventBus((_event, error) => {
+    throw error;
+  });
   const hasher = new ScryptPasswordHasher();
   const tokenHasher = new Sha256TokenHasher();
   const secrets = new RandomTokenGenerator();
@@ -58,6 +79,10 @@ function buildContainer(): IdentityContainer {
   const sessionPolicy = new DefaultSessionPolicy();
   const verificationPolicy = new DefaultVerificationPolicy();
   notifications = new InMemoryNotificationSender();
+
+  const accessTokens = new JoseAccessTokenService(ACCESS_TOKEN_SETTINGS, clock);
+  const revokeAllUserSessions = new RevokeAllUserSessions({ sessions, clock, events });
+  registerIdentitySubscribers(events, revokeAllUserSessions);
 
   const requestPasswordReset = new RequestPasswordReset({
     users,
@@ -114,7 +139,31 @@ function buildContainer(): IdentityContainer {
         notifications,
         onDeliveryFailure: () => undefined,
       }),
+      sendEmailVerification: new SendEmailVerification({
+        requestEmailVerification: new RequestEmailVerification({
+          users,
+          tokens,
+          secrets,
+          tokenHasher,
+          policy: verificationPolicy,
+          ids,
+          clock,
+          events,
+        }),
+        notifications,
+      }),
+      revokeSession: new RevokeSession({ sessions, clock, events }),
+      revokeAllUserSessions,
+      changePassword: new ChangePassword({
+        users,
+        hasher,
+        policy: passwordPolicy,
+        clock,
+        events,
+      }),
+      authorizeRequest: new AuthorizeRequest({ accessTokens, sessions, clock }),
     },
+    accessTokens,
   } as unknown as IdentityContainer;
 }
 
@@ -123,7 +172,7 @@ let app: INestApplication;
 beforeEach(async () => {
   const moduleRef = await Test.createTestingModule({
     controllers: [AuthController],
-    providers: [{ provide: IDENTITY_CONTAINER, useValue: buildContainer() }],
+    providers: [{ provide: IDENTITY_CONTAINER, useValue: buildContainer() }, SessionAuthGuard],
   }).compile();
   app = moduleRef.createNestApplication();
   app.useGlobalFilters(new ProblemDetailsFilter());
@@ -281,5 +330,121 @@ describe('AuthController — email verification', () => {
     const response = await http().post('/auth/email/verify').send({ token: 'nope' });
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(response.body.code).toBeDefined();
+  });
+});
+
+describe('AuthController — access token and authenticated routes', () => {
+  async function signIn(): Promise<{ accessToken: string; refreshToken: string }> {
+    await register();
+    const login = await http().post('/auth/login').send({ email: EMAIL, password: PASSWORD });
+    expect(login.status).toBe(200);
+    expectConforms('login', 200, login.body);
+    return { accessToken: login.body.accessToken, refreshToken: login.body.refreshToken };
+  }
+
+  it('returns an access token derived from the session', async () => {
+    const { accessToken } = await signIn();
+    expect(accessToken.split('.')).toHaveLength(3);
+  });
+
+  it('accepts the access token on an authenticated route', async () => {
+    const { accessToken } = await signIn();
+    const response = await http()
+      .post('/auth/email/verification-requests')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+
+    expect(response.status).toBe(202);
+    expect(notifications.sent.some((n) => n.kind === 'email_verification')).toBe(true);
+  });
+
+  it.each([
+    ['no header', undefined],
+    ['a malformed header', 'Token abc'],
+    ['a forged token', 'Bearer not.a.jwt'],
+  ])('answers 401 for %s', async (_label, header) => {
+    const call = http().post('/auth/logout');
+    if (header !== undefined) {
+      call.set('Authorization', header);
+    }
+    const response = await call.send({});
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe('InvalidAccessTokenError');
+  });
+
+  /** The refresh token buys access tokens; it is never itself a credential. */
+  it('refuses the refresh token as a bearer credential', async () => {
+    const { refreshToken } = await signIn();
+    const response = await http()
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${refreshToken}`)
+      .send({});
+    expect(response.status).toBe(401);
+  });
+
+  /**
+   * The point of the whole model: the session is authoritative. After logout
+   * the access token is still cryptographically valid and unexpired, and must
+   * stop working anyway.
+   */
+  it('stops honouring a still-valid access token once its session is revoked', async () => {
+    const { accessToken } = await signIn();
+    const bearer = `Bearer ${accessToken}`;
+
+    expect((await http().post('/auth/logout').set('Authorization', bearer).send({})).status).toBe(
+      204,
+    );
+
+    const after = await http().post('/auth/logout').set('Authorization', bearer).send({});
+    expect(after.status).toBe(401);
+    expect(after.body.code).toBe('InvalidAccessTokenError');
+  });
+
+  it('signs out every session with logout-all', async () => {
+    const { accessToken } = await signIn();
+    const second = await http().post('/auth/login').send({ email: EMAIL, password: PASSWORD });
+
+    const response = await http()
+      .post('/auth/logout-all')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({});
+    expect(response.status).toBe(204);
+
+    const stillValid = await http()
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${second.body.accessToken}`)
+      .send({});
+    expect(stillValid.status).toBe(401);
+  });
+
+  it('changes the password and revokes the sessions it was opened with', async () => {
+    const { accessToken } = await signIn();
+    const bearer = `Bearer ${accessToken}`;
+
+    const changed = await http()
+      .post('/auth/password/change')
+      .set('Authorization', bearer)
+      .send({ currentPassword: PASSWORD, newPassword: 'Rotated-Passw0rd!' });
+    expect(changed.status).toBe(204);
+
+    expect((await http().post('/auth/logout').set('Authorization', bearer).send({})).status).toBe(
+      401,
+    );
+    const relogin = await http()
+      .post('/auth/login')
+      .send({ email: EMAIL, password: 'Rotated-Passw0rd!' });
+    expect(relogin.status).toBe(200);
+  });
+
+  it('rejects a wrong current password without changing anything', async () => {
+    const { accessToken } = await signIn();
+    const response = await http()
+      .post('/auth/password/change')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ currentPassword: 'Not-The-Passw0rd!', newPassword: 'Rotated-Passw0rd!' });
+
+    expect(response.status).toBe(401);
+    const login = await http().post('/auth/login').send({ email: EMAIL, password: PASSWORD });
+    expect(login.status).toBe(200);
   });
 });

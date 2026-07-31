@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Inject, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import type { Result } from '../kernel/result';
 import type { IdentityContainer } from '../composition/identity-container';
 import type { SessionSnapshot } from '../identity/domain/entities/session';
@@ -6,6 +6,7 @@ import type { UserSnapshot } from '../identity/domain/entities/user';
 import { IDENTITY_CONTAINER } from './tokens';
 import { Contract } from './openapi/contract';
 import { DomainFailure } from './problem-details.filter';
+import { SessionAuthGuard, principalOf, type AuthenticatedRequest } from './session-auth.guard';
 
 interface RegisterBody {
   email: string;
@@ -30,6 +31,13 @@ interface ResetRequestBody {
 }
 interface ResetConfirmBody {
   token: string;
+  newPassword: string;
+}
+interface LogoutAllBody {
+  exceptCurrent?: boolean;
+}
+interface ChangePasswordBody {
+  currentPassword: string;
   newPassword: string;
 }
 
@@ -71,7 +79,7 @@ export class AuthController {
         ...(command.deviceBinding === undefined ? {} : { deviceBinding: command.deviceBinding }),
       }),
     );
-    return sessionIssued(started.session, started.refreshToken);
+    return this.issue(started.session, started.refreshToken);
   }
 
   @Post('session/refresh')
@@ -79,7 +87,7 @@ export class AuthController {
   async refresh(@Body() body: unknown): Promise<SessionIssuedView> {
     const command = this.contract.validateRequest<RefreshBody>('refreshSession', body);
     const refreshed = unwrap(await this.container.useCases.refreshSession.execute(command));
-    return sessionIssued(refreshed.session, refreshed.refreshToken);
+    return this.issue(refreshed.session, refreshed.refreshToken);
   }
 
   @Post('email/verify')
@@ -107,6 +115,72 @@ export class AuthController {
     const command = this.contract.validateRequest<ResetConfirmBody>('resetPassword', body);
     unwrap(await this.container.useCases.resetPassword.execute(command));
   }
+
+  @Post('logout')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(204)
+  async logout(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<void> {
+    this.contract.validateRequest('logout', body);
+    const principal = principalOf(request);
+    unwrap(
+      await this.container.useCases.revokeSession.execute({
+        sessionId: principal.sessionId,
+        userId: principal.userId,
+      }),
+    );
+  }
+
+  @Post('logout-all')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(204)
+  async logoutAll(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<void> {
+    const command = this.contract.validateRequest<LogoutAllBody>('logoutAll', body);
+    const principal = principalOf(request);
+    unwrap(
+      await this.container.useCases.revokeAllUserSessions.execute({
+        userId: principal.userId,
+        reason: 'user_revoked',
+        ...(command.exceptCurrent === true ? { exceptSessionId: principal.sessionId } : {}),
+      }),
+    );
+  }
+
+  @Post('password/change')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(204)
+  async changePassword(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<void> {
+    const command = this.contract.validateRequest<ChangePasswordBody>('changePassword', body);
+    unwrap(
+      await this.container.useCases.changePassword.execute({
+        userId: principalOf(request).userId,
+        ...command,
+      }),
+    );
+  }
+
+  @Post('email/verification-requests')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(202)
+  async requestEmailVerification(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<void> {
+    this.contract.validateRequest('requestEmailVerification', body);
+    unwrap(
+      await this.container.useCases.sendEmailVerification.execute({
+        userId: principalOf(request).userId,
+      }),
+    );
+  }
+
+  /** Derive the request credential from the session that was just established. */
+  private async issue(session: SessionSnapshot, refreshToken: string): Promise<SessionIssuedView> {
+    const access = await this.container.accessTokens.issue({
+      userId: session.userId,
+      sessionId: session.id,
+    });
+    return sessionIssued(session, refreshToken, access.token, access.expiresAt);
+  }
 }
 
 export interface RegisteredUserView {
@@ -128,11 +202,18 @@ export interface SessionView {
 
 export interface SessionIssuedView {
   session: SessionView;
+  accessToken: string;
+  expiresAt: string;
   refreshToken: string;
 }
 
 /** Dates cross the wire as RFC 3339 strings, as the contract declares. */
-function sessionIssued(session: SessionSnapshot, refreshToken: string): SessionIssuedView {
+function sessionIssued(
+  session: SessionSnapshot,
+  refreshToken: string,
+  accessToken: string,
+  accessTokenExpiresAt: Date,
+): SessionIssuedView {
   return {
     session: {
       id: session.id,
@@ -144,6 +225,8 @@ function sessionIssued(session: SessionSnapshot, refreshToken: string): SessionI
       idleExpiresAt: session.idleExpiresAt.toISOString(),
       absoluteExpiresAt: session.absoluteExpiresAt.toISOString(),
     },
+    accessToken,
+    expiresAt: accessTokenExpiresAt.toISOString(),
     refreshToken,
   };
 }
