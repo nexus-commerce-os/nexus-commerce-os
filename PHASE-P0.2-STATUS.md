@@ -32,7 +32,7 @@
 | I-7e | Outbound email notification adapter | COMPLETE | COMPLETE | COMPLETE | **PENDING — FU-1** |
 | **I-7b** | **Identity HTTP layer (20 operations)** | **COMPLETE** | **COMPLETE** | **COMPLETE** | **PENDING — FU-2** |
 | **I-7f** | **Strong Device/Session binding** | **COMPLETE** | **COMPLETE** | **COMPLETE** | **PENDING** |
-| I-7g | Distributed abuse protection / rate limiting | DESIGN COMPLETE | NOT STARTED | — | — |
+| **I-7g** | **Distributed abuse protection** | **COMPLETE** | **COMPLETE** | **COMPLETE** | **PENDING** |
 
 "Production verification PENDING" is the honest default for every row: no increment has yet run
 against deployed infrastructure, because the P0.1 exit gate (live AWS) is itself unverified.
@@ -107,6 +107,33 @@ the downstream session revocation fails. This is the correct failure direction: 
 stays authoritative and revoked. The failure surfaces through the bus handler-error path and must
 remain visible to operational monitoring. No synchronous rollback is attempted.
 
+## 2c. I-7g — COMPLETE AND ACCEPTED (CTO, 2026-07-31)
+
+Architecture COMPLETE · Implementation COMPLETE · Automated Verification COMPLETE ·
+Production Verification PENDING.
+
+**Evidence** — commit `02b64a1`, CI run `30614564751`, `ci-gate` SUCCESS:
+
+| Item | Result |
+|------|--------|
+| Tests (CI, `NEXUS_PG_TESTS=1`, `NEXUS_REDIS_TESTS=1`) | **521 passed · 0 failed · 0 skipped** |
+| Redis integration | **verified** against a real container, not a double |
+| Lua atomic limiter | **verified** — a bucket can never exist without an expiry |
+| Enumeration resistance | **verified** — byte-identical sequences for known and unknown addresses |
+| Trusted-proxy validation | **verified** — three forged chains mint no fresh bucket |
+| Typecheck · Lint · Build · Prettier · OpenAPI | 9/9 · 0 errors · 5/5 · clean · PASS |
+
+**Accepted security properties.** Password-reset requests stay externally indistinguishable whether
+the account exists, does not exist, or the request is throttled; the 202 contract is intact and no
+`Retry-After` is emitted on that path. `APP_GUARD` is the correct registration model — authentication
+and rate limiting compose rather than overwrite one another, and abuse protection runs before any
+authenticated session lookup. The Lua script eliminates the INCR/EXPIRE race. Configuration is
+fail-closed: rate limiting cannot silently degrade into per-process memory counters.
+
+**No longer NOT VERIFIED.** The Redis container tests are accepted as automated verification of the
+adapter itself. Production verification remains pending only because deployment infrastructure has
+not been exercised.
+
 ## 3. Tracked work outside the completed increments
 
 ### FU-1 · Real SMTP integration verification — `NOT VERIFIED`
@@ -121,7 +148,7 @@ link rendering, UTF-8 subjects and bodies, and behaviour across Gmail, SES, Mail
 Nothing has run against deployed infrastructure. The chain to verify:
 HTTP → use case → notification port → SMTP → user receives the message → link consumed successfully.
 
-### I-7g · Distributed Abuse Protection — `DESIGN COMPLETE · IMPLEMENTATION NOT STARTED`
+### I-7g · Distributed Abuse Protection — `COMPLETE` (see §2c)
 
 See [DESIGN-I-7b-security-rate-limiting.md](DESIGN-I-7b-security-rate-limiting.md). Approved
 defaults: Redis-backed distributed limiter; fail open for ordinary authentication traffic with
@@ -147,13 +174,23 @@ P0.2 comprises six pillars. One is complete:
 | Feature flags | NOT STARTED |
 | Audit logs | NOT STARTED |
 
-## 5. Next priority
+## 5. P0.2 exit gate
 
-**I-7g — Distributed Abuse Protection**, implementing the approved design only: distributed rate
-limiting, abuse detection, trusted-proxy handling, `Retry-After` policy, a Redis-backed limiter, and
-metrics with operational visibility.
+**Implementation is COMPLETE and accepted.** The production exit gate is **NOT YET MET**, and the
+only two things standing in its way are verification activities, not code:
 
-Identity has **no remaining architectural blockers**. The outstanding work is FU-1, FU-2 and I-7g.
+| Blocker | Status |
+|---|---|
+| FU-1 · Real SMTP verification | `NOT VERIFIED` |
+| FU-2 · Live deployed end-to-end verification | `NOT VERIFIED` |
 
-**Explicitly not authorized:** RBAC, Organization, Audit, Feature Flags, Commerce, Merchant
-connectors, Money Integrity, AI, or unrelated refactoring.
+Once both succeed and the **P0.2 Production Verification Report** is produced, P0.2 may be promoted
+to `PRODUCTION VERIFIED`.
+
+## 6. Next priority
+
+**FU-1 and FU-2 only.** No new feature development is authorized until both are complete and the
+Production Verification Report exists.
+
+Only after those gates are satisfied may work begin on RBAC, Organization, Audit or Feature Flags.
+Commerce, Merchant Connectors, Money Integrity and AI remain outside P0.2 scope entirely.
