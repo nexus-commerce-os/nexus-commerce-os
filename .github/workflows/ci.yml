@@ -144,6 +144,9 @@ jobs:
           # Same reasoning for the Redis limiter: the in-memory double cannot prove the
           # Lua script, increment-and-expire atomicity, or that a TTL is ever set.
           NEXUS_REDIS_TESTS: '1'
+          # FU-1: the production SMTP factory against a real SMTP server. Proves it
+          # refuses to send when STARTTLS is absent, rather than falling back to clear text.
+          NEXUS_SMTP_TESTS: '1'
         run: pnpm -s test
 
   # ---------------------------------------------------------------------------

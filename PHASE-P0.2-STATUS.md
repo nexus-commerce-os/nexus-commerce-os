@@ -136,12 +136,24 @@ not been exercised.
 
 ## 3. Tracked work outside the completed increments
 
-### FU-1 · Real SMTP integration verification — `NOT VERIFIED`
+### FU-1 · Real SMTP verification — `PARTIALLY VERIFIED`
 
-No message has ever been sent through a real SMTP server. Every test uses a transport double, so
-`createSmtpTransport` carries no test coverage; its correctness rests on review, not evidence.
-Required: STARTTLS negotiation, `requireTLS` failing closed against a server offering no STARTTLS,
-link rendering, UTF-8 subjects and bodies, and behaviour across Gmail, SES, Mailgun and Postmark.
+**Verified automatically in CI** (`NEXUS_SMTP_TESTS=1`): the production SMTP factory, against a real
+SMTP server, **refuses to send when STARTTLS is absent**. No credentials, no envelope and no message
+cross the wire — AUTH, MAIL FROM, RCPT TO and DATA are never reached, and neither the link secret nor
+the recipient appears. A control send with `requireTLS` disabled succeeds against the same server,
+which is what proves the refusal is caused by the production setting rather than an unrelated
+failure.
+
+**Still `NOT VERIFIED` — provider interoperability.** A *successful* send over TLS cannot be
+exercised in CI: the factory validates certificates and does not set `rejectUnauthorized: false`, so
+any server we can stand up is correctly refused before AUTH. That needs a certificate the runtime
+already trusts, i.e. a real provider. Outstanding: successful delivery, UTF-8 subjects and bodies,
+link rendering and consumption, and behaviour across Gmail, SES, Mailgun and Postmark.
+
+Procedure, checklist and evidence template are prepared and awaiting an operator:
+[FU-1-STAGING-SMTP-VERIFICATION.md](FU-1-STAGING-SMTP-VERIFICATION.md). FU-1 becomes COMPLETE only
+after one real provider is exercised, the checklist is complete, and the evidence is reviewed.
 
 ### FU-2 · Live end-to-end deployed verification — `NOT VERIFIED`
 
@@ -181,7 +193,7 @@ only two things standing in its way are verification activities, not code:
 
 | Blocker | Status |
 |---|---|
-| FU-1 · Real SMTP verification | `NOT VERIFIED` |
+| FU-1 · Real SMTP verification | `PARTIALLY VERIFIED` — provider interoperability outstanding |
 | FU-2 · Live deployed end-to-end verification | `NOT VERIFIED` |
 
 Once both succeed and the **P0.2 Production Verification Report** is produced, P0.2 may be promoted
