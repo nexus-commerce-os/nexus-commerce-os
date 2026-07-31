@@ -49,6 +49,20 @@ export interface IdentityConfig {
    * authoritative for revocation.
    */
   readonly accessToken: AccessTokenSettings;
+  /** Abuse protection (I-7g). */
+  readonly rateLimit: RateLimitSettings;
+}
+
+export interface RateLimitSettings {
+  readonly enabled: boolean;
+  readonly redisUrl: string;
+  /**
+   * How many proxies in front of this service append to `X-Forwarded-For`.
+   * Required when enabled: a wrong or absent value silently disables the
+   * network layer, and a silently-disabled limiter is worse than none.
+   */
+  readonly trustedProxyHops: number;
+  readonly keySecret: string;
 }
 
 export interface AccessTokenSettings {
@@ -148,6 +162,11 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     problems.push(...accessTokenResult.error);
   }
 
+  const rateLimitResult = parseRateLimitSettings(env);
+  if (!rateLimitResult.ok) {
+    problems.push(...rateLimitResult.error);
+  }
+
   const rawEnv = env['NODE_ENV'] ?? 'development';
   if (!(ENVIRONMENTS as readonly string[]).includes(rawEnv)) {
     problems.push(`NODE_ENV must be one of ${ENVIRONMENTS.join(', ')}`);
@@ -156,7 +175,7 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
   // `!mailResult.ok` is redundant with `problems` — it only ever fails having
   // pushed one — but it is what narrows `mailResult` for the return below,
   // which beats inventing a fallback that could never be used.
-  if (problems.length > 0 || !mailResult.ok || !accessTokenResult.ok) {
+  if (problems.length > 0 || !mailResult.ok || !accessTokenResult.ok || !rateLimitResult.ok) {
     return err(new ConfigError(problems));
   }
   return ok({
@@ -169,6 +188,7 @@ export function loadIdentityConfig(env: Env): Result<IdentityConfig, ConfigError
     oidcProviders: providersResult.ok ? providersResult.value : {},
     mail: mailResult.value,
     accessToken: accessTokenResult.value,
+    rateLimit: rateLimitResult.value,
   });
 }
 
@@ -348,4 +368,72 @@ function parseAccessTokenSettings(env: Env): Result<AccessTokenSettings, string[
     return err(problems);
   }
   return ok({ secret, issuer, audience, ttlSeconds });
+}
+
+const MIN_RATE_LIMIT_SECRET_LENGTH = 32;
+
+/**
+ * Reads `RATE_LIMIT_*` and `REDIS_URL`.
+ *
+ * Fails closed on configuration while the limiter itself fails open at runtime.
+ * The distinction matters: an unreachable Redis is transient and observable, a
+ * misconfiguration is silent and permanent.
+ */
+function parseRateLimitSettings(env: Env): Result<RateLimitSettings, string[]> {
+  const problems: string[] = [];
+
+  let enabled = true;
+  const rawEnabled = env['RATE_LIMIT_ENABLED'];
+  if (rawEnabled !== undefined && rawEnabled.trim().length > 0) {
+    const normalized = rawEnabled.trim().toLowerCase();
+    if (normalized !== 'true' && normalized !== 'false') {
+      problems.push("RATE_LIMIT_ENABLED must be 'true' or 'false'");
+    } else {
+      enabled = normalized === 'true';
+    }
+  }
+
+  const redisUrl = (env['REDIS_URL'] ?? '').trim();
+  const keySecret = env['RATE_LIMIT_KEY_SECRET'] ?? '';
+  const rawHops = env['TRUSTED_PROXY_HOPS'];
+  let trustedProxyHops = 0;
+
+  if (enabled) {
+    if (redisUrl.length === 0) {
+      problems.push('REDIS_URL is required when RATE_LIMIT_ENABLED is true');
+    } else if (!/^rediss?:\/\//.test(redisUrl)) {
+      problems.push('REDIS_URL must be a redis:// or rediss:// connection string');
+    }
+
+    if (keySecret.length === 0) {
+      problems.push('RATE_LIMIT_KEY_SECRET is required when RATE_LIMIT_ENABLED is true');
+    } else if (keySecret.length < MIN_RATE_LIMIT_SECRET_LENGTH) {
+      problems.push(
+        `RATE_LIMIT_KEY_SECRET must be at least ${MIN_RATE_LIMIT_SECRET_LENGTH} characters`,
+      );
+    } else if (
+      keySecret === (env['TOKEN_PEPPER'] ?? '') ||
+      keySecret === (env['ACCESS_TOKEN_SECRET'] ?? '')
+    ) {
+      problems.push('RATE_LIMIT_KEY_SECRET must not reuse another secret');
+    }
+
+    if (rawHops === undefined || rawHops.trim().length === 0) {
+      problems.push(
+        'TRUSTED_PROXY_HOPS is required when RATE_LIMIT_ENABLED is true (use 0 for no proxy)',
+      );
+    } else {
+      const parsed = Number(rawHops);
+      if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10) {
+        problems.push('TRUSTED_PROXY_HOPS must be an integer between 0 and 10');
+      } else {
+        trustedProxyHops = parsed;
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    return err(problems);
+  }
+  return ok({ enabled, redisUrl, trustedProxyHops, keySecret });
 }

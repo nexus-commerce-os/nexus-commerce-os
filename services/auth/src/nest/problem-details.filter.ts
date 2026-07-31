@@ -2,6 +2,7 @@ import { Catch, type ArgumentsHost, type ExceptionFilter, HttpException } from '
 import type { Response } from 'express';
 import { toProblemDetail, type ProblemDetail } from './http-error-mapper';
 import { ContractViolation } from './openapi/contract';
+import { RateLimitedError, SilentlyDroppedError } from './rate-limit/rate-limit.guard';
 
 const PROBLEM_BASE = 'https://docs.nexus.example/problems/';
 
@@ -17,6 +18,20 @@ const PROBLEM_BASE = 'https://docs.nexus.example/problems/';
 export class ProblemDetailsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
+
+    // A silent drop must be indistinguishable from success: the declared status,
+    // an empty body, and deliberately no `Retry-After` — the header alone would
+    // reveal that the request was throttled, and on the reset flow that reveals
+    // the address exists.
+    if (exception instanceof SilentlyDroppedError) {
+      response.status(exception.status).send();
+      return;
+    }
+
+    if (exception instanceof RateLimitedError) {
+      response.setHeader('Retry-After', String(Math.max(1, exception.retryAfterSeconds)));
+    }
+
     const problem = describe(exception);
     response.status(problem.status).type('application/problem+json').send(problem);
   }
@@ -33,6 +48,14 @@ export class DomainFailure extends Error {
 function describe(exception: unknown): ProblemDetail {
   if (exception instanceof DomainFailure) {
     return toProblemDetail(exception.failure);
+  }
+  if (exception instanceof RateLimitedError) {
+    return {
+      type: `${PROBLEM_BASE}rate-limited`,
+      title: 'Too many requests. Try again shortly.',
+      status: 429,
+      code: 'RateLimitedError',
+    };
   }
   if (exception instanceof ContractViolation) {
     return {

@@ -7,6 +7,7 @@ import { IDENTITY_CONTAINER } from './tokens';
 import { Contract } from './openapi/contract';
 import { DomainFailure } from './problem-details.filter';
 import { SessionAuthGuard, principalOf, type AuthenticatedRequest } from './session-auth.guard';
+import { RateLimited } from './rate-limit/rate-limited.decorator';
 
 interface RegisterBody {
   email: string;
@@ -98,6 +99,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @RateLimited('login')
   @HttpCode(200)
   async login(@Body() body: unknown): Promise<SessionIssuedView> {
     const command = this.contract.validateRequest<LoginBody>('login', body);
@@ -132,6 +134,7 @@ export class AuthController {
    * enumeration oracle it was built to deny.
    */
   @Post('password/reset-requests')
+  @RateLimited('requestPasswordReset')
   @HttpCode(202)
   async requestPasswordReset(@Body() body: unknown): Promise<void> {
     const command = this.contract.validateRequest<ResetRequestBody>('requestPasswordReset', body);
@@ -188,6 +191,7 @@ export class AuthController {
   }
 
   @Post('email/verification-requests')
+  @RateLimited('requestEmailVerification')
   @UseGuards(SessionAuthGuard)
   @HttpCode(202)
   async requestEmailVerification(
@@ -241,6 +245,7 @@ export class AuthController {
   }
 
   @Post('passkeys/authentication/start')
+  @RateLimited('startPasskeyAuthentication')
   @HttpCode(200)
   async startPasskeyAuthentication(@Body() body: unknown): Promise<ChallengeView> {
     const command = this.contract.validateRequest<StartPasskeyAuthenticationBody>(
@@ -324,6 +329,7 @@ export class AuthController {
    * taken from a verified token.
    */
   @Post('oidc/start')
+  @RateLimited('startOidcLogin')
   @HttpCode(200)
   async startOidcLogin(
     @Req() request: AuthenticatedRequest,

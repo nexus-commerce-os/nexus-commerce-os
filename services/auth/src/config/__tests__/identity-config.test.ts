@@ -15,6 +15,9 @@ const VALID = {
   ACCESS_TOKEN_SECRET: 'test-only-access-secret-not-real-00000000',
   ACCESS_TOKEN_ISSUER: 'https://identity.nexus.example',
   ACCESS_TOKEN_AUDIENCE: 'nexus-api',
+  REDIS_URL: 'redis://localhost:6379',
+  RATE_LIMIT_KEY_SECRET: 'test-only-rate-limit-secret-0000000000',
+  TRUSTED_PROXY_HOPS: '1',
 };
 
 describe('loadIdentityConfig', () => {
@@ -38,8 +41,9 @@ describe('loadIdentityConfig', () => {
     if (!result.ok) {
       // database url, pepper, port, rp id, rp origin,
       // + smtp host/username/password, from address, app base url,
-      // + access-token secret, issuer, audience
-      expect(result.error.problems).toHaveLength(13);
+      // + access-token secret, issuer, audience,
+      // + redis url, rate-limit key secret, trusted proxy hops
+      expect(result.error.problems).toHaveLength(16);
       expect(result.error.message).toContain('DATABASE_URL');
       expect(result.error.message).toContain('TOKEN_PEPPER');
       expect(result.error.message).toContain('PORT');
@@ -229,6 +233,83 @@ describe('loadIdentityConfig — mail', () => {
     expect(trailing.ok).toBe(true);
     if (trailing.ok) {
       expect(trailing.value.mail.appBaseUrl).toBe('https://app.nexus.example');
+    }
+  });
+});
+
+describe('loadIdentityConfig — rate limiting', () => {
+  it('is on by default and reads its settings', () => {
+    const result = loadIdentityConfig(VALID);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.rateLimit.enabled).toBe(true);
+      expect(result.value.rateLimit.trustedProxyHops).toBe(1);
+      expect(result.value.rateLimit.redisUrl).toBe('redis://localhost:6379');
+    }
+  });
+
+  /**
+   * Fails closed on configuration while the limiter fails open at runtime. A
+   * misconfiguration is silent and permanent; an outage is transient and
+   * observable.
+   */
+  it('refuses to start with rate limiting on but unconfigured', () => {
+    const withoutRateLimit = Object.fromEntries(
+      Object.entries(VALID).filter(
+        ([key]) =>
+          !key.startsWith('RATE_LIMIT_') && key !== 'REDIS_URL' && key !== 'TRUSTED_PROXY_HOPS',
+      ),
+    );
+    const result = loadIdentityConfig(withoutRateLimit);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      for (const name of ['REDIS_URL', 'RATE_LIMIT_KEY_SECRET', 'TRUSTED_PROXY_HOPS']) {
+        expect(result.error.message).toContain(name);
+      }
+    }
+  });
+
+  /** Zero proxies is a real answer; omitting the value is not. */
+  it('requires the hop count to be stated explicitly, and accepts zero', () => {
+    const withoutHops = Object.fromEntries(
+      Object.entries(VALID).filter(([key]) => key !== 'TRUSTED_PROXY_HOPS'),
+    );
+    expect(loadIdentityConfig(withoutHops).ok).toBe(false);
+
+    const zero = loadIdentityConfig({ ...VALID, TRUSTED_PROXY_HOPS: '0' });
+    expect(zero.ok).toBe(true);
+    if (zero.ok) {
+      expect(zero.value.rateLimit.trustedProxyHops).toBe(0);
+    }
+  });
+
+  it('allows the limiter to be switched off without the rest of its settings', () => {
+    const off = Object.fromEntries(
+      Object.entries(VALID).filter(
+        ([key]) =>
+          !key.startsWith('RATE_LIMIT_') && key !== 'REDIS_URL' && key !== 'TRUSTED_PROXY_HOPS',
+      ),
+    );
+    const result = loadIdentityConfig({ ...off, RATE_LIMIT_ENABLED: 'false' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.rateLimit.enabled).toBe(false);
+    }
+  });
+
+  it('refuses a key secret that reuses another secret', () => {
+    expect(loadIdentityConfig({ ...VALID, RATE_LIMIT_KEY_SECRET: VALID.TOKEN_PEPPER }).ok).toBe(
+      false,
+    );
+    expect(
+      loadIdentityConfig({ ...VALID, RATE_LIMIT_KEY_SECRET: VALID.ACCESS_TOKEN_SECRET }).ok,
+    ).toBe(false);
+  });
+
+  it('rejects a non-redis url and an out-of-range hop count', () => {
+    expect(loadIdentityConfig({ ...VALID, REDIS_URL: 'http://localhost' }).ok).toBe(false);
+    for (const hops of ['-1', '11', 'two']) {
+      expect(loadIdentityConfig({ ...VALID, TRUSTED_PROXY_HOPS: hops }).ok).toBe(false);
     }
   });
 });

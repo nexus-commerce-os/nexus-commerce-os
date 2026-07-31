@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned. The test task declares NEXUS_PG_TESTS/CI because turbo strips undeclared env vars, which once let the Postgres suites skip inside a green build.",
+  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned. The test task declares NEXUS_PG_TESTS/NEXUS_REDIS_TESTS/CI because turbo strips undeclared env vars, which once let the Postgres suites skip inside a green build.",
   "globalDependencies": [".env.example", "tsconfig.base.json"],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".next/**", "!.next/cache/**"] },
@@ -10,7 +10,7 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
-      "env": ["NEXUS_PG_TESTS", "CI"]
+      "env": ["NEXUS_PG_TESTS", "NEXUS_REDIS_TESTS", "CI"]
     }
   }
 }

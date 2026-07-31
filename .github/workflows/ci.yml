@@ -141,6 +141,9 @@ jobs:
         # skip loudly on a workstation with no Docker rather than passing silently.
         env:
           NEXUS_PG_TESTS: '1'
+          # Same reasoning for the Redis limiter: the in-memory double cannot prove the
+          # Lua script, increment-and-expire atomicity, or that a TTL is ever set.
+          NEXUS_REDIS_TESTS: '1'
         run: pnpm -s test
 
   # ---------------------------------------------------------------------------
