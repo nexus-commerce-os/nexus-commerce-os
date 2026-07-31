@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import type { Result } from '../kernel/result';
 import type { IdentityContainer } from '../composition/identity-container';
 import type { SessionSnapshot } from '../identity/domain/entities/session';
@@ -39,6 +39,36 @@ interface LogoutAllBody {
 interface ChangePasswordBody {
   currentPassword: string;
   newPassword: string;
+}
+interface CompletePasskeyRegistrationBody {
+  challenge: string;
+  response: Readonly<Record<string, unknown>>;
+  label: string;
+  deviceId?: string;
+  deviceLabel?: string;
+  platform?: string;
+}
+interface StartPasskeyAuthenticationBody {
+  email?: string;
+}
+interface CompletePasskeyAuthenticationBody {
+  challenge: string;
+  response: Readonly<Record<string, unknown>>;
+}
+interface RevokePasskeyBody {
+  passkeyId: string;
+}
+interface StartOidcBody {
+  provider: string;
+  redirectUri: string;
+}
+interface CompleteOidcBody {
+  provider: string;
+  state: string;
+  code: string;
+}
+interface UnlinkFederatedIdentityBody {
+  federatedIdentityId: string;
 }
 
 /**
@@ -173,6 +203,227 @@ export class AuthController {
     );
   }
 
+  // --- passkeys -------------------------------------------------------------
+
+  @Post('passkeys/registration/start')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(200)
+  async startPasskeyRegistration(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<ChallengeView> {
+    this.contract.validateRequest('startPasskeyRegistration', body);
+    const started = unwrap(
+      await this.container.useCases.startPasskeyRegistration.execute({
+        userId: principalOf(request).userId,
+      }),
+    );
+    return { challenge: started.challenge, expiresAt: started.expiresAt.toISOString() };
+  }
+
+  @Post('passkeys/registration/complete')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(201)
+  async completePasskeyRegistration(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<RegisteredPasskeyView> {
+    const command = this.contract.validateRequest<CompletePasskeyRegistrationBody>(
+      'completePasskeyRegistration',
+      body,
+    );
+    const registered = unwrap(
+      await this.container.useCases.completePasskeyRegistration.execute({
+        userId: principalOf(request).userId,
+        ...command,
+      }),
+    );
+    return { passkeyId: registered.passkeyId, deviceId: registered.deviceId };
+  }
+
+  @Post('passkeys/authentication/start')
+  @HttpCode(200)
+  async startPasskeyAuthentication(@Body() body: unknown): Promise<ChallengeView> {
+    const command = this.contract.validateRequest<StartPasskeyAuthenticationBody>(
+      'startPasskeyAuthentication',
+      body,
+    );
+    const started = unwrap(
+      await this.container.useCases.startPasskeyAuthentication.execute(command),
+    );
+    return { challenge: started.challenge, expiresAt: started.expiresAt.toISOString() };
+  }
+
+  /**
+   * Convergence point. A passkey proves who someone is; it does not create a
+   * credential of its own. The assertion is exchanged here for exactly the
+   * session model password login produces, and the device the credential is
+   * bound to becomes the session's binding.
+   */
+  @Post('passkeys/authentication/complete')
+  @HttpCode(200)
+  async completePasskeyAuthentication(@Body() body: unknown): Promise<SessionIssuedView> {
+    const command = this.contract.validateRequest<CompletePasskeyAuthenticationBody>(
+      'completePasskeyAuthentication',
+      body,
+    );
+    const authenticated = unwrap(
+      await this.container.useCases.completePasskeyAuthentication.execute(command),
+    );
+    const started = unwrap(
+      await this.container.useCases.startSession.execute({
+        userId: authenticated.userId,
+        ...(authenticated.deviceId === null ? {} : { deviceBinding: authenticated.deviceId }),
+      }),
+    );
+    return this.issue(started.session, started.refreshToken);
+  }
+
+  @Get('passkeys')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(200)
+  async listPasskeys(@Req() request: AuthenticatedRequest): Promise<PasskeyListView> {
+    const passkeys = unwrap(
+      await this.container.useCases.listUserPasskeys.execute({
+        userId: principalOf(request).userId,
+      }),
+    );
+    return {
+      passkeys: passkeys.map((p) => ({
+        id: p.id,
+        credentialId: p.credentialId,
+        label: p.label,
+        transports: [...p.transports],
+        deviceId: p.deviceId,
+        createdAt: p.createdAt.toISOString(),
+        lastUsedAt: p.lastUsedAt?.toISOString() ?? null,
+        revokedAt: p.revokedAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  @Post('passkeys/revoke')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(204)
+  async revokePasskey(@Req() request: AuthenticatedRequest, @Body() body: unknown): Promise<void> {
+    const command = this.contract.validateRequest<RevokePasskeyBody>('revokePasskey', body);
+    unwrap(
+      await this.container.useCases.revokePasskey.execute({
+        userId: principalOf(request).userId,
+        passkeyId: command.passkeyId,
+      }),
+    );
+  }
+
+  // --- federated identity ---------------------------------------------------
+
+  /**
+   * Deliberately not `@UseGuards`. Without a token this starts a sign-in; with
+   * one it starts a *link* against the signed-in account. A blanket guard would
+   * make the sign-in impossible, and no guard at all would let a caller name
+   * any `userId` they liked — so the principal is resolved here and only ever
+   * taken from a verified token.
+   */
+  @Post('oidc/start')
+  @HttpCode(200)
+  async startOidcLogin(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<OidcStartedView> {
+    const command = this.contract.validateRequest<StartOidcBody>('startOidcLogin', body);
+    const linkingUserId = await this.optionalPrincipal(request);
+    const started = unwrap(
+      await this.container.useCases.startOidcLogin.execute({
+        ...command,
+        ...(linkingUserId === null ? {} : { userId: linkingUserId }),
+      }),
+    );
+    return {
+      state: started.state,
+      nonce: started.nonce,
+      codeVerifier: started.codeVerifier,
+      expiresAt: started.expiresAt.toISOString(),
+    };
+  }
+
+  /**
+   * The second convergence point. The provider's tokens are consumed inside the
+   * use case and stop there; what comes back to the caller is a NEXUS session,
+   * identical in shape to the other two ways in.
+   */
+  @Post('oidc/complete')
+  @HttpCode(200)
+  async completeOidcLogin(@Body() body: unknown): Promise<OidcSessionIssuedView> {
+    const command = this.contract.validateRequest<CompleteOidcBody>('completeOidcLogin', body);
+    const completed = unwrap(await this.container.useCases.completeOidcLogin.execute(command));
+    const started = unwrap(
+      await this.container.useCases.startSession.execute({ userId: completed.userId }),
+    );
+    const issued = await this.issue(started.session, started.refreshToken);
+    return { ...issued, outcome: completed.outcome };
+  }
+
+  @Get('federated-identities')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(200)
+  async listFederatedIdentities(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<FederatedIdentityListView> {
+    const identities = unwrap(
+      await this.container.useCases.listFederatedIdentities.execute({
+        userId: principalOf(request).userId,
+      }),
+    );
+    return {
+      identities: identities.map((i) => ({
+        id: i.id,
+        provider: i.provider,
+        emailAtLink: i.emailAtLink,
+        linkedAt: i.linkedAt.toISOString(),
+        lastUsedAt: i.lastUsedAt?.toISOString() ?? null,
+        revokedAt: i.revokedAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  @Post('federated-identities/unlink')
+  @UseGuards(SessionAuthGuard)
+  @HttpCode(204)
+  async unlinkFederatedIdentity(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ): Promise<void> {
+    const command = this.contract.validateRequest<UnlinkFederatedIdentityBody>(
+      'unlinkFederatedIdentity',
+      body,
+    );
+    unwrap(
+      await this.container.useCases.unlinkFederatedIdentity.execute({
+        userId: principalOf(request).userId,
+        federatedIdentityId: command.federatedIdentityId,
+      }),
+    );
+  }
+
+  /**
+   * The principal when a bearer token is present, null when it is absent.
+   * A *present but invalid* token is still rejected — an expired session must
+   * not silently downgrade a link into a fresh sign-in.
+   */
+  private async optionalPrincipal(request: AuthenticatedRequest): Promise<string | null> {
+    const header = request.headers.authorization;
+    if (header === undefined || !/^Bearer /i.test(header.trim())) {
+      return null;
+    }
+    const authorized = await this.container.useCases.authorizeRequest.execute({
+      accessToken: header.trim().slice('Bearer '.length).trim(),
+    });
+    if (!authorized.ok) {
+      throw new DomainFailure(authorized.error);
+    }
+    return authorized.value.userId;
+  }
+
   /** Derive the request credential from the session that was just established. */
   private async issue(session: SessionSnapshot, refreshToken: string): Promise<SessionIssuedView> {
     const access = await this.container.accessTokens.issue({
@@ -205,6 +456,56 @@ export interface SessionIssuedView {
   accessToken: string;
   expiresAt: string;
   refreshToken: string;
+}
+
+/** Federation adds only what it did; the credential model is unchanged. */
+export interface OidcSessionIssuedView extends SessionIssuedView {
+  outcome: 'signed_in' | 'linked' | 'account_created';
+}
+
+export interface ChallengeView {
+  challenge: string;
+  expiresAt: string;
+}
+
+export interface RegisteredPasskeyView {
+  passkeyId: string;
+  deviceId: string;
+}
+
+export interface PasskeyView {
+  id: string;
+  credentialId: string;
+  label: string;
+  transports: string[];
+  deviceId: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface PasskeyListView {
+  passkeys: PasskeyView[];
+}
+
+export interface OidcStartedView {
+  state: string;
+  nonce: string;
+  codeVerifier: string;
+  expiresAt: string;
+}
+
+export interface FederatedIdentityView {
+  id: string;
+  provider: string;
+  emailAtLink: string | null;
+  linkedAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface FederatedIdentityListView {
+  identities: FederatedIdentityView[];
 }
 
 /** Dates cross the wire as RFC 3339 strings, as the contract declares. */

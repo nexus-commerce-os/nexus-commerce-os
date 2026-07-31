@@ -54,15 +54,23 @@ afterAll(async () => {
 describe('OpenAPI contract', () => {
   it('is a 3.1 document and every $ref resolves', () => {
     expect(contract.document.openapi).toMatch(/^3.1/);
-    for (const [operationId] of contract.operations()) {
-      // Compiling the request schema forces every $ref on that path to resolve.
-      // A body may legitimately be accepted or rejected here; what must never
-      // happen is a failure to resolve the schema at all.
-      try {
-        contract.validateRequest(operationId, {});
-      } catch (error) {
-        expect(String(error)).not.toMatch(/does not resolve/);
-        expect(error).toBeInstanceOf(ContractViolation);
+    for (const [operationId, { operation }] of contract.operations()) {
+      // Compiling forces every $ref on that path to resolve. A body may
+      // legitimately be accepted or rejected; what must never happen is a
+      // failure to resolve the schema at all.
+      if (operation.requestBody !== undefined) {
+        try {
+          contract.validateRequest(operationId, {});
+        } catch (error) {
+          expect(String(error)).not.toMatch(/does not resolve/);
+          expect(error).toBeInstanceOf(ContractViolation);
+        }
+      }
+
+      // Response schemas too — they are only otherwise exercised where a test
+      // happens to assert conformance for that status.
+      for (const status of Object.keys(operation.responses)) {
+        expect(() => contract.validateResponse(operationId, Number(status), {})).not.toThrow();
       }
     }
   });
@@ -87,29 +95,55 @@ describe('OpenAPI contract', () => {
    */
   it('routes every operation and enforces the security it declares', async () => {
     for (const [operationId, { method, path, operation }] of contract.operations()) {
-      expect(method).toBe('post');
-      const response = await request(app.getHttpServer()).post(path).send({});
+      expect(['get', 'post']).toContain(method);
+      const server = request(app.getHttpServer());
+      const response = method === 'get' ? await server.get(path) : await server.post(path).send({});
       const where = `${operationId} (${method.toUpperCase()} ${path})`;
 
       expect(response.status, `${where} is declared but not routed`).not.toBe(404);
 
-      const secured = (operation as { security?: unknown[] }).security !== undefined;
-      if (secured) {
+      if ((operation as { security?: unknown[] }).security !== undefined) {
         expect(response.status, `${where} declares security but did not challenge`).toBe(401);
         expect(response.body.code).toBe('InvalidAccessTokenError');
-      } else {
+        continue;
+      }
+
+      // Unsecured. An empty body is rejected only where the schema forbids it —
+      // a discoverable-credential sign-in, for instance, legitimately sends {}.
+      if (rejectsEmptyBody(operationId)) {
         expect(response.status, `${where} should reject an empty body`).toBe(400);
         expect(response.body.code).toBe('ContractViolation');
       }
     }
   });
 
+  /** Does the published request schema forbid `{}`? */
+  function rejectsEmptyBody(operationId: string): boolean {
+    try {
+      contract.validateRequest(operationId, {});
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
   it('declares security on every operation that needs a principal', () => {
     const secured = [...contract.operations()]
       .filter(([, o]) => (o.operation as { security?: unknown[] }).security !== undefined)
       .map(([id]) => id);
     expect(secured.sort()).toEqual(
-      ['changePassword', 'logout', 'logoutAll', 'requestEmailVerification'].sort(),
+      [
+        'changePassword',
+        'logout',
+        'logoutAll',
+        'requestEmailVerification',
+        'startPasskeyRegistration',
+        'completePasskeyRegistration',
+        'listPasskeys',
+        'revokePasskey',
+        'listFederatedIdentities',
+        'unlinkFederatedIdentity',
+      ].sort(),
     );
   });
 

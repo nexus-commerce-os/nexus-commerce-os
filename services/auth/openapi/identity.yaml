@@ -23,6 +23,8 @@ servers:
 
 tags:
   - name: registration
+  - name: passkey
+  - name: federation
   - name: session
   - name: email
   - name: password
@@ -220,6 +222,212 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '502': { $ref: '#/components/responses/Problem' }
 
+  /auth/passkeys/registration/start:
+    post:
+      operationId: startPasskeyRegistration
+      tags: [passkey]
+      summary: Begin registering a passkey
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmptyRequest' }
+      responses:
+        '200':
+          description: A single-use challenge for the browser ceremony.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PasskeyChallenge' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/passkeys/registration/complete:
+    post:
+      operationId: completePasskeyRegistration
+      tags: [passkey]
+      summary: Finish registering a passkey
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompletePasskeyRegistrationRequest' }
+      responses:
+        '201':
+          description: The credential is registered.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisteredPasskey' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /auth/passkeys/authentication/start:
+    post:
+      operationId: startPasskeyAuthentication
+      tags: [passkey]
+      summary: Begin signing in with a passkey
+      description: Omit the address entirely for a discoverable-credential sign-in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartPasskeyAuthenticationRequest' }
+      responses:
+        '200':
+          description: A single-use challenge for the browser ceremony.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PasskeyChallenge' }
+        '400': { $ref: '#/components/responses/Problem' }
+
+  /auth/passkeys/authentication/complete:
+    post:
+      operationId: completePasskeyAuthentication
+      tags: [passkey, session]
+      summary: Finish signing in with a passkey
+      description: |
+        Converges on the same NEXUS Session lifecycle as password login and
+        returns the identical credential model. The WebAuthn assertion is never
+        itself a request credential.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompletePasskeyAuthenticationRequest' }
+      responses:
+        '200':
+          description: A session was started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionIssued' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/passkeys:
+    get:
+      operationId: listPasskeys
+      tags: [passkey]
+      summary: List the signed-in user's active passkeys
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The active credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PasskeyList' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/passkeys/revoke:
+    post:
+      operationId: revokePasskey
+      tags: [passkey]
+      summary: Revoke one of the signed-in user's passkeys
+      description: Refused when it is the last usable authentication factor.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RevokePasskeyRequest' }
+      responses:
+        '204':
+          description: The credential is revoked.
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /auth/oidc/start:
+    post:
+      operationId: startOidcLogin
+      tags: [federation]
+      summary: Begin a federated sign-in
+      description: |
+        Unauthenticated for a sign-in. Supplying a bearer token instead begins a
+        link flow, attaching the provider to the signed-in account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartOidcRequest' }
+      responses:
+        '200':
+          description: State, nonce and PKCE verifier for the authorization request.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OidcStarted' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/oidc/complete:
+    post:
+      operationId: completeOidcLogin
+      tags: [federation, session]
+      summary: Finish a federated sign-in
+      description: |
+        State and nonce are mandatory and validated, as are the provider issuer
+        and audience. The provider tokens never become NEXUS request
+        credentials: a NEXUS Session is created and its own credentials returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompleteOidcRequest' }
+      responses:
+        '200':
+          description: A session was started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OidcSessionIssued' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /auth/federated-identities:
+    get:
+      operationId: listFederatedIdentities
+      tags: [federation]
+      summary: List the signed-in user's linked providers
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The active links.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FederatedIdentityList' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /auth/federated-identities/unlink:
+    post:
+      operationId: unlinkFederatedIdentity
+      tags: [federation]
+      summary: Unlink a provider from the signed-in account
+      description: Refused when it is the last usable authentication factor.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UnlinkFederatedIdentityRequest' }
+      responses:
+        '204':
+          description: The provider is unlinked.
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -361,6 +569,161 @@ components:
       properties:
         currentPassword: { type: string, maxLength: 1024 }
         newPassword: { type: string, minLength: 12, maxLength: 1024 }
+
+    PasskeyChallenge:
+      type: object
+      additionalProperties: false
+      required: [challenge, expiresAt]
+      properties:
+        challenge:
+          type: string
+          description: Single-use. Consumed by the matching complete call.
+        expiresAt: { type: string, format: date-time }
+
+    CompletePasskeyRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [challenge, response, label]
+      properties:
+        challenge: { type: string, minLength: 1, maxLength: 512 }
+        response:
+          type: object
+          description: |
+            The raw PublicKeyCredential from the browser, passed through
+            untouched. Its structure is the WebAuthn verifier's contract, not
+            this one's, so it is deliberately not re-modelled here.
+        label: { type: string, minLength: 1, maxLength: 120 }
+        deviceId: { type: string, format: uuid }
+        deviceLabel: { type: string, maxLength: 120 }
+        platform: { type: string, maxLength: 120 }
+
+    RegisteredPasskey:
+      type: object
+      additionalProperties: false
+      required: [passkeyId, deviceId]
+      properties:
+        passkeyId: { type: string, format: uuid }
+        deviceId: { type: string, format: uuid }
+
+    StartPasskeyAuthenticationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email: { type: string, maxLength: 254 }
+
+    CompletePasskeyAuthenticationRequest:
+      type: object
+      additionalProperties: false
+      required: [challenge, response]
+      properties:
+        challenge: { type: string, minLength: 1, maxLength: 512 }
+        response:
+          type: object
+          description: The raw PublicKeyCredential assertion from the browser.
+
+    Passkey:
+      type: object
+      additionalProperties: false
+      required: [id, credentialId, label, transports, createdAt, deviceId, lastUsedAt, revokedAt]
+      properties:
+        id: { type: string, format: uuid }
+        credentialId: { type: string }
+        label: { type: string }
+        transports:
+          type: array
+          items: { type: string }
+        deviceId: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'] }
+        revokedAt: { type: [string, 'null'] }
+
+    PasskeyList:
+      type: object
+      additionalProperties: false
+      required: [passkeys]
+      properties:
+        passkeys:
+          type: array
+          items: { $ref: '#/components/schemas/Passkey' }
+
+    RevokePasskeyRequest:
+      type: object
+      additionalProperties: false
+      required: [passkeyId]
+      properties:
+        passkeyId: { type: string, minLength: 1, maxLength: 64 }
+
+    StartOidcRequest:
+      type: object
+      additionalProperties: false
+      required: [provider, redirectUri]
+      properties:
+        provider: { type: string, minLength: 1, maxLength: 64 }
+        redirectUri: { type: string, maxLength: 2048 }
+
+    OidcStarted:
+      type: object
+      additionalProperties: false
+      required: [state, nonce, codeVerifier, expiresAt]
+      properties:
+        state: { type: string }
+        nonce: { type: string }
+        codeVerifier: { type: string }
+        expiresAt: { type: string, format: date-time }
+
+    CompleteOidcRequest:
+      type: object
+      additionalProperties: false
+      required: [provider, state, code]
+      properties:
+        provider: { type: string, minLength: 1, maxLength: 64 }
+        state: { type: string, minLength: 1, maxLength: 512 }
+        code: { type: string, minLength: 1, maxLength: 2048 }
+
+    OidcSessionIssued:
+      type: object
+      additionalProperties: false
+      description: |
+        The same credential model as password and passkey sign-in, plus what the
+        federation did. Removing `outcome` yields a SessionIssued exactly; a
+        convergence test asserts that.
+      required: [session, accessToken, expiresAt, refreshToken, outcome]
+      properties:
+        session: { $ref: '#/components/schemas/Session' }
+        accessToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+        refreshToken: { type: string }
+        outcome:
+          type: string
+          enum: [signed_in, linked, account_created]
+
+    FederatedIdentity:
+      type: object
+      additionalProperties: false
+      required: [id, provider, emailAtLink, linkedAt, lastUsedAt, revokedAt]
+      properties:
+        id: { type: string, format: uuid }
+        provider: { type: string }
+        emailAtLink: { type: [string, 'null'] }
+        linkedAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'] }
+        revokedAt: { type: [string, 'null'] }
+
+    FederatedIdentityList:
+      type: object
+      additionalProperties: false
+      required: [identities]
+      properties:
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/FederatedIdentity' }
+
+    UnlinkFederatedIdentityRequest:
+      type: object
+      additionalProperties: false
+      required: [federatedIdentityId]
+      properties:
+        federatedIdentityId: { type: string, minLength: 1, maxLength: 64 }
 
     ProblemDetail:
       type: object
