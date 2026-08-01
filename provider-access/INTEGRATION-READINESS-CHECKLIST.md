@@ -16,9 +16,9 @@ a marketing page, not an assumption.
 | 4 | Documentation downloaded | ☐ | Authenticated reference pages saved locally, with retrieval date | — |
 | 5 | Test credentials issued | ☐ | Credentials created **and stored in the secret store** — never in this repo | — |
 | 6 | Rate limit known | ☐ | Documented limits confirmed against the account's own tier | Public docs give Impact hourly limits (artifact 1 row 19); **account-specific tier unconfirmed** |
-| 7 | Cache policy known | ☐ | Contractual caching terms, in writing → sets `license_tag.cache_ttl_max_s` | — |
-| 8 | Display policy known | ☐ | Price/image/trademark display terms, in writing | — |
-| 9 | Attribution policy known | ☐ | Attribution window and model, in writing | — |
+| 7 | Cache policy known | ☐ | Contractual caching terms, in writing → sets `license_tag.cache_ttl_max_s` | **Partner agreements obtained 2026-08-02 — silent on caching.** See §6 |
+| 8 | Display policy known | ☐ | Price/image/trademark display terms, in writing | **Partial.** Agreement licenses *ad creative* only, not product data. See §6 |
+| 9 | Attribution policy known | ☐ | Attribution window and model, in writing | **Partial.** Impact performs tracking; window and model unstated. See §6 |
 | 10 | Merchant list available | ☐ | List of approved merchants carrying over-ear headphones | — |
 | 11 | **Shipping capability verified** | ☐ | Real records showing explicit free-shipping eligibility — **the §4a gate** | — |
 | 12 | GTIN coverage sampled | ☐ | Completed §4b sample table from real records | — |
@@ -82,6 +82,45 @@ implement the first connector be requested. A passing report does not itself aut
 **If any mandatory capability fails**, the report says so and the status stays blocked. A report that
 reaches `PROVIDER READY` with an item unevidenced would be the exact status inflation this whole
 sequence exists to prevent.
+
+## 6. Evidence log
+
+### E-01 · Impact Partner Services & Program Agreements (2026-08-02)
+
+**Source:** the agreement presented at partner sign-up, saved by the founder. 13 pages, two
+instruments — a Program Agreement and a Services Agreement. **Official contractual evidence.**
+
+**What it settles**
+
+| Finding | Consequence for us |
+| --- | --- |
+| **Scraping and data-mining the Impact platform is contractually prohibited.** Partners may only use the platform for its intended purpose | ADR-0001 is no longer only our own policy — it is now a **contractual obligation**. If the API lacks a field, there is no permitted workaround. This forecloses any "fetch it another way" response to a failed §4a gate |
+| **Approved methods only** — the partner must use methods approved by Impact and the relevant advertiser | Our hand-off must use provider-sanctioned tracking links, not constructed URLs |
+| Prohibited: leads not arising from genuine visitor action, fake redirects, automated action generation, robots, iframes and hidden frames, adware/spyware, incentivised actions | Rules out iframe-based merchant embedding. Our click-out redirect model remains compatible |
+| Impact performs all tracking and compensation calculation | Attribution *mechanics* are the provider's, so our ledger must reconcile to their numbers rather than assert its own |
+| Actions may be cancelled or returned as **chargebacks** | Confirms contractually that reversals exist — supports the provisional, non-payable accrual model (ADR-0012 / ADR-0022) |
+| Advertisers grant a revocable, non-exclusive, royalty-free licence to use **ad creative**, limited to performing the services; anything further sits in per-advertiser Insertion Orders as "Special Terms" | **This is not a product-data display licence.** Displaying catalogue price, title and image is not obviously "ad creative" |
+| No guarantee that services generate actions or compensation | Commercial risk only; no design consequence |
+
+**What it does not contain — the decisive negative finding**
+
+Searched in full: **no occurrence of caching, cache TTL, display policy, attribution window, product
+feed, or deep link.**
+
+Therefore:
+
+- **Item 7 (cache policy) cannot be ticked.** `license_tag.cache_ttl_max_s` still has no source.
+- **Item 8 (display policy) cannot be ticked.** An ad-creative licence does not authorise displaying
+  merchant product data, which is precisely what the comparison surface shows.
+- **Item 9 (attribution policy) cannot be ticked.** That Impact does the tracking says nothing about
+  the window or the model.
+
+These three most likely live in **per-advertiser Partner Contracts / Insertion Orders ("Special
+Terms")** and in the authenticated developer documentation — both of which require an approved
+account and approved merchants. That is consistent with the existing status, not a new blocker.
+
+**Checklist movement: none.** Still **0 of 13**. Real evidence arrived and was read; it did not
+satisfy any item. Recording it as progress would be exactly the status inflation this file forbids.
 
 ## 5. Exit condition
 
