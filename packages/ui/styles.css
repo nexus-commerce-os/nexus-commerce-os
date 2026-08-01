@@ -339,6 +339,19 @@ header.nav {
   color: var(--accent);
   white-space: nowrap;
 }
+/*
+ * The nowrap above keeps "when you save money." on one line, which is the
+ * intended typography — but it also sets the hero grid's min-content width. On
+ * a phone that pushed the column to ~423px inside a 342px content box, and
+ * because the document does not scroll horizontally the overflow was silently
+ * clipped rather than visible. Below this width the line must be allowed to
+ * break.
+ */
+@media (max-width: 560px) {
+  .hero h1 em {
+    white-space: normal;
+  }
+}
 .lede {
   font-size: var(--fs-xl);
   color: var(--muted);
@@ -448,10 +461,17 @@ header.nav {
   letter-spacing: -0.02em;
   line-height: 1;
 }
+/*
+ * In flow, not absolute. Pinned at `bottom: 64px` the stamp sat on top of the
+ * receipt footer and made "Confirmed by the merchant network…" unreadable —
+ * the footer is two or three lines depending on width, so no fixed offset
+ * clears it. Sitting between the total and the footer keeps the rotated
+ * rubber-stamp look and cannot collide with anything.
+ */
 .stamp {
-  position: absolute;
-  right: 20px;
-  bottom: 64px;
+  display: block;
+  width: fit-content;
+  margin: 14px 4px 0 auto;
   border: 2px solid var(--accent);
   color: var(--accent-ink);
   font-size: var(--fs-2xs);
@@ -1013,19 +1033,26 @@ details p {
   font-size: var(--fs-sm);
   margin-top: 16px;
 }
+/*
+ * Deliberately not flex. This paragraph is one sentence with an inline <b> in
+ * the middle, and flex turns every text node into its own flex item — which
+ * shattered "You're on the list. We'll email <name> the moment your region
+ * opens." into three stacked columns. The badge is inline instead, so the
+ * sentence stays a sentence.
+ */
 .wl-ok {
   position: relative;
   color: var(--paper);
   font-weight: 600;
   margin-top: 32px;
   font-size: var(--fs-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  text-align: center;
+  line-height: 1.6;
 }
 .wl-ok .chk {
-  display: grid;
+  display: inline-grid;
+  vertical-align: middle;
+  margin-right: 8px;
   place-items: center;
   width: 30px;
   height: 30px;
