@@ -41,9 +41,14 @@ fast, and step 5 is the only thing that can turn `BLOCKED` into `READY`.
 | 5. Readiness verification | Engineering | ⬜ Prepared, awaiting real data |
 | 6. Connector implementation | Engineering | ⬜ Not authorized |
 
-## The one thing not to misread
+## The one thing not to misread — Ruling 3
 
-Impact's column is fuller than CJ's **because Impact publishes server-rendered documentation and CJ
-does not** — `developers.cj.com` returned an application shell on every public route tried. That is a
-difference in documentation access, not in capability. Choosing Impact on this basis alone would be
-choosing the provider that is easier to read about, which is not the same as the better provider.
+**Impact is not preferred because it is better.** Impact's column is fuller than CJ's because Impact
+publishes server-rendered documentation and CJ does not — `developers.cj.com` returned an
+application shell on every public route tried. That is a difference in documentation access, not in
+capability.
+
+Impact becomes the preferred **first** implementation only because its official documentation is
+objectively accessible, its API capability is evidence-backed, its required fields can be verified,
+and engineering uncertainty is therefore lower. **No provider preference is permanent.** If CJ later
+supplies equivalent evidence, the comparison is re-evaluated objectively.

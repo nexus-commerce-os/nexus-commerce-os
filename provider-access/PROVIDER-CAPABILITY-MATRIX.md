@@ -32,9 +32,9 @@ that merchants populate a field. Coverage is measured in artifact 3, never infer
 | Price | Current consumer price | `SUPPORTED` | `CurrentPrice` (also `OriginalPrice`, `DiscountPercentage`) | `UNKNOWN` |
 | Availability | In-stock signal | `SUPPORTED` | `StockAvailability` enum: InStock, OutOfStock, BackOrder, PreOrder, LimitedAvailability | `UNKNOWN` |
 | Shipping eligibility | Is this offer shippable to the US destination | `UNKNOWN` | `ServiceAreas` exists on **Catalog** (geographic regions served); no documented per-item destination eligibility | `UNKNOWN` |
-| **Explicit free shipping** | **Free shipping explicitly verified by provider data** | **`UNKNOWN`** | **No free-shipping boolean is documented.** Only `ShippingRate` — "standard rate to ship the item" — with no documented destination sensitivity. `ShippingRate == 0` is an *inference from a numeric field*, not an explicit eligibility statement. **This is the gate condition of §4a** | `UNKNOWN` |
+| **Explicit free shipping** | **Free shipping explicitly verified by provider data** | **`UNKNOWN`** | **Ruling 1 (2026-08-01): `ShippingRate` alone is never verified free shipping.** Acceptable only as (a) `ShippingRate == 0` **and** provider documentation stating zero means free shipping, or (b) a dedicated free-shipping flag. Neither is documented today. Missing, null, or undocumented zero → `UNKNOWN` → **NOT RANKABLE**. **Gate condition of §4a** | `UNKNOWN` |
 | Affiliate URL | Compliant tracked deep link to the merchant | `SUPPORTED` | `POST …/Programs/{ProgramId}/TrackingLinks` with `DeepLink`; `subId1`–`subId3` / `sharedId` can carry our `click_id` | `UNKNOWN` |
-| Timestamp | When this offer's price was observed | `PARTIAL` | `DateLastUpdated` is on **Catalog**, not Item. Catalog-level granularity only — see artifact 1 §4 and risk R-06 | `UNKNOWN` |
+| Timestamp | When this offer's price was observed | **`UNKNOWN`** | **Ruling 2 (2026-08-01): catalog-level timestamps are not item freshness.** `DateLastUpdated` is on **Catalog**, not Item, so offer freshness state is `UNKNOWN` until provider evidence proves otherwise — and **unknown freshness can never become LIVE**. See artifact 1 §4, risk R-06 | `UNKNOWN` |
 | Cache TTL | Contractual maximum caching duration | `UNKNOWN` | Contractual, not in the API reference. **Blocks `license_tag.cache_ttl_max_s`** | `UNKNOWN` |
 | Display permission | Right to display price, title and image | `UNKNOWN` | Contractual, not in the API reference | `UNKNOWN` |
 
@@ -64,11 +64,11 @@ Against the §4a mandatory list:
 | Availability | `SUPPORTED` | No |
 | Condition | `SUPPORTED` | No |
 | Affiliate deep link | `SUPPORTED` | No |
-| Freshness / retrieval timestamp | `PARTIAL` | **Possibly** — catalog granularity may be too coarse |
+| Freshness / retrieval timestamp | `UNKNOWN` | **Yes, until evidence** — Ruling 2 forbids treating catalog timestamps as item freshness |
 | Caching and display rules | `UNKNOWN` | **Yes, until obtained** |
 | **Explicit free-shipping eligibility** | **`UNKNOWN`** | **Yes — this is the decisive one** |
 
-**Gate result: NOT PASSED.** Two mandatory fields are `UNKNOWN` and one is `PARTIAL`.
+**Gate result: NOT PASSED.** Three mandatory fields are `UNKNOWN` (free-shipping eligibility, freshness, caching/display terms) and two are `PARTIAL` (brand, model).
 
 Per the ruling, the gate is not passed by reasoning about it. It is passed by evidence from an
 approved account, or the outcome is

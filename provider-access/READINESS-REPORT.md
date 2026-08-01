@@ -23,8 +23,8 @@
 | Does connector code exist? | **No** | `services/affiliate/src/index.ts` — "P0.1 SCAFFOLD — intent declaration only. NO implementation"; exports nothing |
 | Can Impact's capability be assessed? | **Partly** | Public field-level documentation retrieved 2026-08-01 (artifact 1 §5) |
 | Can CJ's capability be assessed? | **No** | `developers.cj.com` returned an application shell on all five public routes tried |
-| Is the §4a qualification gate passed? | **No** | Two mandatory fields `UNKNOWN`, one `PARTIAL` (artifact 2 §3) |
-| Is explicit free-shipping eligibility available? | **UNKNOWN** | No free-shipping flag documented; only `ShippingRate`, with no documented destination sensitivity |
+| Is the §4a qualification gate passed? | **No** | Three mandatory fields `UNKNOWN`, two `PARTIAL` (artifact 2 §3) |
+| Is explicit free-shipping eligibility available? | **UNKNOWN** | No free-shipping flag documented; only `ShippingRate`, with no documented destination sensitivity and no documented meaning for a zero value (Ruling 1) |
 | Integration checklist progress | **0 of 13** | Artifact 3 |
 | Acceptance tests executed | **0 of 20** | Artifact 7 |
 
@@ -48,10 +48,11 @@ about whether merchants populate those fields.
 | # | Blocker | Resolvable by |
 | --- | --- | --- |
 | 1 | No approved affiliate account | **Founder** — application and approval |
-| 2 | Free-shipping eligibility unverified | Evidence from a real account (gate §4a) |
+| 2 | Free-shipping eligibility unverified | Evidence from a real account (gate §4a), meeting Ruling 1 |
 | 3 | Caching and display terms unobtained | Contractual documents behind the account |
 | 4 | GTIN coverage unmeasured | Sampling real records (§4b) |
 | 5 | CJ entirely unassessed | Account access to the developer portal |
+| 6 | Item-level freshness unverified | Real responses; catalogue-only time stays `UNKNOWN` (Ruling 2) |
 
 **None of these can be resolved by writing code.** Every one requires an external party.
 
@@ -81,15 +82,26 @@ about whether merchants populate those fields.
 | No status inflation | ✅ Status is `BLOCKED`; 0 of 13 and 0 of 20 stated plainly |
 | No secret values requested or displayed | ✅ Names only |
 
-## 7. Two findings the CTO should see before the account decision
+## 7. Binding rulings of 2026-08-01
 
-1. **Impact documents no explicit free-shipping flag.** The only candidate signal is
-   `ShippingRate == 0` on a populated field. Whether a populated-and-zero rate satisfies the §4a
-   requirement for *explicit* free-shipping eligibility is a decision that belongs to the CTO. It is
-   recorded here rather than resolved.
-2. **Item-level freshness may not exist.** `DateLastUpdated` sits on the Catalog, not the Item. If
-   real data confirms this, offer freshness is only ever catalogue-level, which affects the
-   three-tier freshness model and the NFR-COMP-01 audit. Risk R-06.
+Both findings raised by this report have been ruled on. They are no longer open questions.
+
+**Ruling 1 — ShippingRate.** `ShippingRate` alone **shall not** be interpreted as verified
+free-shipping eligibility. Accepted only as `ShippingRate == 0` **and** provider documentation
+stating that zero represents free shipping, **or** a dedicated free-shipping flag. Free shipping is
+never inferred from a missing rate, a null rate, an undocumented zero, or undocumented provider
+behaviour. Without explicit evidence the offer is **NOT RANKABLE**.
+
+**Ruling 2 — Offer freshness.** Catalog-level timestamps **shall not** be treated as item freshness.
+Until provider evidence proves otherwise, offer freshness state is `UNKNOWN`, and **unknown
+freshness cannot become LIVE**. A catalogue-only timestamp is recorded as an **external provider
+limitation**; item timestamps are never invented.
+
+**Ruling 3 — Impact selection.** Impact is **not** selected because it is better. It becomes the
+preferred *first* implementation only because its official documentation is objectively accessible,
+its API capability is evidence-backed, its required fields can be verified, and engineering
+uncertainty is therefore lower. **No provider preference is permanent** — if CJ later supplies
+equivalent evidence, the comparison is re-evaluated objectively.
 
 ## 8. Next action
 

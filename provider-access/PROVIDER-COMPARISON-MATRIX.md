@@ -51,7 +51,7 @@ inference this project rejects. The comparison cannot be concluded from public s
 | 11 | Price | **`CurrentPrice`**, `OriginalPrice`, `DiscountPercentage` | `UNKNOWN — ACCOUNT REQUIRED` |
 | 12 | Currency | **`Currency`** — ISO 4217, on both Catalog and Item | `UNKNOWN — ACCOUNT REQUIRED` |
 | 13 | Shipping information | **`ShippingRate`** — "standard rate to ship the item". Plus `ShippingWeight/Length/Width/Height` (+ units), `ShippingLabel`, `EstimatedShipDate`. **No documented ZIP/destination sensitivity** — see §3 | `UNKNOWN — ACCOUNT REQUIRED` |
-| 14 | Free shipping availability | **`UNKNOWN` — no explicit free-shipping boolean is documented.** The only available signal is `ShippingRate == 0`, and only when that field is populated. See §3 — this is the P0.3 blocker | `UNKNOWN — ACCOUNT REQUIRED` |
+| 14 | Free shipping availability | **`UNKNOWN` — no explicit free-shipping boolean is documented.** Under **Ruling 1**, `ShippingRate == 0` qualifies **only** if the provider documents that zero means free shipping; otherwise `UNKNOWN` and not rankable. See §3 — this is the P0.3 blocker | `UNKNOWN — ACCOUNT REQUIRED` |
 | 15 | Availability field | **`StockAvailability`** — enum: InStock, OutOfStock, BackOrder, PreOrder, LimitedAvailability. Also `Inventory` | `UNKNOWN — ACCOUNT REQUIRED` |
 | 16 | Product image policy | Fields `ImageUrl` and `AdditionalImageUrls` are documented. The **display/licensing policy** governing their use is `UNKNOWN — ACCOUNT REQUIRED` (contractual, not in the API reference) | `UNKNOWN — ACCOUNT REQUIRED` |
 | 17 | Cache policy | `UNKNOWN — ACCOUNT REQUIRED` — contractual. **Blocks `license_tag.cache_ttl_max_s`** | `UNKNOWN — ACCOUNT REQUIRED` |
@@ -72,10 +72,12 @@ Three things follow, and none of them may be softened:
 1. **It is not destination-specific.** Nothing in the documentation describes ZIP or address
    sensitivity. This confirms §1 of the readiness check: the "Shipping included for ZIP `<ZIP>`"
    claim cannot be substantiated from this feed, which is why the ruling of 2026-08-01 forbade it.
-2. **There is no explicit free-shipping flag.** The approved qualification gate (§4a) requires
-   "explicit free-shipping eligibility". The nearest documented substitute is `ShippingRate == 0` on
-   a populated field. Whether the CTO accepts a populated-and-zero rate as *explicit* is a decision
-   this artifact records, not one it makes.
+2. **There is no explicit free-shipping flag — and Ruling 1 has now settled what that means.**
+   `ShippingRate` alone **shall not** be interpreted as verified free-shipping eligibility. Only two
+   readings are accepted: `ShippingRate == 0` **together with** provider documentation stating that
+   zero represents free shipping, or a dedicated free-shipping flag. Anything else — missing, null,
+   or an undocumented zero — is `UNKNOWN`, and an `UNKNOWN` offer is **NOT RANKABLE**. Undocumented
+   provider behaviour is never a substitute for documentation.
 3. **Population is unmeasured.** `ShippingRate` may be absent on most headphone records. Under the
    binding rule — **absent shipping data is never treated as zero** — every such offer is
    unrankable. If coverage is near zero, the honest outcome is
@@ -88,10 +90,12 @@ Three things follow, and none of them may be softened:
 `DateLastUpdated` is documented on the **Catalog** model. **No per-item timestamp** appears on the
 Item model in the pages retrieved.
 
-If that holds against real data, offer freshness can only be established at **catalog granularity** —
-"this whole catalog was refreshed at T" — not per offer. The three-tier freshness model
-(hot/warm/live) and NFR-COMP-01's price-claim audit both assume we can state when a *price* was
-observed. Carried as risk **R-06** in artifact 8; must be confirmed or refuted in step 5.
+**Ruling 2 (2026-08-01): catalog-level timestamps shall not be treated as item freshness.** Until
+provider evidence proves otherwise, offer freshness state is `UNKNOWN`, and **unknown freshness
+cannot become LIVE**. If the provider exposes only catalogue timestamps, that is recorded as an
+**external provider limitation** — item timestamps are never invented, and a catalogue refresh time
+is never presented as the moment a price was observed. Carried as risk **R-06**; confirmed or
+refuted in step 5.
 
 ## 5. Sources
 

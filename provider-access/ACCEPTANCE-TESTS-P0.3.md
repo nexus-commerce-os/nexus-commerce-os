@@ -85,8 +85,9 @@
 - **Objective:** Enforce approved option B.
 - **Evidence Required:** Records with (a) verified free shipping, (b) a non-zero shipping cost,
   (c) missing shipping, (d) stale shipping data.
-- **Pass Criteria:** Only (a) enters the ranking. Each of (b), (c), (d) is excluded with a recorded
-  reason.
+- **Pass Criteria:** Only (a) enters the ranking, and (a) qualifies **only** under Ruling 1 — a
+  documented zero-means-free-shipping rule, or a dedicated free-shipping flag. An undocumented zero
+  is `UNKNOWN` and excluded. Each of (b), (c), (d) is excluded with a recorded reason.
 - **Status:** `NOT EXECUTED`
 
 ## AT-P03-11 — Incomplete price claims never enter comparison
@@ -126,8 +127,10 @@
 
 - **Objective:** Every offer carries an honest `as_of`.
 - **Evidence Required:** Timestamps as returned by the provider (see risk R-06).
-- **Pass Criteria:** Tier derives from provider-supplied time. If only catalogue-level time exists,
-  it is **labelled as catalogue-level** and never presented as per-offer observation.
+- **Pass Criteria:** Tier derives from provider-supplied item time. Under Ruling 2, a catalogue-only
+  timestamp leaves freshness `UNKNOWN`, and **an offer with unknown freshness is never assigned
+  LIVE**. Catalogue time is labelled as catalogue-level and never presented as per-offer
+  observation. No item timestamp is synthesised.
 - **Status:** `NOT EXECUTED`
 
 ## AT-P03-16 — Cache TTL never exceeds the contractual cap
