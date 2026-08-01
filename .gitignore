@@ -2,6 +2,11 @@
 *.env
 .env.*
 !.env.example
+# Blank-valued provider template (provider-access/, artifact 5). `.env.*` above
+# would otherwise swallow it silently — a tracked template that cannot be
+# committed is worse than none. Values in it must stay blank; real values go
+# only into the secret store.
+!provider-access/.env.provider.example
 *.pem
 *.key
 *.p12
