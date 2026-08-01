@@ -181,6 +181,16 @@ kept in configuration, never hardcoded in controllers. Password-reset requests m
 externally indistinguishable — always 202, no `Retry-After`, byte-identical sequences for known and
 unknown accounts.
 
+### UI maintenance increment — `NOT STARTED`
+
+Non-blocking polish debt accepted by the CTO after the UI Polish Pass
+(commit `371c39f`, Lighthouse 100/100/100/100 desktop and mobile). The full pass
+is closed and must not be reopened for these:
+
+1. Modal background-scroll lock
+2. Gallery copy still says "toggle your OS theme", now that the theme persists
+3. Cross-tab theme synchronisation
+
 ## 4. P0.2 exit gate — NOT MET
 
 The roadmap gate is "**Login → Dashboard full flow**: passkey/MFA login, RBAC-scoped dashboard,
