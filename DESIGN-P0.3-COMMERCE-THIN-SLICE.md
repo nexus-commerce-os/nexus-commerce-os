@@ -118,9 +118,28 @@ Options for the slice:
 | B. Ask for a ZIP code | More precise, adds friction and a personal-data question at the top of the funnel |
 | C. Estimate from IP | **Rejected.** A guessed tax presented as a total is precisely the false claim NFR-COMP-01 measures |
 
-Recommending **A**, with the label carried in the API response and rendered in the UI — not a
-footnote. Shipping *is* required and must be `known`, because it differs sharply between merchants
-and is the component most likely to reverse a ranking.
+**Tax: option A stands** — the slice compares pre-tax, and every offer is treated identically.
+
+**Shipping is a separate decision, settled by the ruling of 2026-08-01: readiness-check option B.**
+Not option B of the tax table above; the two option lists are unrelated. Affiliate feeds commonly do
+not carry destination-specific shipping, so the slice ranks **only offers whose free shipping is
+explicitly verified by provider data**:
+
+- Verified free shipping means shipping cost is *known* to be USD 0.
+- **Absent shipping data is never treated as zero**, and free shipping is never inferred from a
+  missing field. Missing, ambiguous, stale, or outside the provider's licensed freshness window all
+  mean **not rankable**.
+- Shipping is never estimated, and item price is never ranked while shipping is unknown.
+- ZIP is required **only** where the provider uses it to establish US eligibility or destination
+  availability — not as a claim that we computed destination shipping.
+
+User-facing label for a rankable offer:
+
+> **"Pre-tax total: $X, including verified free shipping."**
+
+**Never** display *"Shipping included for ZIP &lt;ZIP&gt;"* unless destination-specific shipping was
+genuinely verified by the provider. Claiming a ZIP-specific calculation we did not perform is the
+same false claim as an estimated total.
 
 ## 6. Best-offer ranking — commission-blind by construction
 
