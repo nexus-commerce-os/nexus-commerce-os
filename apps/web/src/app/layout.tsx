@@ -27,7 +27,33 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    /*
+     * `suppressHydrationWarning` is required, not incidental: the inline script
+     * below sets `data-theme` on this element before React hydrates, so the
+     * client markup legitimately differs from the server's. It suppresses the
+     * warning for this element's attributes only — not for its subtree — which
+     * is the documented pattern for a no-flash theme script.
+     */
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/*
+         * Applies the saved theme before first paint.
+         *
+         * The toggle writes to localStorage, but React only runs after hydration
+         * — so without this a visitor who chose dark would get a white flash on
+         * every navigation before it corrected itself. Reading storage here, in
+         * a blocking inline script, is the standard way to avoid that; it is
+         * deliberately tiny and wrapped, because a thrown error in <head> would
+         * take the page down and a colour preference is never worth that.
+         */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('nexus-theme');" +
+              "if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

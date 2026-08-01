@@ -24,6 +24,13 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 /** The one figure the receipt shows; the count-up animates to exactly this. */
 const VERIFIED_SAVINGS = 47.12;
 
+/**
+ * Where the chosen theme is remembered. Must match the key the inline script in
+ * `layout.tsx` reads before first paint — that script is what stops a saved
+ * dark theme flashing white on load.
+ */
+const THEME_KEY = 'nexus-theme';
+
 export default function NexusLanding() {
   const countRef = useRef<HTMLSpanElement>(null);
   const [email, setEmail] = useState('');
@@ -37,7 +44,17 @@ export default function NexusLanding() {
     const root = document.documentElement;
     const cur = root.getAttribute('data-theme');
     const dark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme:dark)').matches;
-    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    const next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    // Remember the choice. Without this the toggle was forgotten on every
+    // navigation, so `/` → `/ui` snapped back to the OS preference. Wrapped
+    // because storage throws in private mode on some browsers, and a failed
+    // preference must never break the page.
+    try {
+      window.localStorage.setItem(THEME_KEY, next);
+    } catch {
+      /* preference not persisted; the page still works */
+    }
   };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
