@@ -9,8 +9,8 @@
     "start": "next start",
     "lint": "eslint src worker",
     "typecheck": "tsc --noEmit && tsc -p worker --noEmit",
-    "deploy": "next build && wrangler deploy",
-    "preview": "next build && wrangler dev"
+    "deploy:cf": "next build && wrangler deploy",
+    "preview:cf": "next build && wrangler dev"
   },
   "dependencies": {
     "@nexus/ui": "workspace:*",
