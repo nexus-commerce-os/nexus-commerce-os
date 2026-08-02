@@ -12,9 +12,20 @@ name = "honesttotal"
 main = "worker/index.ts"
 compatibility_date = "2026-01-01"
 
+# Request logs, so we can tell "the verifier never reached us" apart from
+# "the verifier reached us and disliked the response" — two failures that look
+# identical from the outside.
+[observability]
+enabled = true
+
 [assets]
 directory = "./out"
 binding = "ASSETS"
+# TEMPORARY, for diagnosis only. Without this, static-asset requests are served
+# at the edge without ever invoking the Worker, so nothing about them reaches
+# the logs — which is why a verifier fetching "/" was invisible. Revert to the
+# default once the Impact property is verified.
+run_worker_first = true
 # Unknown paths serve Next's exported 404 page rather than a bare Worker error.
 not_found_handling = "404-page"
 

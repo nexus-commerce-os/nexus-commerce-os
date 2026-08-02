@@ -102,6 +102,18 @@ async function handleWaitlist(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
+
+    // TEMPORARY, paired with run_worker_first in wrangler.toml: records who
+    // fetches the homepage so an external verifier's request can be told apart
+    // from "no request ever arrived". Method, path and user-agent only — no
+    // addresses, no headers that could carry personal data. Remove once the
+    // Impact property is verified.
+    if (pathname === '/') {
+      console.log(
+        `page-fetch ${request.method} ${pathname} ua=${request.headers.get('user-agent') ?? 'none'}`,
+      );
+    }
+
     if (pathname === '/api/waitlist') return handleWaitlist(request, env);
     return env.ASSETS.fetch(request);
   },
