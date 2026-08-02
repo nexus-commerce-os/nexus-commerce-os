@@ -985,6 +985,16 @@ details p {
     transparent 45%
   );
   opacity: 0.8;
+  /*
+   * Without this the glow swallows every click in the block. It is positioned
+   * and comes last in paint order, so it hit-tests above the waitlist form even
+   * though the children are `position: relative` — which lifts them visually
+   * but not out of its way. The symptom was silent and easy to miss: the
+   * primary "Join the waitlist" button did nothing on click, while pressing
+   * Enter in the email field still submitted. `.hero::before` already does
+   * this; this rule was the one that missed it.
+   */
+  pointer-events: none;
 }
 .cta-final h2 {
   font-size: clamp(1.9rem, 4vw, 2.9rem);
