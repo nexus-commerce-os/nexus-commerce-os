@@ -25,6 +25,17 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+/*
+ * Impact expects `value=`, not the `content=` that React's <meta> typings (and
+ * Next's metadata API) allow, so the attributes are spread from a plain string
+ * map — a Record<string, string> carries no excess-property check, which lets
+ * the tag render byte-for-byte as the verifier expects it.
+ */
+const IMPACT_SITE_VERIFICATION: Record<string, string> = {
+  name: 'impact-site-verification',
+  value: '4d017e23-e50f-48c9-8132-d36777ad4c0a',
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     /*
@@ -36,6 +47,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
      */
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/*
+         * Impact partner-property ownership verification. Written as raw JSX
+         * rather than through Next's `metadata.other` because Impact expects
+         * `value=`, and the metadata API only emits `content=`. The value is
+         * not a secret — it is served publicly in every page's source, which
+         * is exactly how the verifier reads it.
+         */}
+        <meta {...IMPACT_SITE_VERIFICATION} />
         {/*
          * Applies the saved theme before first paint.
          *
