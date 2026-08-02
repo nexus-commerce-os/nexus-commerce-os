@@ -1,0 +1,23 @@
+# Cloudflare Worker for honesttotal.com — the public brand surface.
+#
+# The Worker serves `out/` (produced by `next build` with output: 'export') and
+# answers POST /api/waitlist itself. See worker/index.ts for why the API route
+# moved out of Next.
+#
+# Routes are attached after the domain is active in this account; until then
+# `wrangler deploy` publishes to the workers.dev subdomain, which is enough to
+# verify the build without touching DNS.
+
+name = "honesttotal"
+main = "worker/index.ts"
+compatibility_date = "2026-01-01"
+
+[assets]
+directory = "./out"
+binding = "ASSETS"
+# Unknown paths serve Next's exported 404 page rather than a bare Worker error.
+not_found_handling = "404-page"
+
+[[kv_namespaces]]
+binding = "WAITLIST"
+id = "12a90ce4e895472399c8cd741e5623ad"

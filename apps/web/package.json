@@ -7,8 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint src worker",
+    "typecheck": "tsc --noEmit && tsc -p worker --noEmit",
+    "deploy": "next build && wrangler deploy",
+    "preview": "next build && wrangler dev"
   },
   "dependencies": {
     "@nexus/ui": "workspace:*",
@@ -17,6 +19,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260730.1",
+    "wrangler": "^4.0.0",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

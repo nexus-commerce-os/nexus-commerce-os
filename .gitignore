@@ -37,6 +37,8 @@ node_modules/
 dist/
 build/
 out/
+# Local Miniflare state for `wrangler dev` (includes the local KV contents).
+.wrangler/
 coverage/
 *.tsbuildinfo
 .next/
