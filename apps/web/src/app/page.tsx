@@ -327,27 +327,49 @@ export default function NexusLanding() {
                 </div>
               </div>
 
-              <div className="dp-stores">
-                <div className="dp-stores-h">Merchants checked</div>
-                {[
-                  { m: 'Merchant A', p: '$328.00', best: true },
-                  { m: 'Merchant B', p: '$341.99' },
-                  { m: 'Merchant C', p: '$348.00' },
-                  { m: 'Merchant D', p: '$349.99' },
-                  { m: 'Merchant E', p: '$352.98' },
-                ].map((r) => (
-                  <div className="dp-store" key={r.m}>
-                    <span>{r.m}</span>
-                    <span className="mono">{r.p}</span>
-                    {r.best ? (
-                      <span className="dp-best">BEST</span>
-                    ) : (
-                      <span className="dp-ok" aria-hidden="true">
-                        ✓
-                      </span>
-                    )}
+              <div className="dp-lower">
+                <div className="dp-stores">
+                  <div className="dp-stores-h">Merchants checked</div>
+                  {[
+                    { m: 'Merchant A', p: '$328.00', best: true },
+                    { m: 'Merchant B', p: '$341.99' },
+                    { m: 'Merchant C', p: '$348.00' },
+                    { m: 'Merchant D', p: '$349.99' },
+                    { m: 'Merchant E', p: '$352.98' },
+                  ].map((r) => (
+                    <div className="dp-store" key={r.m}>
+                      <span>{r.m}</span>
+                      <span className="mono">{r.p}</span>
+                      {r.best ? (
+                        <span className="dp-best">BEST</span>
+                      ) : (
+                        <span className="dp-ok" aria-hidden="true">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/*
+                 * The rings depict what the ranker does, not a live scan — the
+                 * three lines under them are the actual rules, so the ornament
+                 * and the claim say the same thing.
+                 */}
+                <div className="dp-scan">
+                  <div className="dp-stores-h">Ranking rules</div>
+                  <div className="dp-rings" aria-hidden="true">
+                    <span className="ring r1" />
+                    <span className="ring r2" />
+                    <span className="ring r3" />
+                    <span className="core" />
                   </div>
-                ))}
+                  <ul className="dp-rules">
+                    <li>Price and shipping normalised</li>
+                    <li>Commission not in the input</li>
+                    <li>Unverified offers excluded</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

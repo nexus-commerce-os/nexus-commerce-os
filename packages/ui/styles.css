@@ -1955,3 +1955,179 @@ summary:hover {
   font-size: var(--fs-sm);
   color: var(--muted);
 }
+
+/* --- hero, third pass: weight, and the ranking depiction ------------------ */
+
+/* The headline is the page's loudest object; at the previous size it was
+   competing with the demo panel instead of leading it. */
+.hero-h1 {
+  font-size: clamp(2.4rem, 5.2vw, 3.9rem);
+  line-height: 0.98;
+}
+.lede {
+  max-width: 46ch;
+}
+
+/* The product thumb was a large box holding a small glyph, which read as a
+   missing image rather than a drawn one. */
+.dp-thumb {
+  padding: 10px;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(43, 212, 143, 0.14), transparent 60%),
+    rgba(255, 255, 255, 0.04);
+  color: #7fae99;
+}
+
+.dp-lower {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+@media (max-width: 1080px) {
+  .dp-lower {
+    grid-template-columns: 1fr;
+  }
+}
+.dp-stores {
+  margin-top: 0;
+}
+.dp-scan {
+  border-radius: 14px;
+  border: 1px solid #1e2a25;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+}
+.dp-rings {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 116px;
+  margin: 6px 0 2px;
+}
+.dp-rings .ring,
+.dp-rings .core {
+  position: absolute;
+  border-radius: 50%;
+}
+.dp-rings .ring {
+  border: 1px solid rgba(43, 212, 143, 0.28);
+}
+.dp-rings .r1 {
+  width: 44px;
+  height: 44px;
+}
+.dp-rings .r2 {
+  width: 74px;
+  height: 74px;
+  border-color: rgba(43, 212, 143, 0.18);
+}
+.dp-rings .r3 {
+  width: 104px;
+  height: 104px;
+  border-color: rgba(43, 212, 143, 0.1);
+}
+.dp-rings .core {
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  box-shadow: 0 0 18px rgba(43, 212, 143, 0.55);
+}
+/* Only the outer rings breathe, and only one property animates, so the effect
+   costs a composite rather than a layout. */
+@media (prefers-reduced-motion: no-preference) {
+  .dp-rings .r2,
+  .dp-rings .r3 {
+    animation: dp-pulse 3.2s ease-in-out infinite;
+  }
+  .dp-rings .r3 {
+    animation-delay: 0.5s;
+  }
+}
+@keyframes dp-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    scale: 0.97;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.03;
+  }
+}
+.dp-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 14px;
+  font-size: var(--fs-sm);
+  color: #a9b6ae;
+}
+.dp-rules li {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+.dp-rules li::before {
+  content: '✓';
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* A hairline of accent across the top turns four plain boxes into a set. */
+.proof-item {
+  position: relative;
+  overflow: hidden;
+}
+.proof-item::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  opacity: 0.7;
+}
+.proof-n {
+  font-size: var(--fs-5xl);
+  letter-spacing: -0.03em;
+}
+
+/* --- hero, fourth pass: fixes found by looking at the rendered panel ------ */
+
+/* "Merchant A" was wrapping to two lines in every row: the name column was a
+   1fr that lost the fight to a fixed 56px status column. The name never needs
+   to wrap, and the status column only needs to fit the BEST pill. */
+.dp-store {
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+}
+.dp-store > span:first-child {
+  white-space: nowrap;
+}
+.dp-best,
+.dp-ok {
+  min-width: 44px;
+  text-align: center;
+}
+
+/* The section labels are set in wide tracking; at this column width that made
+   a three-word label wrap. */
+.dp-scan .dp-stores-h {
+  white-space: nowrap;
+}
+
+/* The thumb stretched to the height of the facts column, which turned a tile
+   into a tall slab with a small glyph adrift in it. */
+.dp-thumb {
+  align-self: start;
+  aspect-ratio: 1;
+}
+
+/* The outer rings were so faint they read as compression artefacts. */
+.dp-rings .r2 {
+  border-color: rgba(43, 212, 143, 0.26);
+}
+.dp-rings .r3 {
+  border-color: rgba(43, 212, 143, 0.16);
+}
