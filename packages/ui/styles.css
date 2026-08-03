@@ -147,6 +147,15 @@
 }
 html {
   scroll-behavior: smooth;
+  /* A default scrollbar is a slab of operating-system grey sitting against a
+     carefully chosen palette — the one element on the page nobody designed. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+/* Selection inherits the brand rather than the browser's stock blue. */
+::selection {
+  background: var(--accent-wash);
+  color: var(--ink);
 }
 body {
   margin: 0;
@@ -483,8 +492,15 @@ header.nav {
 .receipt::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  /*
+   * Inset by the corner radius. At `left: 0; right: 0` these torn-paper strips
+   * are square-cornered rectangles sitting against a 6px-rounded card, so each
+   * corner overhung the curve — subtle on white, but obvious in dark mode,
+   * where the strip is drawn in --card against a much darker page and reads as
+   * a misaligned grey box rather than a torn edge.
+   */
+  left: 6px;
+  right: 6px;
   height: 10px;
   background-image: radial-gradient(circle at 6px 0, transparent 0 5px, var(--card) 5px);
   background-size: 12px 10px;
@@ -579,7 +595,9 @@ header.nav {
 
 /* section */
 section {
-  padding: 64px 0;
+  /* Air is the cheapest luxury signal there is. At 64px the display type was
+     crowding the section boundary; 80px lets each block read as its own idea. */
+  padding: 80px 0;
   border-top: 1px solid var(--line);
   scroll-margin-top: 72px;
   position: relative;
@@ -635,6 +653,10 @@ section {
   border: 1px solid var(--line);
   border-radius: var(--r);
   overflow: hidden;
+  /* The hairline grid alone left this block flat against the page while every
+     other surface around it had depth. It is one panel, so it takes one
+     elevation — not four. */
+  box-shadow: var(--e1), var(--surface-hi);
 }
 @media (max-width: 820px) {
   .steps {
