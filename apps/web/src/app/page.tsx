@@ -12,7 +12,6 @@ import {
   Footer,
   MetricStat,
   PhaseTag,
-  Receipt,
   SectionHead,
   StatePill,
   Step,
@@ -116,7 +115,7 @@ export default function NexusLanding() {
           started = true;
           requestAnimationFrame(step);
         };
-        const rc = el.closest('.receipt');
+        const rc = el.closest('[data-countup-root]');
         if (rc) {
           const io = new IntersectionObserver(
             (entries, ob) => {
@@ -219,57 +218,161 @@ export default function NexusLanding() {
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap hero-grid">
             <div>
-              <Eyebrow>AI shopping · pure referral, zero custody</Eyebrow>
-              <h1>
-                We only make money <em>when you save money.</em>
+              <span className="pill-eyebrow">
+                <span aria-hidden="true">✦</span>
+                <Eyebrow>AI shopping · pure referral · zero custody</Eyebrow>
+              </span>
+              <h1 className="hero-h1">
+                <span className="h1-underlined">Save first.</span>
+                <br />
+                <em>We earn</em> later.
               </h1>
               <p className="lede">
                 NEXUS is an AI buying agent that finds the genuinely best price across authorized
                 merchants, hands you off to check out directly, and counts a saving only once
                 it&apos;s <b>verified</b>. Ranking is by value — never by who pays us most.
               </p>
+              <ul className="hero-chips">
+                <li>
+                  <span className="chip-ic" aria-hidden="true">
+                    ✓
+                  </span>
+                  Commission-blind ranking
+                </li>
+                <li>
+                  <span className="chip-ic" aria-hidden="true">
+                    ✓
+                  </span>
+                  No payment custody
+                </li>
+                <li>
+                  <span className="chip-ic" aria-hidden="true">
+                    ✓
+                  </span>
+                  Disclosed, always
+                </li>
+              </ul>
               <div className="hero-cta">
                 <Button href="#cta">Join the waitlist →</Button>
                 <Button variant="ghost" href="#how">
                   See how it works
                 </Button>
               </div>
-              <div className="assure">
-                <span>
-                  <b className="tick">✓</b> Commission-blind ranking
-                </span>
-                <span>
-                  <b className="tick">✓</b> No payment custody
-                </span>
-                <span>
-                  <b className="tick">✓</b> Disclosed, always
-                </span>
-              </div>
+              {/*
+               * Where a launched product would put "4.9 from 1,200+ users", this
+               * says the opposite, because the alternative is inventing people.
+               * On a site whose entire argument is that it only claims what it
+               * can prove, borrowed social proof would be the first lie told.
+               */}
+              <p className="prelaunch">
+                <b>Pre-launch.</b> No users yet, and no merchant partnerships yet — we will not
+                invent either. Every figure on this page is one we can defend.
+              </p>
             </div>
 
-            <Receipt
-              className="reveal"
-              ariaLabel="A verified savings receipt showing 47 dollars 12 cents saved"
-              title="NEXUS · VERIFIED SAVINGS"
-              code="RCPT #0007"
-              rows={[
-                { label: 'Item', value: 'Sony WH-1000XM5' },
-                { label: 'Best real price found', value: '$328.00', mono: true },
-                { label: 'You paid at merchant', value: '$328.00', mono: true },
-                { label: 'List / typical price', value: '$375.12', mono: true },
-              ]}
-              totalLabel="Verified money saved"
-              totalValue={
-                <>
-                  {/* Rendered with the real figure so a crawler, a social-preview bot,
-                      a throttled tab or JS-off never shows the headline proof as
-                      "$0.00 saved"; the count-up overwrites it from ~0 once it runs. */}
-                  $<span ref={countRef}>{VERIFIED_SAVINGS.toFixed(2)}</span>
-                </>
-              }
-              stamp="VERIFIED ✓"
-              footer="Confirmed by the merchant network · past the return window · counts toward your VMS"
-            />
+            {/*
+             * The demo panel. Every merchant is "Merchant A/B/C" and the header
+             * says ILLUSTRATION, because naming Amazon or Best Buy beside a price
+             * we invented would be a fabricated claim attributed to a real
+             * company — and we have no relationship with any of them to invoke.
+             */}
+            <div
+              className="demo-panel reveal"
+              data-countup-root
+              role="img"
+              aria-label="Illustration of a price comparison: five merchants checked, best price 328 dollars, 47 dollars 12 cents below the typical price"
+            >
+              <div className="dp-glow" aria-hidden="true" />
+              <div className="dp-head">
+                <div>
+                  <b>NEXUS AI</b>
+                  <span className="dp-sub">Illustrative example — not live data</span>
+                </div>
+                <span className="dp-badge">ILLUSTRATION</span>
+              </div>
+
+              <div className="dp-product">
+                <div className="dp-thumb" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" width="100%" height="100%">
+                    <path
+                      d="M14 38V32a18 18 0 0 1 36 0v6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+                    <rect x="8" y="36" width="12" height="18" rx="5" fill="currentColor" />
+                    <rect x="44" y="36" width="12" height="18" rx="5" fill="currentColor" />
+                  </svg>
+                </div>
+                <div className="dp-facts">
+                  <h3>Over-ear headphones</h3>
+                  <p className="dp-sub">One product, five merchants, one honest total</p>
+                  <div className="dp-price-row">
+                    <div>
+                      <span className="dp-label">Best price found</span>
+                      <div className="dp-price mono">$328.00</div>
+                    </div>
+                    <div className="dp-save">
+                      <span className="dp-label">You save</span>
+                      <div className="dp-save-v mono">
+                        {/* Rendered with the real figure so a crawler, a social-preview
+                            bot, a throttled tab or JS-off never shows the headline proof
+                            as "$0.00"; the count-up overwrites it from ~0 once it runs. */}
+                        $<span ref={countRef}>{VERIFIED_SAVINGS.toFixed(2)}</span>
+                      </div>
+                      <span className="dp-vs mono">vs typical $375.12</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dp-stores">
+                <div className="dp-stores-h">Merchants checked</div>
+                {[
+                  { m: 'Merchant A', p: '$328.00', best: true },
+                  { m: 'Merchant B', p: '$341.99' },
+                  { m: 'Merchant C', p: '$348.00' },
+                  { m: 'Merchant D', p: '$349.99' },
+                  { m: 'Merchant E', p: '$352.98' },
+                ].map((r) => (
+                  <div className="dp-store" key={r.m}>
+                    <span>{r.m}</span>
+                    <span className="mono">{r.p}</span>
+                    {r.best ? (
+                      <span className="dp-best">BEST</span>
+                    ) : (
+                      <span className="dp-ok" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/*
+         * Where the reference design puts usage counts — merchants, users, star
+         * ratings — these are guarantees instead. A pre-launch product has no
+         * usage to report, but it can state exactly what it will and will not do,
+         * and every one of these is checkable against the code.
+         */}
+        <section className="proof-strip" aria-label="What we guarantee">
+          <div className="wrap proof-grid">
+            {[
+              { n: '0', t: 'Commission signals', s: 'visible to the ranker' },
+              { n: '$0', t: 'Of your money', s: 'we ever hold' },
+              { n: '100%', t: 'Affiliate links', s: 'disclosed, always' },
+              { n: '0', t: 'Prices shown', s: 'without a source' },
+            ].map((s) => (
+              <div className="proof-item" key={s.t}>
+                <div className="proof-n mono">{s.n}</div>
+                <div className="proof-t">{s.t}</div>
+                <div className="proof-s">{s.s}</div>
+              </div>
+            ))}
           </div>
         </section>
 
