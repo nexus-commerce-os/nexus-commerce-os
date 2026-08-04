@@ -12,6 +12,14 @@ name = "honesttotal"
 main = "worker/index.ts"
 compatibility_date = "2026-01-01"
 
+# Custom domains rather than routes: Cloudflare creates and owns the DNS
+# records and the certificate, so there is no hand-maintained A/CNAME to drift
+# out of sync with where the Worker actually is.
+routes = [
+  { pattern = "honesttotal.com", custom_domain = true },
+  { pattern = "www.honesttotal.com", custom_domain = true },
+]
+
 # Request logs, so we can tell "the verifier never reached us" apart from
 # "the verifier reached us and disliked the response" — two failures that look
 # identical from the outside.
