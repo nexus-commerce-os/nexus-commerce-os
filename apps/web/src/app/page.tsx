@@ -793,6 +793,7 @@ export default function NexusLanding() {
               { label: 'Affiliate disclosure', href: '/disclosure' },
               { label: 'Savings terms', href: '/verified-savings' },
               { label: 'Privacy', href: '/privacy' },
+              { label: 'Terms', href: '/terms' },
             ],
           },
         ]}
