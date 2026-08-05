@@ -788,9 +788,9 @@ export default function NexusLanding() {
           {
             heading: 'Legal',
             links: [
-              { label: 'Affiliate disclosure', href: '#trust' },
+              { label: 'Affiliate disclosure', href: '/disclosure' },
               { label: 'Savings terms', href: '#savings' },
-              { label: 'Privacy', href: '#trust' },
+              { label: 'Privacy', href: '/disclosure' },
             ],
           },
         ]}
