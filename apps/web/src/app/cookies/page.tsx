@@ -240,8 +240,8 @@ export default function CookiesPage() {
             </div>
             <p className="note">
               If you find a cookie we have not disclosed, that is a defect and we want to know:
-              email <a href="mailto:admin@honesttotal.com">admin@honesttotal.com</a> and this page
-              gets corrected the same day.
+              email <a href="mailto:privacy@honesttotal.com">privacy@honesttotal.com</a> and this
+              page gets corrected the same day.
             </p>
           </div>
         </section>

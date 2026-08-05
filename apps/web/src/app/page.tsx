@@ -782,6 +782,7 @@ export default function NexusLanding() {
             heading: 'Company',
             links: [
               { label: 'About', href: '/about' },
+              { label: 'Contact', href: '/contact' },
               { label: 'Trust & transparency', href: '#trust' },
               { label: 'FAQ', href: '#faq' },
               { label: 'Waitlist', href: '#cta' },

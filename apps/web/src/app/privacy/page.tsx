@@ -20,7 +20,11 @@ import type { Metadata } from 'next';
  */
 
 const BASE = 'https://honesttotal.com';
-const CONTACT = 'admin@honesttotal.com';
+// Was admin@, which is the address used for third-party account signups and
+// forwards to a personal mailbox. privacy@ was created as a dedicated route in
+// Cloudflare Email Routing and confirmed Active before this changed, so the
+// address published here is purpose-built rather than borrowed.
+const CONTACT = 'privacy@honesttotal.com';
 const EFFECTIVE = '5 August 2026';
 
 export const metadata: Metadata = {

@@ -20,7 +20,7 @@ import type { Metadata } from 'next';
  */
 
 const BASE = 'https://honesttotal.com';
-const CONTACT = 'admin@honesttotal.com';
+const CONTACT = 'hello@honesttotal.com';
 const EFFECTIVE = '5 August 2026';
 
 export const metadata: Metadata = {
