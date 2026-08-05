@@ -772,6 +772,7 @@ export default function NexusLanding() {
               { label: 'How it works', href: '#how' },
               { label: 'How we rank', href: '/how-we-rank' },
               { label: 'Buying guide: over-ears', href: '/guides/over-ear-headphones' },
+              { label: 'ANC explained', href: '/guides/how-anc-works' },
               { label: 'Commission-blind', href: '#ranking' },
               { label: 'Verified savings', href: '#savings' },
               { label: 'For developers', href: '#agent' },
@@ -780,6 +781,7 @@ export default function NexusLanding() {
           {
             heading: 'Company',
             links: [
+              { label: 'About', href: '/about' },
               { label: 'Trust & transparency', href: '#trust' },
               { label: 'FAQ', href: '#faq' },
               { label: 'Waitlist', href: '#cta' },
