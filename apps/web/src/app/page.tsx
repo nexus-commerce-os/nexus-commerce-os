@@ -784,7 +784,7 @@ export default function NexusLanding() {
               { label: 'About', href: '/about' },
               { label: 'Contact', href: '/contact' },
               { label: 'Trust & transparency', href: '#trust' },
-              { label: 'FAQ', href: '#faq' },
+              { label: 'FAQ', href: '/faq' },
               { label: 'Waitlist', href: '#cta' },
             ],
           },
