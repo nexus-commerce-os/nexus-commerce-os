@@ -771,6 +771,7 @@ export default function NexusLanding() {
             links: [
               { label: 'How it works', href: '#how' },
               { label: 'How we rank', href: '/how-we-rank' },
+              { label: 'Buying guide: over-ears', href: '/guides/over-ear-headphones' },
               { label: 'Commission-blind', href: '#ranking' },
               { label: 'Verified savings', href: '#savings' },
               { label: 'For developers', href: '#agent' },
