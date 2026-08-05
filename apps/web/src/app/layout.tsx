@@ -3,6 +3,15 @@ import type { Metadata } from 'next';
 import '@nexus/ui/styles.css';
 
 export const metadata: Metadata = {
+  /*
+   * Without this, every per-page `alternates.canonical` renders as a relative
+   * href — measured on the live site, which served `<link rel="canonical"
+   * href="/about">`. Relative canonicals are tolerated by Google and rejected
+   * by roughly everything else that reads them, including the affiliate
+   * reviewers this site has to satisfy. It also gives og:url and og:image a
+   * real origin to resolve against.
+   */
+  metadataBase: new URL('https://honesttotal.com'),
   title: "NEXUS Commerce OS — the buyer's side of shopping",
   description:
     "An AI buying agent that finds the genuinely best price across authorized merchants, hands you off to check out directly, and counts a saving only once it's verified. Ranking is by value — never by who pays us most.",

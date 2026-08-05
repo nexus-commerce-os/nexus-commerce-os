@@ -57,3 +57,60 @@ yet justify one.
 interaction review. Those reviews read computed styles and the accessibility tree, neither of which
 reveals a hit-testing problem. **Verifying that a control is reachable requires actually clicking
 it** — nothing cheaper substitutes.
+
+---
+
+## INC-0002 — The CTA's secondary button was invisible in dark mode
+
+| Field | Value |
+| --- | --- |
+| **Date found** | 2026-08-05 |
+| **Severity** | Medium — one of two calls to action was unreadable for dark-theme visitors |
+| **Status** | Fixed; verified by measurement in both themes |
+| **Fix** | `fix(ui): ghost button follows the CTA band's own text token` (this commit) |
+
+**1. Summary.** `.cta-final .btn-ghost` set `color: #e9efea`, a hardcoded near-white. The band it
+sits in is `background: var(--ink); color: var(--paper)`, which **inverts with the theme**. In dark
+mode `--ink` is `#e9efea` — so the button's text became exactly its own background colour.
+
+**2. Impact.** In dark mode the secondary button ("Read the method", "Back to home", "Read how we
+rank") rendered as text at **1.00:1** — invisible. Only its border hinted that anything was there,
+and that border was `rgba(255,255,255,0.28)`: white on a near-white band, so almost invisible too.
+It affected every page carrying the final CTA band.
+
+**3. Why it stayed hidden.** It was introduced *as a fix for the same bug on the other theme*. The
+original defect was the ghost button being near-black on the always-dark band in light mode; the
+repair replaced one theme-dependent token with a constant, which by construction can only be right
+in one theme. The verification that accepted it only looked at light mode.
+
+**4. Detection.** A contrast sweep across both themes during the `/verified-savings` build returned
+`btn-ghost 1:1` in dark. That reading was initially assumed to be a probe artefact — two earlier
+readings in the same sweep genuinely were — so it was checked directly: the computed colour and the
+band's computed background were both `rgb(233,239,234)`.
+
+**5. Root cause.** A hardcoded colour used to solve a problem whose cause was theme inversion. The
+band advertises its own correct foreground in `color: var(--paper)`; the fix ignored that and
+substituted a literal.
+
+**6. Fix.** `color: var(--paper)`, with the border as `color-mix(in oklab, var(--paper) 28%,
+transparent)`. The button now derives from the same token as the band's own text, so it inverts with
+it automatically.
+
+**7. Verification.** Measured with real sRGB compositing in both themes across 87 text elements on
+the page: dark mode has **no element below AAA**; the ghost button specifically moved from 1.00:1 to
+passing. Light mode is unchanged.
+
+**8. Related defects checked.** Audited every hardcoded light colour scoped to a themed surface.
+`.demo-panel` and its children (`.dp-sub`, `.ex-*`) are also hardcoded, but correctly so: that panel
+sets a **fixed gradient** background that does not invert, so fixed foregrounds are right there. The
+distinction is whether the surface's own background is theme-dependent — `.cta-final` was the only
+place where it is and the foreground was not.
+
+**9. Prevention.** The reusable lesson: **when a surface derives its background from a theme token,
+everything drawn on it must derive from a theme token too.** A literal colour on an inverting
+surface is a bug in whichever theme was not being looked at.
+
+**10. Process note.** Both this defect and INC-0001 were introduced or missed by a review that
+checked one state and generalised. The cheap corrective is not more review but **wider sampling**:
+this sweep only found it because it ran the same measurement over both themes rather than the one
+that happened to be on screen.

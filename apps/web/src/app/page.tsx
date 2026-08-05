@@ -774,7 +774,7 @@ export default function NexusLanding() {
               { label: 'Buying guide: over-ears', href: '/guides/over-ear-headphones' },
               { label: 'ANC explained', href: '/guides/how-anc-works' },
               { label: 'Commission-blind', href: '#ranking' },
-              { label: 'Verified savings', href: '#savings' },
+              { label: 'Verified savings', href: '/verified-savings' },
               { label: 'For developers', href: '#agent' },
             ],
           },
@@ -791,7 +791,7 @@ export default function NexusLanding() {
             heading: 'Legal',
             links: [
               { label: 'Affiliate disclosure', href: '/disclosure' },
-              { label: 'Savings terms', href: '#savings' },
+              { label: 'Savings terms', href: '/verified-savings' },
               { label: 'Privacy', href: '/disclosure' },
             ],
           },

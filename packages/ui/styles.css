@@ -2,16 +2,29 @@
   --paper: #f5f7f4;
   --card: #ffffff;
   --ink: #111a16;
-  --muted: #586460;
+  /* Darkened from #586460. Secondary text is most of the reading on this
+     site — ledes, notes, source lines, list items — and at the old value it
+     measured 5.6-6.2:1: AA, but under the 7:1 bar this project sets itself.
+     Every --muted-derived element now clears AAA in both themes. The cost is
+     slightly less separation from --ink; the gain is that the text carrying
+     the argument is legible to more people. */
+  --muted: #434e4a;
   --line: #dce3dd;
   --line-strong: #c4cdc6;
   --accent: #0e9f6e;
   --accent-ink: #0a5c41;
   --accent-wash: #e4f3ec;
   --amber: #b8791a;
-  --amber-ink: #8a5a10;
+  /* Darkened from #8a5a10, which measured 5.04:1 as pill text on
+     --amber-wash — AA, not the AAA this project holds itself to. This
+     value clears 7:1 on wash, card and paper alike. */
+  --amber-ink: #6d460b;
   --amber-wash: #f6ecd8;
   --danger: #b23b2e;
+  /* --danger is a fill weight; as 11px text on --danger-wash it measures
+     4.69:1 — AA but not AAA. --danger-ink is the text variant, standing in
+     the same relation to --danger as --accent-ink does to --accent. */
+  --danger-ink: #7d2317;
   --danger-wash: #f4e1de;
   /*
    * Elevation, in three tiers. Each is a STACK: a tight contact shadow plus a
@@ -57,7 +70,7 @@
     --paper: #0a0e0c;
     --card: #111815;
     --ink: #e9efea;
-    --muted: #8d9a93;
+    --muted: #a9b6af;
     --line: #1d2622;
     --line-strong: #2a342e;
     --accent: #2bd48f;
@@ -67,6 +80,7 @@
     --amber-ink: #e4a94a;
     --amber-wash: #241b0c;
     --danger: #e5695b;
+    --danger-ink: #f2a89e;
     --danger-wash: #241110;
     --e1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
     --e2:
@@ -85,16 +99,29 @@
   --paper: #f5f7f4;
   --card: #ffffff;
   --ink: #111a16;
-  --muted: #586460;
+  /* Darkened from #586460. Secondary text is most of the reading on this
+     site — ledes, notes, source lines, list items — and at the old value it
+     measured 5.6-6.2:1: AA, but under the 7:1 bar this project sets itself.
+     Every --muted-derived element now clears AAA in both themes. The cost is
+     slightly less separation from --ink; the gain is that the text carrying
+     the argument is legible to more people. */
+  --muted: #434e4a;
   --line: #dce3dd;
   --line-strong: #c4cdc6;
   --accent: #0e9f6e;
   --accent-ink: #0a5c41;
   --accent-wash: #e4f3ec;
   --amber: #b8791a;
-  --amber-ink: #8a5a10;
+  /* Darkened from #8a5a10, which measured 5.04:1 as pill text on
+     --amber-wash — AA, not the AAA this project holds itself to. This
+     value clears 7:1 on wash, card and paper alike. */
+  --amber-ink: #6d460b;
   --amber-wash: #f6ecd8;
   --danger: #b23b2e;
+  /* --danger is a fill weight; as 11px text on --danger-wash it measures
+     4.69:1 — AA but not AAA. --danger-ink is the text variant, standing in
+     the same relation to --danger as --accent-ink does to --accent. */
+  --danger-ink: #7d2317;
   --danger-wash: #f4e1de;
   /*
    * Elevation, in three tiers. Each is a STACK: a tight contact shadow plus a
@@ -118,7 +145,7 @@
   --paper: #0a0e0c;
   --card: #111815;
   --ink: #e9efea;
-  --muted: #8d9a93;
+  --muted: #a9b6af;
   --line: #1d2622;
   --line-strong: #2a342e;
   --accent: #2bd48f;
@@ -128,6 +155,7 @@
   --amber-ink: #e4a94a;
   --amber-wash: #241b0c;
   --danger: #e5695b;
+  --danger-ink: #f2a89e;
   --danger-wash: #241110;
   --e1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
   --e2:
@@ -1659,7 +1687,8 @@ summary:hover {
    above the AA floor but tight for a thumb. */
 @media (max-width: 560px) {
   .nav a,
-  .foot-grid a {
+  .foot-grid a,
+  .crumbs a {
     padding-block: 6px;
   }
 }
@@ -1800,7 +1829,10 @@ summary:hover {
 .dp-sub {
   display: block;
   font-size: var(--fs-xs);
-  color: #8d9a93;
+  /* Lightened from #8d9a93 (6.33:1 on the panel gradient). This line is the
+     ILLUSTRATION caption — the one piece of text on the panel a reader must
+     not miss — so it is the last place to accept sub-AAA contrast. */
+  color: #a3b0a8;
 }
 .dp-badge {
   flex: 0 0 auto;
@@ -2329,6 +2361,10 @@ summary:hover {
   background: color-mix(in oklab, var(--line) 60%, transparent);
   color: var(--muted);
 }
+.f-danger {
+  background: var(--danger-wash);
+  color: var(--danger-ink);
+}
 .frank {
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -2339,6 +2375,9 @@ summary:hover {
 .fr-warn,
 .fr-muted {
   color: var(--muted);
+}
+.fr-danger {
+  color: var(--danger-ink);
 }
 
 .ex-table {
@@ -2357,11 +2396,14 @@ summary:hover {
   border-color: #18221e;
 }
 .ex-win {
-  color: var(--accent);
+  /* The panel is dark in BOTH themes, so it needs the dark-surface accent
+     rather than var(--accent) — which in light theme resolves to the darker
+     green meant for white backgrounds and measured 5.23:1 here. */
+  color: #2bd48f;
   font-weight: 700;
 }
 .ex-unknown {
-  color: #8d9a93;
+  color: #a3b0a8;
 }
 .ex-badge {
   font-family: var(--mono);
@@ -2374,7 +2416,10 @@ summary:hover {
   white-space: nowrap;
 }
 .ex-badge.win {
-  background: var(--accent);
+  /* Same reason as .ex-win: this badge always sits on the dark panel, so it
+     takes the dark-surface accent. var(--accent) in light theme gave 5.58:1
+     against the badge's own ink. */
+  background: #2bd48f;
   color: #04140d;
 }
 .ex-badge.out {
@@ -2387,14 +2432,91 @@ summary:hover {
   color: #a9b6ae;
 }
 
-/* A ghost button inside the dark CTA band was invisible: .btn-ghost colours
-   its text with --ink, which is near-black in light theme, on a panel that is
-   always dark. Scope a light variant to the band rather than changing the
-   button primitive. */
+/* A ghost button inside the CTA band was invisible: .btn-ghost colours its
+   text with --ink, the same token the band uses as its BACKGROUND. Scope a
+   variant to the band rather than changing the button primitive.
+
+   This must be --paper, not a hardcoded light value. The band is
+   `background: var(--ink); color: var(--paper)`, so it inverts with the theme:
+   near-black in light mode, near-white in dark. A fixed #e9efea was correct in
+   light and invisible in dark — the exact bug this rule exists to fix, just on
+   the other theme. Following the band's own text token keeps the button
+   legible whichever way the band flips. */
 .cta-final .btn-ghost {
-  color: #e9efea;
-  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--paper);
+  border-color: color-mix(in oklab, var(--paper) 28%, transparent);
 }
 .cta-final .btn-ghost:hover {
-  border-color: rgba(255, 255, 255, 0.5);
+  border-color: color-mix(in oklab, var(--paper) 50%, transparent);
+}
+
+/* Breadcrumb. Rendered as an ordered list so the reading order a screen reader
+   announces is the hierarchy itself; the separators are generated content so
+   they are never read aloud as words. */
+.crumbs {
+  padding: 18px 0 0;
+  font-size: var(--fs-sm);
+  /* --muted alone measures 5.72:1 here — AA, short of the 7:1 this project
+     holds itself to. Mixed toward --ink it clears AAA while staying visibly
+     subordinate to the page title, which is the whole job of a breadcrumb. */
+  color: color-mix(in oklab, var(--muted) 50%, var(--ink));
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crumbs li + li::before {
+  content: '/';
+  margin-right: 8px;
+  color: var(--line-strong);
+}
+.crumbs a {
+  color: color-mix(in oklab, var(--muted) 50%, var(--ink));
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.crumbs a:hover {
+  color: var(--ink);
+  border-bottom-color: var(--line-strong);
+}
+.crumbs [aria-current='page'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The running total. It is a figure, not a headline: the number is set in mono
+   so a later non-zero value lines up digit-for-digit against this one, and the
+   caption carries the meaning so the number is never quotable on its own. */
+.vms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 20px;
+  max-width: 720px;
+  padding: 28px;
+}
+.vms-num {
+  font-family: var(--mono);
+  font-size: var(--fs-5xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.vms-label {
+  font-size: var(--fs-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--muted) 50%, var(--ink));
+}
+.vms-body {
+  flex-basis: 100%;
+  margin-top: 4px;
+  font-size: var(--fs-ms);
+  color: color-mix(in oklab, var(--muted) 50%, var(--ink));
 }
