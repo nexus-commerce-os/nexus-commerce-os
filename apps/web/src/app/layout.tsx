@@ -12,6 +12,18 @@ export const metadata: Metadata = {
    * real origin to resolve against.
    */
   metadataBase: new URL('https://honesttotal.com'),
+  /*
+   * The home page is a client component, so it cannot export `metadata` and
+   * had no canonical at all — while www.honesttotal.com and the apex both
+   * serve it, byte for byte, as verified against production. That is textbook
+   * duplicate content, and the sitemap we submitted lists the apex, so the
+   * ambiguity is worth removing rather than leaving to Google to guess.
+   *
+   * Declaring it here is safe: every content page sets its own
+   * `alternates.canonical`, which overrides this, and the only route that does
+   * not — the /ui component gallery — is already `robots: { index: false }`.
+   */
+  alternates: { canonical: '/' },
   title: "NEXUS Commerce OS — the buyer's side of shopping",
   description:
     "An AI buying agent that finds the genuinely best price across authorized merchants, hands you off to check out directly, and counts a saving only once it's verified. Ranking is by value — never by who pays us most.",
