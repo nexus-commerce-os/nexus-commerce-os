@@ -770,6 +770,7 @@ export default function NexusLanding() {
             heading: 'Product',
             links: [
               { label: 'How it works', href: '#how' },
+              { label: 'How we rank', href: '/how-we-rank' },
               { label: 'Commission-blind', href: '#ranking' },
               { label: 'Verified savings', href: '#savings' },
               { label: 'For developers', href: '#agent' },
