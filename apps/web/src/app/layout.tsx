@@ -33,12 +33,12 @@ export const metadata: Metadata = {
  */
 const IMPACT_SITE_VERIFICATION: Record<string, string> = {
   name: 'impact-site-verification',
-  value: 'fe28b116-b571-4b7f-9dee-56eda569241e',
+  value: '4f3e9f5c-7803-410c-95b9-bb36ab0d19c3',
   // `content` duplicates `value` deliberately. Impact's snippet uses `value`,
   // but a verifier written against the HTML spec would look for `content`,
   // which is the only attribute standard on <meta>. Emitting both costs
   // nothing and removes one guess about why verification fails.
-  content: 'fe28b116-b571-4b7f-9dee-56eda569241e',
+  content: '4f3e9f5c-7803-410c-95b9-bb36ab0d19c3',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

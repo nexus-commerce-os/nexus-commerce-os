@@ -122,6 +122,32 @@ account and approved merchants. That is consistent with the existing status, not
 **Checklist movement: none.** Still **0 of 13**. Real evidence arrived and was read; it did not
 satisfy any item. Recording it as progress would be exactly the status inflation this file forbids.
 
+### E-02 · Impact account created; Marketplace application declined (2026-08-05)
+
+**What exists.** A partner account on Impact, with `honesttotal.com` added as a channel and
+**verified** (status: Connected). Verification succeeded only after the account's own email domain
+was made to match the site — meta-tag verification failed four times against a correctly served tag,
+which was measured, not assumed: the page returns full HTML with the tag to any user agent, over
+both http and https, with no redirect and no bot challenge.
+
+**What was refused.** The **Marketplace** application: *"You currently do not qualify for access to
+impact.com's Marketplace."* Impact's own documentation lists insufficient traffic or audience on the
+media property among the reasons — which is exactly our position, and exactly what the site says
+about itself.
+
+**What the refusal does not do.** Impact states the decline *"does not affect any of your existing
+or pending brand program relationships"*, and that the account may still be used to partner
+**directly with brands via their unique sign-up links** and to **accept invitations to brand
+programs**. So the account is usable; the browse-and-apply directory is not.
+
+**Checklist movement: none.** Still **0 of 13**. Item 1 requires an approved affiliate account with
+merchant access; a created account whose marketplace application was declined is not that. Recording
+it as progress would be the status inflation this file exists to prevent.
+
+**This is risk R-01 materialising**, in its milder form: refused for the directory, not for the
+platform. The register's standing rule applies — the response is to report it, not to work around it
+with invented data.
+
 ## 5. Exit condition
 
 All thirteen ticked with evidence → artifact 9 may be revised from `BLOCKED` to `READY`, and
