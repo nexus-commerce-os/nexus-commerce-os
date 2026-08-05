@@ -2386,3 +2386,15 @@ summary:hover {
   font-size: var(--fs-sm);
   color: #a9b6ae;
 }
+
+/* A ghost button inside the dark CTA band was invisible: .btn-ghost colours
+   its text with --ink, which is near-black in light theme, on a panel that is
+   always dark. Scope a light variant to the band rather than changing the
+   button primitive. */
+.cta-final .btn-ghost {
+  color: #e9efea;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.cta-final .btn-ghost:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+}
