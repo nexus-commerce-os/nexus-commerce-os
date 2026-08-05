@@ -12,11 +12,25 @@ import type { Metadata } from 'next';
  * data source is connected — and the page says so rather than hiding it.
  */
 
+const BASE = 'https://honesttotal.com';
+
 export const metadata: Metadata = {
   title: 'How to choose over-ear headphones — Honest Total',
   description:
     'A buying guide with no prices and no favourites: what actually matters in over-ear headphones — fit, noise cancelling, sound, battery, calls, repairability — and which spec-sheet numbers mislead.',
   alternates: { canonical: '/guides/over-ear-headphones' },
+  openGraph: {
+    type: 'article',
+    url: `${BASE}/guides/over-ear-headphones`,
+    title: 'Choosing headphones, without a favourite.',
+    description:
+      'Fit before sound, why battery figures flatter, which spec-sheet numbers mislead — and no recommendation, because we have no data source to make one honestly.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Choosing headphones, without a favourite.',
+    description: 'What actually matters, and which numbers are theatre.',
+  },
 };
 
 /** The five decisions that actually separate headphones, in priority order. */
@@ -98,9 +112,42 @@ const FAQ = [
   },
 ];
 
+const BREADCRUMB_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'How to choose over-ear headphones',
+      item: `${BASE}/guides/over-ear-headphones`,
+    },
+  ],
+};
+
+const FAQ_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+
 export default function OverEarGuidePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_LD) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_LD) }}
+      />
+
       <header className="nav">
         <div className="wrap nav-in">
           <a className="brand" href="/" aria-label="Honest Total home">
@@ -121,6 +168,19 @@ export default function OverEarGuidePage() {
       </header>
 
       <main>
+        <div className="wrap">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <ol>
+              <li>
+                <a href="/">Home</a>
+              </li>
+              <li>
+                <span aria-current="page">How to choose over-ear headphones</span>
+              </li>
+            </ol>
+          </nav>
+        </div>
+
         {/* hero */}
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap">

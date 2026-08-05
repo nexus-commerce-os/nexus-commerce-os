@@ -9,11 +9,25 @@ import type { Metadata } from 'next';
  * against any particular pair.
  */
 
+const BASE = 'https://honesttotal.com';
+
 export const metadata: Metadata = {
   title: 'How noise cancelling actually works — Honest Total',
   description:
     'Active noise cancellation explained without marketing: what feedforward, feedback and hybrid ANC do, why voices get through, what "-40 dB" hides, and how to judge ANC before you buy.',
   alternates: { canonical: '/guides/how-anc-works' },
+  openGraph: {
+    type: 'article',
+    url: `${BASE}/guides/how-anc-works`,
+    title: 'ANC, without the marketing.',
+    description:
+      'What feedforward, feedback and hybrid ANC actually do, why voices get through, and what a "-40 dB" claim hides.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ANC, without the marketing.',
+    description: 'The physics, the honest limits, and how to judge it before you buy.',
+  },
 };
 
 const TYPES = [
@@ -77,9 +91,42 @@ const FAQ = [
   },
 ];
 
+const BREADCRUMB_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'How noise cancelling actually works',
+      item: `${BASE}/guides/how-anc-works`,
+    },
+  ],
+};
+
+const FAQ_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+
 export default function AncGuidePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_LD) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_LD) }}
+      />
+
       <header className="nav">
         <div className="wrap nav-in">
           <a className="brand" href="/" aria-label="Honest Total home">
@@ -100,6 +147,19 @@ export default function AncGuidePage() {
       </header>
 
       <main>
+        <div className="wrap">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <ol>
+              <li>
+                <a href="/">Home</a>
+              </li>
+              <li>
+                <span aria-current="page">How noise cancelling actually works</span>
+              </li>
+            </ol>
+          </nav>
+        </div>
+
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap">
             <span className="pill-eyebrow">
