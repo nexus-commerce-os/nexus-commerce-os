@@ -16,6 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/`, changeFrequency: 'weekly', priority: 1 },
     { url: `${BASE}/how-we-rank`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/verified-savings`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE}/commission-blind`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/guides/over-ear-headphones`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/how-anc-works`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/about`, changeFrequency: 'monthly', priority: 0.5 },

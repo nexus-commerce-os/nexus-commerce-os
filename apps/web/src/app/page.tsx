@@ -773,7 +773,7 @@ export default function NexusLanding() {
               { label: 'How we rank', href: '/how-we-rank' },
               { label: 'Buying guide: over-ears', href: '/guides/over-ear-headphones' },
               { label: 'ANC explained', href: '/guides/how-anc-works' },
-              { label: 'Commission-blind', href: '#ranking' },
+              { label: 'Commission-blind', href: '/commission-blind' },
               { label: 'Verified savings', href: '/verified-savings' },
               { label: 'For developers', href: '#agent' },
             ],

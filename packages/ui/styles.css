@@ -1728,7 +1728,14 @@ summary:hover {
   margin-top: 20px;
 }
 /* The stroke under the first line, drawn rather than underlined: a border sits
-   on the text baseline and clips descenders, which is why it looks cheap. */
+   on the text baseline and clips descenders, which is why it looks cheap.
+
+   `bottom` is measured from the span's font box, and at the hero's line-height
+   the next line's capitals begin only a few pixels below it. At -0.12em the
+   stroke was landing ON the following line — it struck through "later." on the
+   home page and through the second line of every hero heading that wraps.
+   Pulled in to -0.02em, and the heading given a little more leading below, the
+   stroke now sits in the gap it was always meant to occupy. */
 .h1-underlined {
   position: relative;
 }
@@ -1737,8 +1744,8 @@ summary:hover {
   position: absolute;
   left: 2%;
   right: -4%;
-  bottom: -0.12em;
-  height: 0.09em;
+  bottom: 0.04em;
+  height: 0.06em;
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
   opacity: 0.85;
@@ -1994,7 +2001,10 @@ summary:hover {
    competing with the demo panel instead of leading it. */
 .hero-h1 {
   font-size: clamp(2.4rem, 5.2vw, 3.9rem);
-  line-height: 0.98;
+  /* 0.98 set consecutive lines closer together than the type is tall, so the
+     lines' font boxes overlapped and left nowhere for .h1-underlined to draw.
+     1.06 is still tight for display type and gives the stroke its gap back. */
+  line-height: 1.1;
 }
 .lede {
   max-width: 46ch;
