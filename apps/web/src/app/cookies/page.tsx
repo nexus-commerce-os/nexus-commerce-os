@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /cookies — a cookie policy for a site that sets no cookies.
  *
@@ -20,7 +22,7 @@ const BASE = 'https://honesttotal.com';
 const EFFECTIVE = '5 August 2026';
 
 export const metadata: Metadata = {
-  title: 'Cookies — Honest Total',
+  title: 'Cookies — HonestTotal',
   description:
     'This site sets no cookies at all — not analytics, not advertising, not "strictly necessary". Here is how to verify that yourself in about ten seconds, and what would have to change for it to stop being true.',
   alternates: { canonical: '/cookies' },
@@ -131,9 +133,9 @@ export default function CookiesPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -344,14 +346,7 @@ export default function CookiesPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">Cookies set: 0 · effective {EFFECTIVE}</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>Cookies set: 0 · effective {EFFECTIVE}</>} />
     </>
   );
 }

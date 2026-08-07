@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /faq — the hub. 44 questions, none of them recycled.
  *
@@ -18,7 +20,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'FAQ — Honest Total',
+  title: 'FAQ — HonestTotal',
   description:
     'Forty-four questions about what this is, how it will make money, why the ranking cannot be bought, what happens to your data, and the uncomfortable ones — including the most likely way this fails.',
   alternates: { canonical: '/faq' },
@@ -46,7 +48,7 @@ const GROUPS: Group[] = [
     title: 'The basics',
     items: [
       {
-        q: 'What is Honest Total, in one sentence?',
+        q: 'What is HonestTotal, in one sentence?',
         a: 'A shopping comparison being built on one rule — rank offers by the total you actually pay, and never let commission influence that order. Everything else on this site follows from that sentence.',
       },
       {
@@ -54,8 +56,8 @@ const GROUPS: Group[] = [
         a: 'No. Today the site is writing: a published method, buying guides, and a waitlist. There is no comparison to run because no merchant data is connected. We would rather say that than dress a landing page up as a product.',
       },
       {
-        q: 'Why does the site say NEXUS in some places and Honest Total in others?',
-        a: 'NEXUS Commerce OS is the internal codename the engineering work carries; Honest Total is the public brand and the domain. You are seeing a project mid-rename rather than two companies. Where they appear together it is because the underlying system name has not been retired yet.',
+        q: 'Why does the site mention NEXUS as well as HonestTotal?',
+        a: 'HonestTotal is the public brand, the domain, and the name on every page. NEXUS Commerce OS is the internal codename the engineering work carries — it now appears only in the footer note and in this answer, never as the site’s identity. One project, two names: one for readers, one for the codebase.',
       },
       {
         q: 'What will it actually do when it opens?',
@@ -336,9 +338,9 @@ export default function FaqPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -477,14 +479,7 @@ export default function FaqPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">{ALL.length} answered · none recycled · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>{ALL.length} answered · none recycled · pre-launch</>} />
     </>
   );
 }

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /guides/laptop — evergreen explainer.
  *
@@ -12,7 +14,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'How to choose a laptop — Honest Total',
+  title: 'How to choose a laptop — HonestTotal',
   description:
     'A laptop guide that starts with the chassis, not the chip: why the same processor performs differently in different machines, why "up to 20 hours" is not a battery figure, and which specs you can never upgrade later.',
   alternates: { canonical: '/guides/laptop' },
@@ -159,9 +161,9 @@ export default function LaptopGuidePage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -324,14 +326,7 @@ export default function LaptopGuidePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No prices quoted · no models endorsed · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No prices quoted · no models endorsed · pre-launch</>} />
     </>
   );
 }

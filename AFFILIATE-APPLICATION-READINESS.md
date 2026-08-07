@@ -1,6 +1,7 @@
 # Affiliate Application Readiness — HonestTotal
 
-**Prepared:** 7 August 2026 · **Status of this document:** factual as of today
+**Prepared:** 7 August 2026 · **Verified against the live site after the blocking fixes**
+**Status:** factual as of today
 **Purpose:** reusable, truthful answers for Impact / CJ / Awin / direct-advertiser applications.
 
 > **Rule for this file:** every answer must be true on the day it is used. No invented traffic,
@@ -26,7 +27,7 @@
 | 11 | **Traffic** | **Pre-launch / early indexing.** No visitor counts, impressions, clicks, conversions or search-traffic figures are available or claimed. The site was submitted to Google Search Console on 5 August 2026; indexing had not produced reportable data at the time of writing. |
 | 12 | **Merchant relationships** | **None.** No merchant or advertiser partnership exists. No merchant logo appears anywhere on the site. All examples use placeholder names (Merchant A–E) inside blocks labelled ILLUSTRATION. |
 | 13 | **Pricing data** | **No live authorized merchant feed.** No product prices are served anywhere on the site. Every figure shown is invented for illustration and carries a visible ILLUSTRATION label. |
-| 14 | **Contact information** | `hello@honesttotal.com` (general) · `privacy@honesttotal.com` (data requests). Both are explicit, verified-active routes on the honesttotal.com domain. Published at https://honesttotal.com/contact. |
+| 14 | **Contact information** | `hello@honesttotal.com` (general) · `privacy@honesttotal.com` (data requests). Both are explicit, verified-active routes on the honesttotal.com domain. Published at https://honesttotal.com/contact, and reachable from the footer of every page. |
 
 ---
 
@@ -120,6 +121,38 @@ Stated here so the Founder is not surprised, not to be volunteered in an applica
    answered only by indexing time.
 2. **Pre-launch product.** The site repeatedly says nothing is running. This is correct and
    deliberate, and it is a harder sell than a vaguer site would be.
-3. **Brand naming.** The site's masthead reads "NEXUS Commerce OS" while the domain is
-   honesttotal.com. Explained on `/faq`; still a coherence cost. See the readiness audit §G.
+3. **Brand naming — RESOLVED 7 Aug 2026.** The masthead, every page title, `og:site_name` and
+   `applicationName` now read **HonestTotal**. NEXUS survives in 19 places across the site, all of
+   them explanatory (the footer note and one FAQ answer) and none of them identifying. Verified on
+   the live site: zero identity uses remain.
 4. **No incorporated entity.** Applications must be made as an individual.
+
+
+---
+
+## Part 5 — Verified live state (7 August 2026)
+
+Checked against `https://honesttotal.com` after deployment `d5a097a9`, not against source.
+
+| Check | Result |
+| --- | --- |
+| Shared footer on every public page | ✅ 17/17 |
+| Disclosure reachable from every buying guide | ✅ — previously unreachable |
+| Privacy / Terms / Cookies / Contact reachable everywhere | ✅ 17/17 |
+| Broken internal links | ✅ zero |
+| Home page identifies HonestTotal | ✅ title, masthead, og:site_name, applicationName |
+| NEXUS identity uses | ✅ zero (19 explanatory mentions remain) |
+| Titles carrying HonestTotal | ✅ 17/17 |
+| Canonicals absolute and correct | ✅ 17/17 |
+| sitemap.xml matches public pages | ✅ 17 = 17 |
+| JSON-LD parses | ✅ all |
+| Unlabelled money references | ✅ **zero** |
+| Earlier truth fixes regressed? | ✅ no — "fitness test enforced in CI", "engineered, tested", "Sony XM5", "verified just now" all absent |
+| Console errors | ✅ zero |
+| Horizontal overflow 375 / 768 / 1440 | ✅ none |
+| Footer contrast, both themes | ✅ 26 elements, zero AA failures, zero below AAA |
+| Structural regression test | ✅ `verify-footer` runs in `build`; proven to fail (exit 1) when a link is removed |
+
+**Email routing unchanged.** `admin@honesttotal.com` still depends on catch-all and remains the
+Impact account identity. Migration sequence is tracked in the readiness audit §J and was **not**
+performed.

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /guides/over-ear-headphones — the first buying guide.
  *
@@ -15,7 +17,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'How to choose over-ear headphones — Honest Total',
+  title: 'How to choose over-ear headphones — HonestTotal',
   description:
     'A buying guide with no prices and no favourites: what actually matters in over-ear headphones — fit, noise cancelling, sound, battery, calls, repairability — and which spec-sheet numbers mislead.',
   alternates: { canonical: '/guides/over-ear-headphones' },
@@ -150,9 +152,9 @@ export default function OverEarGuidePage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -352,14 +354,7 @@ export default function OverEarGuidePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No prices quoted · no models endorsed · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No prices quoted · no models endorsed · pre-launch</>} />
     </>
   );
 }

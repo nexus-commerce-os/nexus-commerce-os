@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /privacy — what we hold, which today is one email address.
  *
@@ -28,7 +30,7 @@ const CONTACT = 'privacy@honesttotal.com';
 const EFFECTIVE = '5 August 2026';
 
 export const metadata: Metadata = {
-  title: 'Privacy — Honest Total',
+  title: 'Privacy — HonestTotal',
   description:
     'What this site collects, which today is a single email address if you join the waitlist. No cookies, no analytics, no trackers, no third-party embeds — stated specifically enough to be checked.',
   alternates: { canonical: '/privacy' },
@@ -157,9 +159,9 @@ export default function PrivacyPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -415,14 +417,7 @@ export default function PrivacyPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No cookies · no analytics · effective {EFFECTIVE}</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No cookies · no analytics · effective {EFFECTIVE}</>} />
     </>
   );
 }

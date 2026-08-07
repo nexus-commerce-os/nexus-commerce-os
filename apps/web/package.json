@@ -2,15 +2,16 @@
   "name": "@nexus/web",
   "version": "0.0.0",
   "private": true,
-  "description": "NEXUS shopper-facing Next.js PWA — P0.1 scaffold (no features; implemented from P0.2).",
+  "description": "NEXUS shopper-facing Next.js PWA \u00e2\u20ac\u201d P0.1 scaffold (no features; implemented from P0.2).",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/verify-footer.mjs",
     "start": "next start",
     "lint": "eslint src worker",
     "typecheck": "tsc --noEmit && tsc -p worker --noEmit",
     "deploy:cf": "next build && wrangler deploy",
-    "preview:cf": "next build && wrangler dev"
+    "preview:cf": "next build && wrangler dev",
+    "verify:footer": "node scripts/verify-footer.mjs"
   },
   "dependencies": {
     "@nexus/ui": "workspace:*",

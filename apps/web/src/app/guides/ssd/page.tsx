@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /guides/ssd — evergreen explainer.
  *
@@ -13,7 +15,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'How to choose an SSD — Honest Total',
+  title: 'How to choose an SSD — HonestTotal',
   description:
     'SSDs explained without the headline number: why 7,000 MB/s almost never matters, what an SLC cache hides, DRAM versus HMB, TLC versus QLC, and the specs that actually change how a drive feels.',
   alternates: { canonical: '/guides/ssd' },
@@ -160,9 +162,9 @@ export default function SsdGuidePage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -348,14 +350,7 @@ export default function SsdGuidePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No prices quoted · no models endorsed · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No prices quoted · no models endorsed · pre-launch</>} />
     </>
   );
 }

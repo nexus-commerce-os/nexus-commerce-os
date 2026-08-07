@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /about — who is behind this, and on what terms.
  *
@@ -12,9 +14,9 @@ import type { Metadata } from 'next';
  */
 
 export const metadata: Metadata = {
-  title: 'About — Honest Total',
+  title: 'About — HonestTotal',
   description:
-    'Who is behind Honest Total, why it exists, what it refuses to do, and what pre-launch means here. Independent, self-funded, and written down before launch so it can be held against us.',
+    'Who is behind HonestTotal, why it exists, what it refuses to do, and what pre-launch means here. Independent, self-funded, and written down before launch so it can be held against us.',
   alternates: { canonical: '/about' },
 };
 
@@ -50,9 +52,9 @@ export default function AboutPage() {
     <>
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -80,9 +82,9 @@ export default function AboutPage() {
               <em>built on</em> the record.
             </h1>
             <p className="lede" style={{ marginTop: 24 }}>
-              Honest Total is an independent project with one idea: a price comparison is only
-              honest if it compares what you actually pay. This page says who is behind it, on what
-              terms, and what stage it is truly at.
+              HonestTotal is an independent project with one idea: a price comparison is only honest
+              if it compares what you actually pay. This page says who is behind it, on what terms,
+              and what stage it is truly at.
             </p>
           </div>
         </section>
@@ -209,14 +211,7 @@ export default function AboutPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">Independent · self-funded · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>Independent · self-funded · pre-launch</>} />
     </>
   );
 }

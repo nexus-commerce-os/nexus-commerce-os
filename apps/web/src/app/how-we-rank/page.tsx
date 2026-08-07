@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /how-we-rank — the methodology page.
  *
@@ -12,7 +14,7 @@ import type { Metadata } from 'next';
  */
 
 export const metadata: Metadata = {
-  title: 'How we rank — Honest Total',
+  title: 'How we rank — HonestTotal',
   description:
     'The ranking rule in full: offers are ordered by the total you actually pay, incomplete totals are never ranked, and commission is not an input. Written for shoppers and for reviewers.',
   alternates: { canonical: '/how-we-rank' },
@@ -108,9 +110,9 @@ export default function HowWeRankPage() {
     <>
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -469,14 +471,7 @@ export default function HowWeRankPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">Illustrative figures · pre-launch · nothing connected yet</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>Illustrative figures · pre-launch · nothing connected yet</>} />
     </>
   );
 }

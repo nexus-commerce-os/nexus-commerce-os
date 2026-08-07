@@ -9,7 +9,6 @@ import {
   Card,
   Eyebrow,
   FeatureCard,
-  Footer,
   MetricStat,
   PhaseTag,
   SectionHead,
@@ -17,7 +16,9 @@ import {
   Step,
 } from '@nexus/ui';
 
-const DEFAULT_NOTE = 'No spam — just one email the moment NEXUS opens in your region.';
+import { SiteFooter } from '@/components/SiteFooter';
+
+const DEFAULT_NOTE = 'No spam — just one email the moment HonestTotal opens in your region.';
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /** The one figure the receipt shows; the count-up animates to exactly this. */
@@ -228,9 +229,10 @@ export default function NexusLanding() {
                 <em>We earn</em> later.
               </h1>
               <p className="lede">
-                NEXUS is an AI buying agent that finds the genuinely best price across authorized
-                merchants, hands you off to check out directly, and counts a saving only once
-                it&apos;s <b>verified</b>. Ranking is by value — never by who pays us most.
+                HonestTotal is a price comparison being built to find the genuinely best price
+                across authorized merchants, hand you off to check out directly, and count a saving
+                only once it is <b>verified</b>. Ranking will be by value — never by who pays us
+                most.
               </p>
               <ul className="hero-chips">
                 <li>
@@ -285,7 +287,7 @@ export default function NexusLanding() {
               <div className="dp-glow" aria-hidden="true" />
               <div className="dp-head">
                 <div>
-                  <b>NEXUS AI</b>
+                  <b>HonestTotal</b>
                   <span className="dp-sub">Illustrative example — not live data</span>
                 </div>
                 <span className="dp-badge">ILLUSTRATION</span>
@@ -405,7 +407,7 @@ export default function NexusLanding() {
           <div className="wrap">
             <Eyebrow>Our promise</Eyebrow>
             <p className="q reveal">
-              NEXUS works for the <em>buyer</em> — never for whoever pays us most.
+              HonestTotal works for the <em>buyer</em> — never for whoever pays us most.
             </p>
             <p className="sub reveal">
               Everything below is a published rule we can be held to, not a description of software
@@ -419,7 +421,7 @@ export default function NexusLanding() {
         <section id="how">
           <div className="wrap">
             <SectionHead eyebrow="The model" title="A referral layer, not a checkout.">
-              NEXUS never holds your money, your order, or your inventory. It does one thing
+              HonestTotal never holds your money, your order, or your inventory. It does one thing
               extremely well: find the best legitimate deal and get out of the way.
             </SectionHead>
             <div className="steps">
@@ -433,7 +435,7 @@ export default function NexusLanding() {
               </Step>
               <Step index="03" title="Signed hand-off" className="reveal">
                 You&apos;re handed to the merchant&apos;s own checkout via a signed, allow-listed
-                deep link. You pay them directly. NEXUS takes no custody.
+                deep link. You pay them directly. HonestTotal takes no custody.
               </Step>
               <Step index="04" title="Verify the saving" className="reveal">
                 The network confirms the purchase asynchronously. Only a confirmed, past-the-window
@@ -453,11 +455,21 @@ export default function NexusLanding() {
               commission is never given to the ordering function at all. The test that will enforce
               it is specified and <b>not yet running</b> — there is no ranker to test.
             </SectionHead>
+            {/*
+              These two columns contain invented prices. The hero demo panel
+              carries an ILLUSTRATION badge; this block did not, which made it
+              the one place on the site where fabricated figures appeared
+              unlabelled. Labelled here in the same words rather than removed,
+              because the contrast is what the section is explaining.
+            */}
+            <p className="proof-cap" style={{ marginBottom: 14 }}>
+              Illustration — invented figures, placeholder merchants, no live data.
+            </p>
             <div className="rank">
               <Card className="rank-card reveal">
                 <h3>
-                  <span className="dot" style={{ background: 'var(--accent)' }} /> NEXUS — ranked by
-                  your value
+                  <span className="dot" style={{ background: 'var(--accent)' }} /> HonestTotal —
+                  ranked by your value
                 </h3>
                 <div className="row">
                   <span>Merchant A</span>
@@ -549,8 +561,9 @@ export default function NexusLanding() {
               eyebrow="Agent-first · built for developers"
               title="Every capability is an API before it's a screen."
             >
-              The tools the NEXUS agent calls are a first-class public surface — the same ones a
-              partner&apos;s assistant can call, scope-gated. The web app is just one renderer.
+              The tools the HonestTotal agent will call are a first-class public surface — the same
+              ones a partner&apos;s assistant can call, scope-gated. The web app is just one
+              renderer.
             </SectionHead>
             <div className="agent-grid">
               <div>
@@ -580,7 +593,7 @@ export default function NexusLanding() {
               <AgentTerminal
                 session="nexus-agent · session"
                 className="reveal"
-                ariaLabel="Example conversation with the NEXUS agent"
+                ariaLabel="Illustrative example conversation with the HonestTotal agent"
               >
                 <div>
                   <span className="u">you ›</span> find the best price on a pair of over-ear
@@ -628,8 +641,8 @@ export default function NexusLanding() {
                 raise a product&apos;s rank.
               </FeatureCard>
               <FeatureCard icon="↔" title="No custody" className="reveal">
-                NEXUS never becomes merchant of record. You pay the merchant directly through a
-                signed hand-off.
+                HonestTotal never becomes merchant of record. You pay the merchant directly through
+                a signed hand-off.
               </FeatureCard>
               <FeatureCard icon="◈" title="Your data stays yours" className="reveal">
                 Personalization will be a feature you control, not surveillance. Today nothing
@@ -677,7 +690,7 @@ export default function NexusLanding() {
             <SectionHead eyebrow="Questions, answered plainly" title="The honest FAQ." />
             <div className="faq">
               <details className="reveal">
-                <summary>How does NEXUS actually make money?</summary>
+                <summary>How does HonestTotal actually make money?</summary>
                 <p>
                   Affiliate commissions the merchant pays when you buy through our hand-off link.
                   Crucially, commission is invisible to our ranking — we&apos;re paid the same
@@ -696,9 +709,9 @@ export default function NexusLanding() {
               <details className="reveal">
                 <summary>Is this just another cashback or coupon app?</summary>
                 <p>
-                  No. Cashback (where legal) is one feature, not the point. NEXUS is an AI agent
-                  that finds the best real price and proves the saving — coupons and cashback are
-                  inputs to &quot;best price&quot;, not the product.
+                  No. Cashback (where legal) is one feature, not the point. HonestTotal is being
+                  built that finds the best real price and proves the saving — coupons and cashback
+                  are inputs to &quot;best price&quot;, not the product.
                 </p>
               </details>
               <details className="reveal">
@@ -710,7 +723,7 @@ export default function NexusLanding() {
                 </p>
               </details>
               <details className="reveal">
-                <summary>Where is NEXUS available?</summary>
+                <summary>Where will HonestTotal be available?</summary>
                 <p>
                   Rolling out region-before-market: United States first, then Canada / UK /
                   Australia, then the EU, then Bangladesh / India / Pakistan / the Middle East —
@@ -766,49 +779,7 @@ export default function NexusLanding() {
         </section>
       </main>
 
-      <Footer
-        note="A pure referral + affiliate intelligence layer. Codename NEXUS — consumer brand deferred. Illustrative figures shown."
-        columns={[
-          {
-            heading: 'Product',
-            links: [
-              { label: 'How it works', href: '#how' },
-              { label: 'How we rank', href: '/how-we-rank' },
-              { label: 'Buying guide: over-ears', href: '/guides/over-ear-headphones' },
-              { label: 'ANC explained', href: '/guides/how-anc-works' },
-              { label: 'Buying guide: OLED TVs', href: '/guides/oled-tv' },
-              { label: 'Buying guide: SSDs', href: '/guides/ssd' },
-              { label: 'Buying guide: laptops', href: '/guides/laptop' },
-              { label: 'Buying guide: keyboards', href: '/guides/mechanical-keyboard' },
-              { label: 'Commission-blind', href: '/commission-blind' },
-              { label: 'Verified savings', href: '/verified-savings' },
-              { label: 'For developers', href: '#agent' },
-            ],
-          },
-          {
-            heading: 'Company',
-            links: [
-              { label: 'About', href: '/about' },
-              { label: 'Contact', href: '/contact' },
-              { label: 'Trust & transparency', href: '#trust' },
-              { label: 'FAQ', href: '/faq' },
-              { label: 'Waitlist', href: '#cta' },
-            ],
-          },
-          {
-            heading: 'Legal',
-            links: [
-              { label: 'Affiliate disclosure', href: '/disclosure' },
-              { label: 'Savings terms', href: '/verified-savings' },
-              { label: 'Privacy', href: '/privacy' },
-              { label: 'Terms', href: '/terms' },
-              { label: 'Cookies', href: '/cookies' },
-            ],
-          },
-        ]}
-        bottomLeft="© 2026 NEXUS Commerce OS"
-        bottomRight="Built buyer-first · disclosed · authorized-data-only"
-      />
+      <SiteFooter note="Built buyer-first · disclosed · authorized-data-only" />
     </>
   );
 }

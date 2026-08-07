@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /disclosure — affiliate disclosure, data-sourcing policy, and privacy in
  * plain language.
@@ -12,9 +14,9 @@ import type { Metadata } from 'next';
  */
 
 export const metadata: Metadata = {
-  title: 'Disclosure — Honest Total',
+  title: 'Disclosure — HonestTotal',
   description:
-    'How Honest Total is paid, what we promise about affiliate links, where our data comes from, and what we do — and refuse to do — with yours. Written in plain language.',
+    'How HonestTotal is paid, what we promise about affiliate links, where our data comes from, and what we do — and refuse to do — with yours. Written in plain language.',
   alternates: { canonical: '/disclosure' },
 };
 
@@ -40,7 +42,7 @@ const PROMISES = [
 const PRIVACY = [
   {
     k: 'Waitlist email',
-    v: 'If you join the waitlist we store the address you gave us, and use it to tell you when Honest Total opens in your region. Nothing else is done with it.',
+    v: 'If you join the waitlist we store the address you gave us, and use it to tell you when HonestTotal opens in your region. Nothing else is done with it.',
   },
   {
     k: 'No tracking pixels, no ad-tech',
@@ -57,9 +59,9 @@ export default function DisclosurePage() {
     <>
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -104,7 +106,7 @@ export default function DisclosurePage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                As of August 2026, Honest Total has <b>no active affiliate partnership</b> and{' '}
+                As of August 2026, HonestTotal has <b>no active affiliate partnership</b> and{' '}
                 <b>no live data source</b>. No link on this site currently earns us anything.
               </p>
               <p className="muted">
@@ -221,14 +223,7 @@ export default function DisclosurePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No active partnerships · no live data · stated plainly</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No active partnerships · no live data · stated plainly</>} />
     </>
   );
 }

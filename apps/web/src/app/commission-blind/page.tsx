@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /commission-blind — why money cannot reach the ranking.
  *
@@ -16,7 +18,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'Commission-blind ranking — Honest Total',
+  title: 'Commission-blind ranking — HonestTotal',
   description:
     'Why affiliate commission can never change what we recommend: commission is absent from the ranking input rather than ignored by it, sponsored placement is walled off from organic results, and the rule is written to be audited.',
   alternates: { canonical: '/commission-blind' },
@@ -150,9 +152,9 @@ export default function CommissionBlindPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -412,14 +414,7 @@ export default function CommissionBlindPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No paid placement · no advertisers · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No paid placement · no advertisers · pre-launch</>} />
     </>
   );
 }

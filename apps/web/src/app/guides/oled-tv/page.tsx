@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /guides/oled-tv — evergreen explainer.
  *
@@ -18,7 +20,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'How to choose an OLED TV — Honest Total',
+  title: 'How to choose an OLED TV — HonestTotal',
   description:
     'OLED explained without marketing: why the blacks are real, what burn-in actually is, why "peak brightness" numbers mislead, how WOLED and QD-OLED differ, and the questions that matter before you buy.',
   alternates: { canonical: '/guides/oled-tv' },
@@ -179,9 +181,9 @@ export default function OledGuidePage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -409,14 +411,7 @@ export default function OledGuidePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No prices quoted · no models endorsed · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No prices quoted · no models endorsed · pre-launch</>} />
     </>
   );
 }

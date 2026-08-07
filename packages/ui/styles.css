@@ -1235,8 +1235,16 @@ footer {
 }
 .foot-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  /* Brand block plus four link columns. Was three columns; the legal set was
+     split out of "Company" so a reviewer looking for disclosure/privacy/terms
+     finds them under their own heading rather than mixed into company links. */
+  grid-template-columns: 1.4fr repeat(4, 1fr);
   gap: 32px;
+}
+@media (max-width: 1080px) {
+  .foot-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 }
 @media (max-width: 760px) {
   .foot-grid {

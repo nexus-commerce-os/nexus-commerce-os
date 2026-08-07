@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /terms — the terms for a website and a waitlist, because that is all there is.
  *
@@ -24,7 +26,7 @@ const CONTACT = 'hello@honesttotal.com';
 const EFFECTIVE = '5 August 2026';
 
 export const metadata: Metadata = {
-  title: 'Terms — Honest Total',
+  title: 'Terms — HonestTotal',
   description:
     'The terms for using this site: what it is, what it is not, what the waitlist commits you to, and what we do not promise. Short, because the site currently does one thing.',
   alternates: { canonical: '/terms' },
@@ -150,9 +152,9 @@ export default function TermsPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -479,14 +481,7 @@ export default function TermsPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No accounts · no payments · effective {EFFECTIVE}</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No accounts · no payments · effective {EFFECTIVE}</>} />
     </>
   );
 }

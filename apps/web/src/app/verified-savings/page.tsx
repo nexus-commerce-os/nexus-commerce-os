@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /verified-savings — what a saving has to survive before we count it.
  *
@@ -17,7 +19,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'Verified savings — Honest Total',
+  title: 'Verified savings — HonestTotal',
   description:
     'A saving is only counted once it is confirmed: estimated and pending amounts never reach the total. The four states explained, what each one has to survive, and why a number that can only go up is not evidence.',
   alternates: { canonical: '/verified-savings' },
@@ -163,9 +165,9 @@ export default function VerifiedSavingsPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -490,14 +492,7 @@ export default function VerifiedSavingsPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">Confirmed savings to date: $0.00 · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>Confirmed savings to date: $0.00 · pre-launch</>} />
     </>
   );
 }

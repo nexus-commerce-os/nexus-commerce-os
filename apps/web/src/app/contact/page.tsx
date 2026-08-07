@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /contact — two addresses, and honesty about what happens after you write.
  *
@@ -25,7 +27,7 @@ const HELLO = 'hello@honesttotal.com';
 const PRIVACY = 'privacy@honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'Contact — Honest Total',
+  title: 'Contact — HonestTotal',
   description:
     'Two addresses, both real and both read by a person: hello@honesttotal.com for anything, privacy@honesttotal.com for data requests. What we can and cannot help with, stated plainly.',
   alternates: { canonical: '/contact' },
@@ -134,9 +136,9 @@ export default function ContactPage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -344,14 +346,7 @@ export default function ContactPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No ticket system · no chatbot · read by a person</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No ticket system · no chatbot · read by a person</>} />
     </>
   );
 }

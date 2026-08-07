@@ -24,24 +24,25 @@ export const metadata: Metadata = {
    * not — the /ui component gallery — is already `robots: { index: false }`.
    */
   alternates: { canonical: '/' },
-  title: "NEXUS Commerce OS — the buyer's side of shopping",
+  title: "HonestTotal — the buyer's side of shopping",
   description:
-    "An AI buying agent that finds the genuinely best price across authorized merchants, hands you off to check out directly, and counts a saving only once it's verified. Ranking is by value — never by who pays us most.",
-  applicationName: 'NEXUS Commerce OS',
+    'HonestTotal is a pre-launch price comparison being built on one rule: rank by the total you actually pay, and never let commission influence the order. Published method, original buying guides, nothing live yet.',
+  applicationName: 'HonestTotal',
   // The growth loop is a screenshot of a verified saving (docs/03 §7), so a
   // shared link must carry its own preview rather than rendering as a bare URL.
   openGraph: {
     type: 'website',
-    siteName: 'NEXUS Commerce OS',
-    title: 'We only make money when you save money.',
+    url: 'https://honesttotal.com/',
+    siteName: 'HonestTotal',
+    title: 'HonestTotal — we only make money when you save money.',
     description:
-      'An AI buying agent that finds the genuinely best price across authorized merchants and counts a saving only once it is verified. Commission-blind ranking, no payment custody.',
+      'A pre-launch price comparison built on one rule: rank by the total you actually pay, commission-blind, with no payment custody. The method is published before the product exists.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'We only make money when you save money.',
+    title: 'HonestTotal — we only make money when you save money.',
     description:
-      'Commission-blind ranking, no payment custody, and savings that only count once verified.',
+      'Commission-blind ranking, no payment custody, savings counted only once confirmed. Pre-launch: the method is published, the product is not built.',
   },
   robots: { index: true, follow: true },
 };

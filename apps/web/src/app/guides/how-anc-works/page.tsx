@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { SiteFooter } from '@/components/SiteFooter';
+
 /*
  * /guides/how-anc-works — evergreen explainer.
  *
@@ -12,7 +14,7 @@ import type { Metadata } from 'next';
 const BASE = 'https://honesttotal.com';
 
 export const metadata: Metadata = {
-  title: 'How noise cancelling actually works — Honest Total',
+  title: 'How noise cancelling actually works — HonestTotal',
   description:
     'Active noise cancellation explained without marketing: what feedforward, feedback and hybrid ANC do, why voices get through, what "-40 dB" hides, and how to judge ANC before you buy.',
   alternates: { canonical: '/guides/how-anc-works' },
@@ -129,9 +131,9 @@ export default function AncGuidePage() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <a className="brand" href="/" aria-label="Honest Total home">
+          <a className="brand" href="/" aria-label="HonestTotal home">
             <span className="mk" aria-hidden="true" />
-            NEXUS <small>Commerce OS</small>
+            HonestTotal
           </a>
           <nav className="nav-links">
             <a href="/">Home</a>
@@ -300,14 +302,7 @@ export default function AncGuidePage() {
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <div className="foot-bottom">
-            <span>© 2026 NEXUS Commerce OS</span>
-            <span className="mono">No prices quoted · no models endorsed · pre-launch</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter note={<>No prices quoted · no models endorsed · pre-launch</>} />
     </>
   );
 }
