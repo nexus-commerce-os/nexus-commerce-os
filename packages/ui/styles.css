@@ -12,6 +12,11 @@
   --line: #dce3dd;
   --line-strong: #c4cdc6;
   --accent: #0e9f6e;
+  /* Dedicated fill for the primary button ONLY. --accent is the brand green
+     and stays untouched; as a button fill behind near-black label text it
+     measured 5.58:1 — AA, under the 7:1 this project holds itself to. This
+     token is the same hue, lifted until the label clears AAA. */
+  --btn-primary-bg: #1fbe80;
   --accent-ink: #0a5c41;
   --accent-wash: #e4f3ec;
   --amber: #b8791a;
@@ -74,6 +79,7 @@
     --line: #1d2622;
     --line-strong: #2a342e;
     --accent: #2bd48f;
+    --btn-primary-bg: #2bd48f;
     --accent-ink: #8ce9c4;
     --accent-wash: #0f241c;
     --amber: #e4a94a;
@@ -109,6 +115,11 @@
   --line: #dce3dd;
   --line-strong: #c4cdc6;
   --accent: #0e9f6e;
+  /* Dedicated fill for the primary button ONLY. --accent is the brand green
+     and stays untouched; as a button fill behind near-black label text it
+     measured 5.58:1 — AA, under the 7:1 this project holds itself to. This
+     token is the same hue, lifted until the label clears AAA. */
+  --btn-primary-bg: #1fbe80;
   --accent-ink: #0a5c41;
   --accent-wash: #e4f3ec;
   --amber: #b8791a;
@@ -149,6 +160,7 @@
   --line: #1d2622;
   --line-strong: #2a342e;
   --accent: #2bd48f;
+  --btn-primary-bg: #2bd48f;
   --accent-ink: #8ce9c4;
   --accent-wash: #0f241c;
   --amber: #e4a94a;
@@ -359,10 +371,16 @@ header.nav {
 }
 .btn-primary {
   /* A shallow top-to-bottom gradient, not a flat fill: it is the difference
-     between a button that looks printed on and one that looks lit. */
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 88%, #fff), var(--accent));
+     between a button that looks printed on and one that looks lit.
+     Fill comes from --btn-primary-bg rather than --accent so the label can
+     clear AAA without shifting the brand green anywhere else on the site. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--btn-primary-bg) 88%, #fff),
+    var(--btn-primary-bg)
+  );
   color: #04140d;
-  border-color: color-mix(in oklab, var(--accent) 70%, #000);
+  border-color: color-mix(in oklab, var(--btn-primary-bg) 70%, #000);
 }
 .btn-primary:hover {
   filter: brightness(1.06);
@@ -1958,6 +1976,16 @@ summary:hover {
 .proof-strip {
   padding: 32px 0;
   border-top: 1px solid var(--line);
+}
+/* The four figures below read as usage statistics without this line. They are
+   guarantees about a product that has not launched, and a reviewer should not
+   have to infer that. */
+.proof-cap {
+  margin: 0 0 18px;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--muted) 50%, var(--ink));
 }
 .proof-grid {
   display: grid;

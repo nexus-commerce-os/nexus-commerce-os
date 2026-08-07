@@ -382,6 +382,9 @@ export default function NexusLanding() {
          * and every one of these is checkable against the code.
          */}
         <section className="proof-strip" aria-label="What we guarantee">
+          <div className="wrap">
+            <p className="proof-cap">Guarantees, not usage figures — nothing has launched yet.</p>
+          </div>
           <div className="wrap proof-grid">
             {[
               { n: '0', t: 'Commission signals', s: 'visible to the ranker' },
@@ -405,10 +408,10 @@ export default function NexusLanding() {
               NEXUS works for the <em>buyer</em> — never for whoever pays us most.
             </p>
             <p className="sub reveal">
-              Everything below is engineered, tested, and auditable, not marketing. Our
-              recommendation function literally cannot see commission, and we count a saving as real
-              only after the merchant confirms it. If we can&apos;t prove it, we don&apos;t claim
-              it.
+              Everything below is a published rule we can be held to, not a description of software
+              already running. The recommendation function is built so it cannot see commission, and
+              we will count a saving as real only after the merchant confirms it. If we can&apos;t
+              prove it, we don&apos;t claim it.
             </p>
           </div>
         </div>
@@ -446,9 +449,9 @@ export default function NexusLanding() {
               eyebrow="Commission-blind by design"
               title="The result that's best for you sits on top."
             >
-              Most &quot;deal&quot; sites quietly sort by what pays them. NEXUS&apos;s ranking
-              function cannot see commission at all — it&apos;s a fitness test enforced in CI, not a
-              promise on a page.
+              Most &quot;deal&quot; sites quietly sort by what pays them. The rule here is that
+              commission is never given to the ordering function at all. The test that will enforce
+              it is specified and <b>not yet running</b> — there is no ranker to test.
             </SectionHead>
             <div className="rank">
               <Card className="rank-card reveal">
@@ -565,12 +568,12 @@ export default function NexusLanding() {
                     title="Disclosure travels with the response"
                     className="reveal"
                   >
-                    Every API response carries a <span className="mono">disclosure</span> field; the
-                    agent verbalizes it before any redirect.
+                    Every API response will carry a <span className="mono">disclosure</span> field,
+                    verbalized before any redirect. The API is designed, not yet built.
                   </AgentPoint>
                   <AgentPoint index="03" title="No unverified price, ever" className="reveal">
-                    Prices are deterministically verified before they&apos;re shown — a hallucinated
-                    price can&apos;t reach you.
+                    Prices will be deterministically verified before they are shown, so a
+                    hallucinated price cannot reach you. No price is served today.
                   </AgentPoint>
                 </div>
               </div>
@@ -580,8 +583,8 @@ export default function NexusLanding() {
                 ariaLabel="Example conversation with the NEXUS agent"
               >
                 <div>
-                  <span className="u">you ›</span> find the best price on the Sony XM5 — authorized
-                  sellers only
+                  <span className="u">you ›</span> find the best price on a pair of over-ear
+                  headphones — authorized sellers only
                 </div>
                 <div style={{ marginTop: '10px' }}>
                   <span className="n">nexus ›</span> Best real price:{' '}
@@ -589,8 +592,8 @@ export default function NexusLanding() {
                 </div>
                 <div>
                   <span className="muted2">
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ranked by value, not payout · verified just
-                    now
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ranked by value, not payout · illustrative
+                    exchange, no live data
                   </span>
                 </div>
                 <div className="disc" style={{ marginTop: '8px' }}>
@@ -629,8 +632,8 @@ export default function NexusLanding() {
                 signed hand-off.
               </FeatureCard>
               <FeatureCard icon="◈" title="Your data stays yours" className="reveal">
-                Personalization is a feature, not surveillance — you can see and reset what drives
-                your recommendations.
+                Personalization will be a feature you control, not surveillance. Today nothing
+                personal is collected at all — see the privacy page.
               </FeatureCard>
               <FeatureCard icon="✓" title="Honest by metric" className="reveal">
                 Our north star is Verified Money Saved. It counts only confirmed savings — so
@@ -650,7 +653,7 @@ export default function NexusLanding() {
                     ≤ <em>1¢</em>
                   </>
                 }
-                label="AI cost per request, by design"
+                label="AI cost per request — design budget, not yet measured"
               />
               <MetricStat value={<em>100%</em>} label="Disclosed affiliate relationships" />
               <MetricStat value={<em>0</em>} label="Scraped data sources" />
@@ -685,9 +688,9 @@ export default function NexusLanding() {
               <details className="reveal">
                 <summary>Do you sell my data or track me around the web?</summary>
                 <p>
-                  No. Personalization is a feature you control, not surveillance. You can see
-                  exactly what drives your recommendations and reset it. We take no payment custody
-                  and store only what a referral needs.
+                  No. Today the only thing stored is a waitlist email, if you submit one — no
+                  cookies, no analytics, no trackers. When personalization exists it will be
+                  something you can inspect and reset, and we will never take payment custody.
                 </p>
               </details>
               <details className="reveal">
