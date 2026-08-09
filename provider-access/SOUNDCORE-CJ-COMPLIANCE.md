@@ -1,6 +1,6 @@
 # Soundcore — CJ Affiliate Compliance Record
 
-**Created:** 8 August 2026 · **Last verified:** 8 August 2026
+**Created:** 8 August 2026 · **Last verified:** 10 August 2026
 **Scope:** this file records the state of one advertiser relationship. It grants nothing and
 approves nothing. It exists so that "are we allowed to publish a Soundcore link yet?" has a written
 answer instead of a recollection.
@@ -30,10 +30,27 @@ Application was visible under CJ *Pending Applications* at the time of writing. 
 
 | Field | Value |
 | --- | --- |
+| Advertiser legal entity | **Fantasia Trading LLC** (Anker's US entity) |
+| Advertiser contact | Soundcore Affiliate Team — `affiliate@anker.com` |
+| Advertiser site | https://www.soundcore.com/ |
+| Joined CJ network | 22 Feb 2025 |
 | Category | Consumer Electronics |
 | Serviceable Area | United States |
 | Currency | USD |
 | Displayed Commission | 7% Sale |
+
+**Network-wide advertiser statistics** observed in CJ on 10 Aug 2026. These are the
+*advertiser's* figures across all CJ publishers — they are **not** HonestTotal's
+performance, HonestTotal has none, and they must never be quoted as ours:
+
+| Stat | Value |
+| --- | --- |
+| 3-month EPC | 25.94 USD |
+| 7-day EPC | 13.97 USD |
+| Top conversion country | United States, 92.93% |
+
+The 92.93% US concentration corroborates the US-only serviceable area and matches
+HonestTotal's stated launch market.
 
 > The displayed commission was observed in CJ while the application was pending and must be
 > re-verified against the active Program Terms if the relationship is approved.
@@ -96,3 +113,4 @@ If the relationship remains **pending**, or becomes **declined**, **expired** or
 | Date | Change | Evidence |
 | --- | --- | --- |
 | 2026-08-08 | Record created. Status PENDING; links disabled by construction. | CJ dashboard showed the application under Pending Applications; live site contains zero outbound external links and zero `rel="sponsored"` attributes. |
+| 2026-08-10 | Advertiser detail verified: legal entity Fantasia Trading LLC, contact affiliate@anker.com, joined 22 Feb 2025, US/USD, 7% Sale. Status re-confirmed **PENDING**. Two unrelated recruitment offers declined. | CJ *Advertisers* filtered to "Pending Applications" returned exactly 1 result (7382109 Soundcore). Declined 7889430 Abracadabra NYC (Collectibles) and 7804601 GearUP (Electronic Games) — neither matches the site's consumer-electronics category, and HonestTotal publishes no content in either. |
