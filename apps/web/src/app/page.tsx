@@ -529,6 +529,17 @@ export default function NexusLanding() {
                 </div>
               </Card>
             </div>
+            {/*
+              This section summarises the rule; the page states it in full,
+              including what would count as breaking it. Until now there was no
+              way to get from here to there — a reader who stopped at this
+              section had to find the page in the footer.
+            */}
+            <p style={{ marginTop: 22 }}>
+              <a href="/commission-blind">
+                Read the full commission-blind rule, and how it can be audited →
+              </a>
+            </p>
           </div>
         </section>
 
