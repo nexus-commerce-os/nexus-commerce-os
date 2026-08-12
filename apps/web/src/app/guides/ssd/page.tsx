@@ -17,7 +17,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'How to choose an SSD — HonestTotal',
   description:
-    'SSDs explained without the headline number: why 7,000 MB/s almost never matters, what an SLC cache hides, DRAM versus HMB, TLC versus QLC, and the specs that actually change how a drive feels.',
+    'Why 7,000 MB/s almost never matters, what an SLC cache hides, DRAM versus HMB, TLC versus QLC, and the specs that actually change how a drive feels.',
   alternates: { canonical: '/guides/ssd' },
   openGraph: {
     type: 'article',

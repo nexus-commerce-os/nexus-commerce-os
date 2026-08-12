@@ -24,7 +24,7 @@ const EFFECTIVE = '5 August 2026';
 export const metadata: Metadata = {
   title: 'Cookies — HonestTotal',
   description:
-    'This site sets no cookies at all — not analytics, not advertising, not "strictly necessary". Here is how to verify that yourself in about ten seconds, and what would have to change for it to stop being true.',
+    'This site sets no cookies at all — not analytics, not advertising, not “strictly necessary”. Here is how to verify that yourself in about ten seconds.',
   alternates: { canonical: '/cookies' },
   openGraph: {
     type: 'article',

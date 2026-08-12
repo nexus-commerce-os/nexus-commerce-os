@@ -13,11 +13,34 @@ import { SiteFooter } from '@/components/SiteFooter';
  * a fabricated claim about a real company.
  */
 
+const BASE = 'https://honesttotal.com';
+
 export const metadata: Metadata = {
   title: 'How we rank — HonestTotal',
   description:
-    'The ranking rule in full: offers are ordered by the total you actually pay, incomplete totals are never ranked, and commission is not an input. Written for shoppers and for reviewers.',
+    'Offers are ordered by the total you actually pay. Incomplete totals are never ranked, and commission is never an input. The full rule, in plain language.',
   alternates: { canonical: '/how-we-rank' },
+  openGraph: {
+    type: 'article',
+    url: `${BASE}/how-we-rank`,
+    title: 'The ranking rule, in full, before there is anything to rank.',
+    description:
+      'Ordered by the total you actually pay. Incomplete totals are never ranked, and commission is never an input.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'The ranking rule, in full, before there is anything to rank.',
+    description: 'Written to be audited, not just believed.',
+  },
+};
+
+const BREADCRUMB_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+    { '@type': 'ListItem', position: 2, name: 'How we rank', item: `${BASE}/how-we-rank` },
+  ],
 };
 
 /** Every component of an all-in total, and who supplies it. */
@@ -108,6 +131,11 @@ const FAQ = [
 export default function HowWeRankPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_LD) }}
+      />
+
       <header className="nav">
         <div className="wrap nav-in">
           <a className="brand" href="/" aria-label="HonestTotal home">

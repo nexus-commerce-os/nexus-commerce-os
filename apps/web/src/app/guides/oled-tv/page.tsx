@@ -22,7 +22,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'How to choose an OLED TV — HonestTotal',
   description:
-    'OLED explained without marketing: why the blacks are real, what burn-in actually is, why "peak brightness" numbers mislead, how WOLED and QD-OLED differ, and the questions that matter before you buy.',
+    'Why OLED blacks are real, what burn-in actually is, why peak-brightness numbers mislead, how WOLED and QD-OLED differ, and what to ask before you buy.',
   alternates: { canonical: '/guides/oled-tv' },
   openGraph: {
     type: 'article',

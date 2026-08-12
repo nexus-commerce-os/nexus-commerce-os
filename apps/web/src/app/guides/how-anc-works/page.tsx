@@ -16,7 +16,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'How noise cancelling actually works — HonestTotal',
   description:
-    'Active noise cancellation explained without marketing: what feedforward, feedback and hybrid ANC do, why voices get through, what "-40 dB" hides, and how to judge ANC before you buy.',
+    'What feedforward, feedback and hybrid ANC do, why voices still get through, what “-40 dB” hides, and how to judge noise cancelling before you buy.',
   alternates: { canonical: '/guides/how-anc-works' },
   openGraph: {
     type: 'article',

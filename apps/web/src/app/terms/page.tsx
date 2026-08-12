@@ -28,7 +28,7 @@ const EFFECTIVE = '5 August 2026';
 export const metadata: Metadata = {
   title: 'Terms — HonestTotal',
   description:
-    'The terms for using this site: what it is, what it is not, what the waitlist commits you to, and what we do not promise. Short, because the site currently does one thing.',
+    'What this site is, what it is not, what the waitlist commits you to, and what we do not promise. Short, because the site currently does one thing.',
   alternates: { canonical: '/terms' },
   openGraph: {
     type: 'article',

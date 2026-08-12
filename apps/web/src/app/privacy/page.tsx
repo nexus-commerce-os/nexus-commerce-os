@@ -32,7 +32,7 @@ const EFFECTIVE = '5 August 2026';
 export const metadata: Metadata = {
   title: 'Privacy — HonestTotal',
   description:
-    'What this site collects, which today is a single email address if you join the waitlist. No cookies, no analytics, no trackers, no third-party embeds — stated specifically enough to be checked.',
+    'What this site collects: one email address, and only if you join the waitlist. No cookies, no analytics, no trackers — specific enough for you to check.',
   alternates: { canonical: '/privacy' },
   openGraph: {
     type: 'article',

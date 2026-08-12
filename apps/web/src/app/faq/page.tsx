@@ -22,7 +22,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'FAQ — HonestTotal',
   description:
-    'Forty-four questions about what this is, how it will make money, why the ranking cannot be bought, what happens to your data, and the uncomfortable ones — including the most likely way this fails.',
+    'Forty-four questions: what this is, how it will make money, why the ranking cannot be bought, what happens to your data — and the most likely way this fails.',
   alternates: { canonical: '/faq' },
   openGraph: {
     type: 'article',

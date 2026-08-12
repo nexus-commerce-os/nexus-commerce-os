@@ -29,7 +29,7 @@ const PRIVACY = 'privacy@honesttotal.com';
 export const metadata: Metadata = {
   title: 'Contact — HonestTotal',
   description:
-    'Two addresses, both real and both read by a person: hello@honesttotal.com for anything, privacy@honesttotal.com for data requests. What we can and cannot help with, stated plainly.',
+    'Two real addresses, both read by a person: hello@honesttotal.com for anything, privacy@honesttotal.com for data requests. What we can and cannot help with.',
   alternates: { canonical: '/contact' },
   openGraph: {
     type: 'article',

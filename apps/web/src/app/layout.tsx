@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   title: "HonestTotal — the buyer's side of shopping",
   description:
-    'HonestTotal is a pre-launch price comparison being built on one rule: rank by the total you actually pay, and never let commission influence the order. Published method, original buying guides, nothing live yet.',
+    'A pre-launch price comparison built on one rule: rank by the total you actually pay, and never let commission change the order. Method published, nothing live.',
   applicationName: 'HonestTotal',
   // The growth loop is a screenshot of a verified saving (docs/03 §7), so a
   // shared link must carry its own preview rather than rendering as a bare URL.

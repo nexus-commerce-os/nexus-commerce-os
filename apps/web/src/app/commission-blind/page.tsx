@@ -20,7 +20,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'Commission-blind ranking — HonestTotal',
   description:
-    'Why affiliate commission can never change what we recommend: commission is absent from the ranking input rather than ignored by it, sponsored placement is walled off from organic results, and the rule is written to be audited.',
+    'Commission is absent from the ranking input, not merely ignored by it. Sponsored placement stays walled off from organic results, and the rule is auditable.',
   alternates: { canonical: '/commission-blind' },
   openGraph: {
     type: 'article',

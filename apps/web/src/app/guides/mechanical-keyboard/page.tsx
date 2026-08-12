@@ -16,7 +16,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'How to choose a mechanical keyboard — HonestTotal',
   description:
-    'Switches are the famous decision and rarely the one you notice most. Stabilisers, mounting style, keycap plastic and layout explained — plus why polling-rate marketing is mostly noise.',
+    'Switches are the famous decision and rarely the one you notice most. Stabilisers, mounting, keycap plastic and layout — plus why polling-rate specs are noise.',
   alternates: { canonical: '/guides/mechanical-keyboard' },
   openGraph: {
     type: 'article',

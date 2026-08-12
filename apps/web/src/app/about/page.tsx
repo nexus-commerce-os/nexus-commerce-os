@@ -13,11 +13,34 @@ import { SiteFooter } from '@/components/SiteFooter';
  * and checkable.
  */
 
+const BASE = 'https://honesttotal.com';
+
 export const metadata: Metadata = {
   title: 'About — HonestTotal',
   description:
-    'Who is behind HonestTotal, why it exists, what it refuses to do, and what pre-launch means here. Independent, self-funded, and written down before launch so it can be held against us.',
+    'Who is behind HonestTotal, why it exists, and what it refuses to do. Independent, self-funded and pre-launch — written down so it can be held against us.',
   alternates: { canonical: '/about' },
+  openGraph: {
+    type: 'article',
+    url: `${BASE}/about`,
+    title: 'Independent, self-funded, and pre-launch — in writing.',
+    description:
+      'Why HonestTotal exists, what it refuses to do, and what pre-launch honestly means here.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Independent, self-funded, and pre-launch — in writing.',
+    description: 'The terms this site operates on, published before there is anything to sell.',
+  },
+};
+
+const BREADCRUMB_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+    { '@type': 'ListItem', position: 2, name: 'About', item: `${BASE}/about` },
+  ],
 };
 
 const PRINCIPLES = [
@@ -50,6 +73,11 @@ const STATUS = [
 export default function AboutPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_LD) }}
+      />
+
       <header className="nav">
         <div className="wrap nav-in">
           <a className="brand" href="/" aria-label="HonestTotal home">

@@ -31,6 +31,21 @@ const VERIFIED_SAVINGS = 47.12;
  */
 const THEME_KEY = 'nexus-theme';
 
+/*
+ * Homepage structured data. Deliberately WebSite only — no SearchAction, because
+ * the site has no search; no Organization, because that reads as a registered
+ * entity and this project is founder-built and pre-launch. Schema.org describes
+ * what exists, or it is another unverifiable claim.
+ */
+const WEBSITE_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'HonestTotal',
+  url: 'https://honesttotal.com/',
+  description:
+    'A pre-launch price comparison built on one rule: rank by the total you actually pay, and never let commission change the order.',
+};
+
 export default function NexusLanding() {
   const countRef = useRef<HTMLSpanElement>(null);
   const [email, setEmail] = useState('');
@@ -193,6 +208,11 @@ export default function NexusLanding() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_LD) }}
+      />
+
       <header className="nav">
         <div className="wrap nav-in">
           <Brand href="#top" />

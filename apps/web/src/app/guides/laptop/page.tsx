@@ -16,7 +16,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'How to choose a laptop — HonestTotal',
   description:
-    'A laptop guide that starts with the chassis, not the chip: why the same processor performs differently in different machines, why "up to 20 hours" is not a battery figure, and which specs you can never upgrade later.',
+    'Why the same processor performs differently in different machines, why “up to 20 hours” is not a battery figure, and which specs you can never upgrade later.',
   alternates: { canonical: '/guides/laptop' },
   openGraph: {
     type: 'article',

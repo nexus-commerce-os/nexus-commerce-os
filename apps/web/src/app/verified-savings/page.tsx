@@ -21,7 +21,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'Verified savings — HonestTotal',
   description:
-    'A saving is only counted once it is confirmed: estimated and pending amounts never reach the total. The four states explained, what each one has to survive, and why a number that can only go up is not evidence.',
+    'A saving counts only once confirmed: estimated and pending never reach the total. The four states, and why a number that can only rise is not evidence.',
   alternates: { canonical: '/verified-savings' },
   openGraph: {
     type: 'article',

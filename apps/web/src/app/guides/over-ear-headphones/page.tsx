@@ -19,7 +19,7 @@ const BASE = 'https://honesttotal.com';
 export const metadata: Metadata = {
   title: 'How to choose over-ear headphones — HonestTotal',
   description:
-    'A buying guide with no prices and no favourites: what actually matters in over-ear headphones — fit, noise cancelling, sound, battery, calls, repairability — and which spec-sheet numbers mislead.',
+    'No prices, no favourites: what actually matters in over-ear headphones — fit, noise cancelling, sound, battery, calls — and which spec numbers mislead.',
   alternates: { canonical: '/guides/over-ear-headphones' },
   openGraph: {
     type: 'article',

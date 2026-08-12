@@ -13,11 +13,34 @@ import { SiteFooter } from '@/components/SiteFooter';
  * exists precisely so that update has an obvious home.
  */
 
+const BASE = 'https://honesttotal.com';
+
 export const metadata: Metadata = {
   title: 'Disclosure — HonestTotal',
   description:
-    'How HonestTotal is paid, what we promise about affiliate links, where our data comes from, and what we do — and refuse to do — with yours. Written in plain language.',
+    'How HonestTotal is paid, what we promise about affiliate links, where our data comes from, and what we refuse to do with yours. In plain language.',
   alternates: { canonical: '/disclosure' },
+  openGraph: {
+    type: 'article',
+    url: `${BASE}/disclosure`,
+    title: 'How this site gets paid, stated before it earns anything.',
+    description:
+      'What we promise about affiliate links, where the data comes from, and what we refuse to do with yours.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'How this site gets paid, stated before it earns anything.',
+    description: 'Plain language, and specific enough to be held to.',
+  },
+};
+
+const BREADCRUMB_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+    { '@type': 'ListItem', position: 2, name: 'Disclosure', item: `${BASE}/disclosure` },
+  ],
 };
 
 const PROMISES = [
@@ -57,6 +80,11 @@ const PRIVACY = [
 export default function DisclosurePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_LD) }}
+      />
+
       <header className="nav">
         <div className="wrap nav-in">
           <a className="brand" href="/" aria-label="HonestTotal home">
