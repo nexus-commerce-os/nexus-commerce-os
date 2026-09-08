@@ -254,6 +254,11 @@ export default function OledGuidePage() {
                 bright star on black.
               </p>
             </div>
+            <p className="note">
+              Working out whether a set you already own is one of these is a different question with
+              a different answer — see{' '}
+              <a href="/guides/how-to-tell-if-your-tv-is-oled">how to tell if your TV is OLED</a>.
+            </p>
           </div>
         </section>
 
