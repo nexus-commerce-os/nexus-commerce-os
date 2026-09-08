@@ -20,6 +20,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/guides/over-ear-headphones`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/how-anc-works`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/oled-tv`, changeFrequency: 'monthly', priority: 0.8 },
+    {
+      url: `${BASE}/guides/how-to-tell-if-your-tv-is-oled`,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
     { url: `${BASE}/guides/ssd`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/laptop`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/mechanical-keyboard`, changeFrequency: 'monthly', priority: 0.8 },
