@@ -201,6 +201,11 @@ export default function AncGuidePage() {
                 fails — which is why the sections below exist.
               </p>
             </div>
+            <p className="note">
+              If your question is the more practical one — what the ANC switch on your headphones
+              actually does, and when it is worth leaving off — that is answered separately in{' '}
+              <a href="/guides/anc-on-off-meaning">what ANC on and off mean</a>.
+            </p>
           </div>
         </section>
 
