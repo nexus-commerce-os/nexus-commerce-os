@@ -266,6 +266,15 @@ export default function AncGuidePage() {
                 ))}
               </ul>
             </div>
+            <p className="note">
+              The second one has more behind it than fits in a line. What a &ldquo;-XX dB&rdquo;
+              figure actually measures — and why the earcup&rsquo;s own isolation is often folded
+              into it — is covered in{' '}
+              <a href="/guides/how-noise-cancelling-is-measured">
+                how noise cancelling is measured
+              </a>
+              .
+            </p>
           </div>
         </section>
 
