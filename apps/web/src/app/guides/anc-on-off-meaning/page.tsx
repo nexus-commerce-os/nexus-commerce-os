@@ -248,7 +248,13 @@ export default function AncOnOffPage() {
             <p className="note">
               The part most people miss: switching ANC off does not make headphones transparent. It
               removes the electronics from the path and leaves the physical seal, which on over-ears
-              and sealed earbuds still muffles a fair amount.
+              and sealed earbuds still muffles a fair amount. That split matters when reading
+              claims too — the seal and the electronics are measured as separate quantities, which
+              is covered in{' '}
+              <a href="/guides/how-noise-cancelling-is-measured">
+                how noise cancelling is measured
+              </a>
+              .
             </p>
           </div>
         </section>
