@@ -35,6 +35,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/guides/ssd-best-practices`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/laptop`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/mechanical-keyboard`, changeFrequency: 'monthly', priority: 0.8 },
+    {
+      url: `${BASE}/guides/should-you-switch-to-a-mechanical-keyboard`,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
     { url: `${BASE}/about`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/disclosure`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/privacy`, changeFrequency: 'monthly', priority: 0.4 },

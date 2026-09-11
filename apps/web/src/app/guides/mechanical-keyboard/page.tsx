@@ -314,6 +314,15 @@ export default function KeyboardGuidePage() {
                 ))}
               </ul>
             </div>
+            <p className="note">
+              This page assumes the decision is already made. If it is not — if you are typing
+              happily on a laptop and wondering whether any of this is worth it — that is a
+              different question, answered in{' '}
+              <a href="/guides/should-you-switch-to-a-mechanical-keyboard">
+                should you switch to a mechanical keyboard
+              </a>
+              .
+            </p>
           </div>
         </section>
 
