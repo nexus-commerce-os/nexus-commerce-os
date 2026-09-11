@@ -27,6 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     { url: `${BASE}/guides/ssd`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/guides/ssd-best-practices`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/laptop`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/guides/mechanical-keyboard`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE}/about`, changeFrequency: 'monthly', priority: 0.5 },
