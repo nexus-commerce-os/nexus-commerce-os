@@ -108,6 +108,11 @@ jobs:
       - name: Typecheck
         # why: tsc/go vet/mypy catch correctness defects before tests run (docs/10 §2 Typecheck gate).
         run: pnpm -s typecheck
+      - name: OpenAPI contract validation
+        # why: ADR-0020 ruling (2026-07-31) — the OpenAPI document is the canonical HTTP
+        # contract, so a malformed or drifting spec must fail the build on its own, not
+        # only when a test happens to touch it.
+        run: pnpm --filter @nexus/auth run openapi:validate
 
   # ---------------------------------------------------------------------------
   # 3. UNIT TESTS — correctness + coverage gate (core ≥80%, ledger/attr ≥90%).
@@ -130,6 +135,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Unit tests + coverage
         # why: docs/10 §2 — fails on test failure OR coverage below threshold; money paths gated hardest.
+        # NEXUS_PG_TESTS=1 makes the Postgres adapter suites mandatory here: they start a real
+        # database via testcontainers (this runner has Docker), which is the only way the unique
+        # indexes and concurrent single-use guarantees are actually proven. Without the flag they
+        # skip loudly on a workstation with no Docker rather than passing silently.
+        env:
+          NEXUS_PG_TESTS: '1'
+          # Same reasoning for the Redis limiter: the in-memory double cannot prove the
+          # Lua script, increment-and-expire atomicity, or that a TTL is ever set.
+          NEXUS_REDIS_TESTS: '1'
+          # FU-1: the production SMTP factory against a real SMTP server. Proves it
+          # refuses to send when STARTTLS is absent, rather than falling back to clear text.
+          NEXUS_SMTP_TESTS: '1'
         run: pnpm -s test
 
   # ---------------------------------------------------------------------------
@@ -149,12 +166,12 @@ jobs:
         # why: semantic SAST for the JS/TS surface; deep taint analysis generic linters miss.
         # NOTE: Go SAST is NOT yet covered here — govulncheck/gosec (or CodeQL `go`) is a tracked
         #       P0.2 follow-up once the Go services carry real logic (avoids a hollow "Go is scanned" claim).
-        uses: github/codeql-action/init@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        uses: github/codeql-action/init@c373aa2d5d4940ac074c7d8b97c1ff0771eadf8d # v3.26.13
         with:
           languages: javascript-typescript
       - name: CodeQL analyze
         # why: docs/10 §2 — a high/critical CodeQL alert blocks merge (fail-closed).
-        uses: github/codeql-action/analyze@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        uses: github/codeql-action/analyze@c373aa2d5d4940ac074c7d8b97c1ff0771eadf8d # v3.26.13
       - name: Semgrep scan
         # why: fast rule-based SAST (OWASP + custom rules in .semgrep/); complements CodeQL, blocks on findings.
         run: |
@@ -176,11 +193,15 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: gitleaks
+      - name: gitleaks (free CLI)
         # why: secrets NEVER in Git (docs/08 §4.6, README non-negotiable); any hit blocks merge.
-        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
-        env:
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false" # why: never persist a report that may echo a secret.
+        # The gitleaks-ACTION now demands a paid GITLEAKS_LICENSE for org repos (breaking change in
+        # v2). The gitleaks BINARY is MIT-licensed and free, so we run it directly — identical scan
+        # over full git history, no license, and still fail-closed via --exit-code=1.
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            detect --source=/repo --redact --verbose --exit-code=1
 
   # ---------------------------------------------------------------------------
   # 6. DEPENDENCY SCAN — osv-scanner + license allowlist (critical CVE / GPL blocks).
@@ -252,7 +273,7 @@ jobs:
       - name: Trivy image scan
         # why: docs/10 §2 — critical OS/lib CVE with an available fix blocks (defense-in-depth vs. dep-scan).
         if: steps.detect.outputs.exists == 'true'
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: nexus/${{ matrix.service }}:${{ env.IMAGE_TAG }}
           format: sarif
@@ -263,7 +284,7 @@ jobs:
       - name: Upload Trivy SARIF
         # why: findings surface in the security tab even when the gate blocks — auditability.
         if: always() && steps.detect.outputs.exists == 'true'
-        uses: github/codeql-action/upload-sarif@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        uses: github/codeql-action/upload-sarif@c373aa2d5d4940ac074c7d8b97c1ff0771eadf8d # v3.26.13
         with:
           sarif_file: trivy-${{ matrix.service }}.sarif
           category: trivy-${{ matrix.service }}
@@ -330,6 +351,13 @@ jobs:
   tf-plan:
     name: 10 · Terraform plan (staging, read-only)
     needs: [tf-validate]
+    # why: scaffold-safe (walking-skeleton) — until AWS is wired at Stage B, there is no cloud to
+    #   plan against, so this stage (and the policy gate that consumes its plan JSON) SKIPS when the
+    #   OIDC role var is unset. This mirrors the Dockerfile-detect skips above: fail-closed on real
+    #   content, no-op on an empty skeleton. The moment vars.AWS_TF_PLAN_ROLE_ARN is set, both stages
+    #   arm automatically and block on any real plan/policy failure. ci-gate accepts skipped (only
+    #   failure/cancelled blocks), so a not-yet-wired infra stage never gives a false green.
+    if: vars.AWS_TF_PLAN_ROLE_ARN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -368,6 +396,8 @@ jobs:
   policy:
     name: 11 · Policy validation (conftest/OPA)
     needs: [tf-plan]
+    # why: consumes tf-plan's plan JSON; skips in lock-step with tf-plan until AWS is wired (Stage B).
+    if: vars.AWS_TF_PLAN_ROLE_ARN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -411,6 +441,10 @@ jobs:
       - name: doc_consistency_lint
         # why: docs/10 §2 — banned/retired terms, dangling anchors, broken links block merge (zero-dep, certified).
         run: python scripts/doc_consistency_lint.py
+      - name: migration_boundary_lint
+        # why: docs/06 §4 — each context owns one Postgres schema under its own DB role; CI greps
+        #      migrations for cross-schema DDL so the boundary is a build failure, not a review note.
+        run: python scripts/migration_boundary_lint.py
 
   # ---------------------------------------------------------------------------
   # 13. MERMAID VALIDATION — every diagram parses (docs/10 §2 gate).
@@ -621,13 +655,17 @@ jobs:
     permissions: {}
     steps:
       - name: Assert all gates green
-        # why: one required check keeps branch protection simple; any non-success blocks merge (fail-closed).
+        # why: one required check keeps branch protection simple. Fail-closed on any real problem:
+        #   a 'failure' or 'cancelled' result blocks merge. 'skipped' is accepted because the
+        #   scaffold-safe infra stages (tf-plan/policy) deliberately skip until AWS is wired at
+        #   Stage B — a not-yet-wired stage must not fake a green, but it also must not wedge the
+        #   gate shut. Once those stages arm (role var set), a real failure blocks as normal.
         run: |
           set -euo pipefail
-          results='${{ join(needs.*.result, ",") }}'
+          results="${{ join(needs.*.result, ',') }}"
           echo "Gate results: $results"
-          if echo "$results" | tr ',' '\n' | grep -vqx "success"; then
-            echo "::error::One or more CI gates did not succeed — merge blocked."
+          if echo "$results" | tr ',' '\n' | grep -qvE '^(success|skipped)$'; then
+            echo "::error::A CI gate failed or was cancelled — merge blocked."
             exit 1
           fi
-          echo "All CI gates green."
+          echo "All CI gates green (success, or scaffold-skipped until their infra is wired)."

@@ -1,0 +1,16 @@
+{
+  // The Worker is typechecked separately from the Next app on purpose:
+  // @cloudflare/workers-types and the DOM lib both declare `fetch`, `Request`
+  // and `Response` with different shapes, so loading them into one program
+  // produces conflicting globals. Splitting the two lets each side be typed
+  // against the runtime it actually executes in.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["@cloudflare/workers-types"],
+    "noEmit": true
+  },
+  "include": ["index.ts", "../src/lib/waitlist-contract.ts"]
+}
