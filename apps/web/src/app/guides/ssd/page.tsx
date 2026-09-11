@@ -287,6 +287,11 @@ export default function SsdGuidePage() {
               makes drives genuinely faster for ordinary work. It becomes misleading only when the
               benchmark is short enough that the cache never runs out, which most of them are.
             </p>
+            <p className="note">
+              If you already own a drive and the question is how to look after it — free space,
+              TRIM, whether to defragment, what endurance ratings mean — that is covered separately
+              in <a href="/guides/ssd-best-practices">SSD best practices</a>.
+            </p>
           </div>
         </section>
 
