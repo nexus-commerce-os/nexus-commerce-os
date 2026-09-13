@@ -228,6 +228,14 @@ export default function OverEarGuidePage() {
                 </div>
               ))}
             </div>
+            <p className="note">
+              This page assumes over-ear is the right shape for you. If that is still open — if you
+              are weighing them against on-ear or in-ear on size, heat or how they sit — start with{' '}
+              <a href="/guides/over-ear-vs-on-ear-vs-in-ear">
+                over-ear vs on-ear vs in-ear
+              </a>{' '}
+              instead.
+            </p>
           </div>
         </section>
 
