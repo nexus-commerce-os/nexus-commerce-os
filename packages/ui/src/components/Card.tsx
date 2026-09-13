@@ -1,4 +1,4 @@
-import type { ReactNode, CSSProperties } from "react";
+import type { ReactNode, CSSProperties } from 'react';
 
 export type CardProps = {
   children: ReactNode;
@@ -10,7 +10,7 @@ export type CardProps = {
 /** Bordered, rounded surface. Base look comes from the `.card` token class. */
 export function Card({ children, className, style }: CardProps) {
   return (
-    <div className={["card", className].filter(Boolean).join(" ")} style={style}>
+    <div className={['card', className].filter(Boolean).join(' ')} style={style}>
       {children}
     </div>
   );
