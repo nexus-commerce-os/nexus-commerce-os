@@ -289,6 +289,15 @@ export default function SsdBestPracticesPage() {
                 the <a href="/guides/ssd">buying guide</a>.
               </p>
             </div>
+            <p className="note">
+              Worth separating from this page&rsquo;s question: headroom is about the drive you
+              already own. Deciding how large a drive to buy in the first place is a different
+              calculation, and the margin above is one of its inputs — that method is in{' '}
+              <a href="/guides/how-much-ssd-storage-do-you-need">
+                how much SSD storage you actually need
+              </a>
+              .
+            </p>
           </div>
         </section>
 
