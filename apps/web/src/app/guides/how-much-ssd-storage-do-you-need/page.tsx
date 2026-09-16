@@ -612,7 +612,9 @@ export default function SsdCapacityGuidePage() {
             <p className="note">
               Whether a particular machine can be upgraded is a fact about that machine, not about
               its category — worth checking on the manufacturer&rsquo;s own specifications before it
-              becomes a constraint you discover later.
+              becomes a constraint you discover later. If the machine is a laptop you have not
+              bought yet, which parts are fixed at purchase is covered in our{' '}
+              <a href="/guides/laptop">laptop buying guide</a>.
             </p>
           </div>
         </section>
