@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 export type PhaseTagProps = {
   /** Short phase code, e.g. "P1". */
@@ -11,7 +11,7 @@ export type PhaseTagProps = {
 /** A rollout-phase chip (`.phase`). */
 export function PhaseTag({ code, live = false, children }: PhaseTagProps) {
   return (
-    <span className={live ? "phase live" : "phase"}>
+    <span className={live ? 'phase live' : 'phase'}>
       <b>{code}</b> {children}
     </span>
   );
