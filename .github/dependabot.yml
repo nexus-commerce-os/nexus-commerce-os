@@ -20,8 +20,15 @@ updates:
       prefix: "chore"
     labels: ["dependencies"]
     groups:
-      dev-dependencies:
+      # why: a group with no update-types collapses patch, minor AND major into one PR
+      # (PR #59: 13 updates, 8 of them majors, unreviewable as a unit). Restricting the
+      # routine group to minor+patch leaves every major to arrive as its own PR, which is
+      # the only way a breaking bump can be judged on its own evidence.
+      dev-minor-patch:
         dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Go services
   - package-ecosystem: "gomod"
