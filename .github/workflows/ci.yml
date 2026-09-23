@@ -149,12 +149,12 @@ jobs:
         # why: semantic SAST for the JS/TS surface; deep taint analysis generic linters miss.
         # NOTE: Go SAST is NOT yet covered here — govulncheck/gosec (or CodeQL `go`) is a tracked
         #       P0.2 follow-up once the Go services carry real logic (avoids a hollow "Go is scanned" claim).
-        uses: github/codeql-action/init@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        uses: github/codeql-action/init@461ef6c76dfe95d5c364de2f431ddbd31a417628 # v3.26.9
         with:
           languages: javascript-typescript
       - name: CodeQL analyze
         # why: docs/10 §2 — a high/critical CodeQL alert blocks merge (fail-closed).
-        uses: github/codeql-action/analyze@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        uses: github/codeql-action/analyze@461ef6c76dfe95d5c364de2f431ddbd31a417628 # v3.26.9
       - name: Semgrep scan
         # why: fast rule-based SAST (OWASP + custom rules in .semgrep/); complements CodeQL, blocks on findings.
         run: |
@@ -263,7 +263,7 @@ jobs:
       - name: Upload Trivy SARIF
         # why: findings surface in the security tab even when the gate blocks — auditability.
         if: always() && steps.detect.outputs.exists == 'true'
-        uses: github/codeql-action/upload-sarif@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
+        uses: github/codeql-action/upload-sarif@461ef6c76dfe95d5c364de2f431ddbd31a417628 # v3.26.9
         with:
           sarif_file: trivy-${{ matrix.service }}.sarif
           category: trivy-${{ matrix.service }}
