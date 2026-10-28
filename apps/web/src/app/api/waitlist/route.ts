@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { getWaitlistStore } from "@/lib/waitlist";
+import { NextResponse } from 'next/server';
+import { getWaitlistStore } from '@/lib/waitlist';
 
 // Server-side waitlist endpoint. The client posts { email }; we validate on the
 // server (never trust the client) and persist via the configured store adapter
@@ -15,16 +15,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     body = (await request.json()) as WaitlistBody;
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "Invalid request body." },
-      { status: 400 },
-    );
+    return NextResponse.json({ ok: false, error: 'Invalid request body.' }, { status: 400 });
   }
 
-  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json(
-      { ok: false, error: "Please enter a valid email address." },
+      { ok: false, error: 'Please enter a valid email address.' },
       { status: 422 },
     );
   }
@@ -32,7 +29,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const result = await getWaitlistStore().add({
       email,
-      source: "web",
+      source: 'web',
       createdAt: new Date().toISOString(),
     });
     return NextResponse.json(
@@ -40,23 +37,18 @@ export async function POST(request: Request): Promise<NextResponse> {
         ok: true,
         status: result.status,
         message:
-          result.status === "duplicate"
-            ? "You're already on the list."
-            : "You're on the list.",
+          result.status === 'duplicate' ? "You're already on the list." : "You're on the list.",
       },
       { status: 200 },
     );
   } catch {
     return NextResponse.json(
-      { ok: false, error: "Could not save right now — please try again." },
+      { ok: false, error: 'Could not save right now — please try again.' },
       { status: 502 },
     );
   }
 }
 
 export function GET(): NextResponse {
-  return NextResponse.json(
-    { ok: false, error: "Method not allowed — use POST." },
-    { status: 405 },
-  );
+  return NextResponse.json({ ok: false, error: 'Method not allowed — use POST.' }, { status: 405 });
 }

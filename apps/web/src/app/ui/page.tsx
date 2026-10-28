@@ -1,5 +1,5 @@
-import React from "react";
-import type { Metadata } from "next";
+import React from 'react';
+import type { Metadata } from 'next';
 import {
   AgentPoint,
   AgentTerminal,
@@ -15,24 +15,24 @@ import {
   SectionHead,
   StatePill,
   Step,
-} from "@nexus/ui";
+} from '@nexus/ui';
 
 export const metadata: Metadata = {
-  title: "@nexus/ui — component gallery",
-  description: "Live gallery of the @nexus/ui design-system primitives.",
+  title: '@nexus/ui — component gallery',
+  description: 'Live gallery of the @nexus/ui design-system primitives.',
   robots: { index: false, follow: false },
 };
 
 function Demo({ name, children }: { name: string; children: React.ReactNode }) {
   return (
-    <Card style={{ padding: "22px", display: "grid", gap: "16px" }}>
+    <Card style={{ padding: '22px', display: 'grid', gap: '16px' }}>
       <Eyebrow>{name}</Eyebrow>
       <div
         style={{
-          display: "flex",
-          gap: "14px",
-          flexWrap: "wrap",
-          alignItems: "center",
+          display: 'flex',
+          gap: '14px',
+          flexWrap: 'wrap',
+          alignItems: 'center',
         }}
       >
         {children}
@@ -42,9 +42,9 @@ function Demo({ name, children }: { name: string; children: React.ReactNode }) {
 }
 
 const galleryGrid = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-  gap: "18px",
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+  gap: '18px',
 } as const;
 
 export default function Gallery() {
@@ -54,8 +54,8 @@ export default function Gallery() {
         <section style={{ borderTop: 0 }}>
           <div className="wrap">
             <SectionHead eyebrow="@nexus/ui" title="Component gallery">
-              14 primitives, rendered live from the package. Toggle your OS
-              light/dark theme to see both.
+              14 primitives, rendered live from the package. Toggle your OS light/dark theme to see
+              both.
             </SectionHead>
 
             <div style={galleryGrid}>
@@ -117,14 +117,14 @@ export default function Gallery() {
               </Demo>
             </div>
 
-            <div style={{ ...galleryGrid, marginTop: "18px" }}>
+            <div style={{ ...galleryGrid, marginTop: '18px' }}>
               <Demo name="Receipt">
                 <Receipt
                   title="NEXUS · VERIFIED"
                   code="RCPT #0001"
                   rows={[
-                    { label: "Best price", value: "$328.00", mono: true },
-                    { label: "List price", value: "$375.12", mono: true },
+                    { label: 'Best price', value: '$328.00', mono: true },
+                    { label: 'List price', value: '$375.12', mono: true },
                   ]}
                   totalLabel="Saved"
                   totalValue="$47.12"
@@ -138,7 +138,7 @@ export default function Gallery() {
                   <div>
                     <span className="u">you ›</span> best price on the XM5
                   </div>
-                  <div style={{ marginTop: "8px" }}>
+                  <div style={{ marginTop: '8px' }}>
                     <span className="n">nexus ›</span> $328.00 at Merchant A
                   </div>
                 </AgentTerminal>
@@ -152,8 +152,8 @@ export default function Gallery() {
         note="@nexus/ui — 14 shared design-system primitives. Headless-with-global-tokens."
         columns={[
           {
-            heading: "Docs",
-            links: [{ label: "packages/ui/README", href: "/" }],
+            heading: 'Docs',
+            links: [{ label: 'packages/ui/README', href: '/' }],
           },
         ]}
         bottomLeft="© 2026 NEXUS Commerce OS"
