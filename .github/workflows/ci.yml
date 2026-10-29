@@ -176,11 +176,20 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: gitleaks
+      - name: gitleaks (MIT CLI, full history)
         # why: secrets NEVER in Git (docs/08 §4.6, README non-negotiable); any hit blocks merge.
-        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
-        env:
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false" # why: never persist a report that may echo a secret.
+        #   gitleaks-ACTION v2 refuses to scan an ORGANISATION-owned repo unless a paid
+        #   GITLEAKS_LICENSE secret is present, so on this repo it exited 1 *before
+        #   scanning anything* — a gate that looked present but detected nothing. The
+        #   gitleaks BINARY is MIT-licensed (gitleaks/gitleaks LICENSE) and free, so we
+        #   run the official image directly, pinned by digest for reproducibility.
+        #   --redact keeps any matched secret out of the log; --exit-code=1 keeps the
+        #   gate fail-closed. No allowlist and no .gitleaksignore: nothing is excluded.
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            detect --source=/repo --redact --verbose --exit-code=1
 
   # ---------------------------------------------------------------------------
   # 6. DEPENDENCY SCAN — osv-scanner + license allowlist (critical CVE / GPL blocks).
@@ -325,11 +334,61 @@ jobs:
           done
 
   # ---------------------------------------------------------------------------
+  # 10a. AWS PLAN CONFIGURATION — classify stage 10's prerequisites, fail-closed.
+  #   `terraform plan` against staging needs BOTH an assumable read-only role ARN
+  #   and a region (OIDC only, no static keys — ADR-0018 R-065). Three states:
+  #     none    — neither var set: AWS is not bootstrapped, so no plan can exist.
+  #               tf-plan and the plan-time policy gate skip, and ci-gate accepts
+  #               those skips ONLY while this job reports `none`.
+  #     full    — both set: tf-plan MUST run and its failure MUST block.
+  #     partial — exactly one set: a misconfiguration, so fail here loudly rather
+  #               than let a security gate disappear quietly.
+  #   Deliberately its own job: ci-gate's ability to tell an intentional skip from
+  #   an unexpected one must not depend on a job that can fail for unrelated
+  #   reasons (an HCL error in tf-validate would otherwise erase the signal).
+  #   Only booleans are echoed — no ARN, region or credential value is ever logged.
+  # ---------------------------------------------------------------------------
+  aws-config:
+    name: 10a · AWS plan configuration
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      state: ${{ steps.classify.outputs.state }}
+    steps:
+      - name: Classify AWS plan configuration
+        id: classify
+        env:
+          HAS_ROLE: ${{ vars.AWS_TF_PLAN_ROLE_ARN != '' }}
+          HAS_REGION: ${{ vars.AWS_REGION != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_ROLE" = "true" ] && [ "$HAS_REGION" = "true" ]; then
+            state=full
+          elif [ "$HAS_ROLE" = "false" ] && [ "$HAS_REGION" = "false" ]; then
+            state=none
+          else
+            state=partial
+          fi
+          echo "plan role ARN configured : $HAS_ROLE"
+          echo "plan region configured   : $HAS_REGION"
+          echo "plan configuration state : $state"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          if [ "$state" = "partial" ]; then
+            echo "::error::AWS plan configuration is incomplete — set BOTH vars.AWS_TF_PLAN_ROLE_ARN and vars.AWS_REGION, or neither. Refusing to skip the Terraform plan gate on a half-configured pipeline."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
   # 10. TERRAFORM PLAN — read-only plan (staging) via OIDC; JSON feeds policy gate.
   # ---------------------------------------------------------------------------
   tf-plan:
     name: 10 · Terraform plan (staging, read-only)
-    needs: [tf-validate]
+    needs: [tf-validate, aws-config]
+    # why: a plan is only possible once AWS is wired. `none` => intentionally
+    #      unavailable (ci-gate accepts the skip); `full` => this gate runs and
+    #      blocks on failure; `partial` has already failed in aws-config.
+    if: needs.aws-config.outputs.state == 'full'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -363,11 +422,39 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
-  # 11. POLICY VALIDATION — conftest/OPA on the plan JSON + rendered manifests.
+  # 11a. POLICY UNIT TESTS — the Rego rules tested against their own fixtures.
+  #   Needs no cloud plan, so it runs on every ordinary PR and blocks on failure:
+  #   a broken policy rule must never be able to pass silently (docs/10 §5).
+  #   Split out of stage 11 because `needs: [tf-plan]` was silently taking these
+  #   tests down with the plan whenever AWS was not wired.
+  # ---------------------------------------------------------------------------
+  policy-unit:
+    name: 11a · Policy unit tests (conftest verify)
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: conftest verify (policy unit tests)
+        # why: docs/10 §5 — the policies themselves are tested (tests/policy) so a broken rule can't silently pass.
+        # Image tag pinned; digest-pin is applied at org bootstrap (Renovate) once the registry mirror exists.
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/project" -w /project \
+            openpolicyagent/conftest:v0.55.0 \
+            verify --policy infrastructure/security/policies --policy tests/policy
+
+  # ---------------------------------------------------------------------------
+  # 11b. POLICY ENFORCEMENT (plan-time) — conftest/OPA on the Terraform plan JSON.
+  #   Only this half depends on a cloud plan, so only this half may skip, and only
+  #   while aws-config reports `none`. Once AWS is wired it runs and blocks; the
+  #   admission-time copy of the same policies is the second line of defence.
   # ---------------------------------------------------------------------------
   policy:
-    name: 11 · Policy validation (conftest/OPA)
-    needs: [tf-plan]
+    name: 11b · Policy enforcement (plan-time)
+    needs: [aws-config, tf-plan]
+    if: needs.aws-config.outputs.state == 'full'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -378,14 +465,6 @@ jobs:
         with:
           name: tfplan-json
           path: plan/
-      - name: conftest verify (policy unit tests)
-        # why: docs/10 §5 — the policies themselves are tested (tests/policy) so a broken rule can't silently pass.
-        # Image tag pinned; digest-pin is applied at org bootstrap (Renovate) once the registry mirror exists.
-        run: |
-          set -euo pipefail
-          docker run --rm -v "$PWD:/project" -w /project \
-            openpolicyagent/conftest:v0.55.0 \
-            verify --policy infrastructure/security/policies --policy tests/policy
       - name: conftest test (plan-time enforcement)
         # why: docs/10 §5 plan-time gate — no public S3, no 0.0.0.0/0 on money SGs, mandatory tags, encryption-at-rest.
         run: |
@@ -436,7 +515,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: 14 · Build · sign · attest
-    needs: [sbom, tf-plan, policy, doc-lint, mermaid, container-scan]
+    needs: [sbom, tf-plan, policy-unit, policy, doc-lint, mermaid, container-scan]
     # why: signed artifacts are produced only for the trunk; PRs are gated but never push/sign to ECR.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -598,7 +677,12 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # AGGREGATE GATE — the single required status check for branch protection.
-  #   Every gate must succeed; fail-closed if any upstream job failed/was skipped.
+  #   Fail-closed, and per-job rather than blanket: every MANDATORY gate must
+  #   report `success`. `failure` and `cancelled` are never acceptable for any
+  #   job. Only the two genuinely plan-dependent gates (tf-plan, policy) may be
+  #   `skipped`, and only while aws-config reports that the AWS plan role/region
+  #   are not configured at all — an unexplained skip blocks like a failure, so a
+  #   gate cannot be silenced by removing its prerequisite.
   # ---------------------------------------------------------------------------
   ci-gate:
     name: ci-gate
@@ -613,21 +697,100 @@ jobs:
       - container-scan
       - sbom
       - tf-validate
+      - aws-config
       - tf-plan
+      - policy-unit
       - policy
       - doc-lint
       - mermaid
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      - name: Assert all gates green
-        # why: one required check keeps branch protection simple; any non-success blocks merge (fail-closed).
+      - name: Assert every mandatory gate succeeded
+        # why: one required check keeps branch protection simple; this step decides
+        #      merge-ability per job so that "skipped" can never mean "passed".
+        env:
+          AWS_PLAN_STATE: ${{ needs.aws-config.outputs.state }}
+          R_FORMAT: ${{ needs.format.result }}
+          R_LINT: ${{ needs.lint.result }}
+          R_UNIT: ${{ needs.unit-tests.result }}
+          R_SAST: ${{ needs.sast.result }}
+          R_SECRETS: ${{ needs.secrets-scan.result }}
+          R_DEPS: ${{ needs.dependency-scan.result }}
+          R_CONTAINER: ${{ needs.container-scan.result }}
+          R_SBOM: ${{ needs.sbom.result }}
+          R_TFVALIDATE: ${{ needs.tf-validate.result }}
+          R_AWSCONFIG: ${{ needs.aws-config.result }}
+          R_TFPLAN: ${{ needs.tf-plan.result }}
+          R_POLICYUNIT: ${{ needs.policy-unit.result }}
+          R_POLICY: ${{ needs.policy.result }}
+          R_DOCLINT: ${{ needs.doc-lint.result }}
+          R_MERMAID: ${{ needs.mermaid.result }}
         run: |
           set -euo pipefail
-          results="${{ join(needs.*.result, ',') }}"
-          echo "Gate results: $results"
-          if echo "$results" | tr ',' '\n' | grep -vqx "success"; then
-            echo "::error::One or more CI gates did not succeed — merge blocked."
+
+          plan_state="${AWS_PLAN_STATE:-}"
+          if [ "$plan_state" = "none" ]; then plan_absent=true; else plan_absent=false; fi
+          echo "aws-config reported plan configuration: '${plan_state:-<unset>}'"
+          echo
+
+          fail=0
+
+          # A mandatory gate has exactly one acceptable result: success.
+          mandatory() {
+            if [ "$2" = "success" ]; then
+              printf 'ok     %-22s %s\n' "$1" "$2"
+            else
+              printf 'BLOCK  %-22s %s\n' "$1" "$2"
+              echo "::error::Mandatory gate '$1' reported '$2' — merge blocked."
+              fail=1
+            fi
+          }
+
+          # An optional gate may be skipped ONLY while its documented prerequisite is
+          # genuinely unavailable. failure/cancelled always block, and so does a skip
+          # that the prerequisite does not explain.
+          optional() {
+            case "$2" in
+              success)
+                printf 'ok     %-22s %s\n' "$1" "$2"
+                ;;
+              skipped)
+                if [ "$plan_absent" = "true" ]; then
+                  printf 'ok     %-22s %s (prerequisite absent: %s)\n' "$1" "$2" "$3"
+                else
+                  printf 'BLOCK  %-22s %s\n' "$1" "$2"
+                  echo "::error::Gate '$1' was skipped but its prerequisite ($3) is available — unexpected skip, merge blocked."
+                  fail=1
+                fi
+                ;;
+              *)
+                printf 'BLOCK  %-22s %s\n' "$1" "$2"
+                echo "::error::Gate '$1' reported '$2' — merge blocked."
+                fail=1
+                ;;
+            esac
+          }
+
+          mandatory "1 format"          "$R_FORMAT"
+          mandatory "2 lint"            "$R_LINT"
+          mandatory "3 unit-tests"      "$R_UNIT"
+          mandatory "4 sast"            "$R_SAST"
+          mandatory "5 secrets-scan"    "$R_SECRETS"
+          mandatory "6 dependency-scan" "$R_DEPS"
+          mandatory "7 container-scan"  "$R_CONTAINER"
+          mandatory "8 sbom"            "$R_SBOM"
+          mandatory "9 tf-validate"     "$R_TFVALIDATE"
+          mandatory "10a aws-config"    "$R_AWSCONFIG"
+          optional  "10 tf-plan"        "$R_TFPLAN" "AWS OIDC plan role + region"
+          mandatory "11a policy-unit"   "$R_POLICYUNIT"
+          optional  "11b policy"        "$R_POLICY" "Terraform plan JSON"
+          mandatory "12 doc-lint"       "$R_DOCLINT"
+          mandatory "13 mermaid"        "$R_MERMAID"
+
+          echo
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::One or more CI gates did not pass — merge blocked."
             exit 1
           fi
-          echo "All CI gates green."
+          echo "All CI gates green (optional gates skipped only where documented)."
