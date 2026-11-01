@@ -1,13 +1,61 @@
-// services/catalog — Catalog & Offer (NestJS/TS)
-// P0.1 SCAFFOLD — intent declaration only. NO implementation.
+// services/catalog — Catalog & Offer (TypeScript)
 //
-// This module will (P0.3 — Commerce Foundation) own:
-//   • the canonical offer/product schema (money as integer minor-units, NFR-CONS-01)
-//   • read-optimized catalog projections for Search + Price Intelligence (CQRS)
-//   • consumption of authorized, license-tagged `offer.upserted` events (ADR-0001)
+// P0.3 increment 1: the canonical offer schema, the authorized-feed adapter,
+// and the validation guard that stands between them. Still NO ingestion
+// scheduler, no persistence, no API surface, and nothing wired into the web
+// app — those are later increments.
 //
-// Legitimacy boundary: offers enter ONLY via the authorized feed-ingestion adapter;
-// no scraping, no provider SDK in the core module (ADR-0010).
+// Legitimacy boundary unchanged (ADR-0001, ADR-0010): offers enter only through
+// an authorized feed adapter, never by scraping, and this module holds no
+// provider credentials. Money is integer minor-units throughout (NFR-CONS-01).
 //
-// Intentionally exports nothing: there is no catalog logic in the scaffold.
-export {};
+// The invariant worth knowing before using any of this: shipping that the
+// provider did not state stays MISSING. It is never zero, and an offer whose
+// delivered cost is unknown is never eligible for delivered-price ranking.
+
+export {
+  addMoney,
+  minMoney,
+  minorUnitExponent,
+  parseBareAmount,
+  parseFeedMoney,
+  type Money,
+  type MoneyParseFailure,
+  type MoneyParseResult,
+} from './money';
+
+export {
+  deliveredCost,
+  deliveredPriceRankingEligibility,
+  itemPrice,
+  missingShipping,
+  verifiedShipping,
+  type Availability,
+  type DeliveredCost,
+  type DeliveredCostComponent,
+  type ItemCondition,
+  type MandatoryFees,
+  type Offer,
+  type RankingEligibility,
+  type ShippingCost,
+} from './offer';
+
+export {
+  parseShoppingFeed,
+  SHOPPING_FEED_NO_FEE_COLUMN,
+  type LogicalField,
+  type MalformedReason,
+  type MalformedRow,
+  type ParseOptions,
+  type RawShoppingRow,
+  type ShoppingFeedParse,
+} from './feed/cj-shopping-feed';
+
+export {
+  buildCatalog,
+  isValidGtin,
+  type CatalogBuild,
+  type CatalogSource,
+  type RejectedRow,
+  type RejectionReason,
+} from './catalog-guard';

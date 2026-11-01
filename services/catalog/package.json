@@ -2,12 +2,14 @@
   "name": "@nexus/catalog",
   "version": "0.0.0",
   "private": true,
-  "description": "NEXUS Catalog & Offer module (NestJS/TS) — P0.1 scaffold. No catalog logic; implemented in P0.3.",
+  "description": "NEXUS Catalog & Offer module (TS) — P0.3 increment 1: offer schema, authorized-feed adapter, validation guard. No ingestion, persistence or API yet.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "echo \"no tests — scaffold\" && exit 0"
+    "test": "tsc -p tsconfig.json && node --test test/money.test.mjs test/cj-shopping-feed.test.mjs test/catalog-guard.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
