@@ -26,5 +26,20 @@ export { AgentPoint } from "./components/AgentPoint";
 export type { AgentPointProps } from "./components/AgentPoint";
 export { AgentTerminal } from "./components/AgentTerminal";
 export type { AgentTerminalProps } from "./components/AgentTerminal";
+export {
+  ProductCard,
+  ProductCardSkeleton,
+  ProductCardError,
+} from "./components/ProductCard";
+export type {
+  ProductCardProps,
+  ProductCardShipping,
+  ProductCardAvailability,
+  ProductCardErrorProps,
+} from "./components/ProductCard";
 export { Footer } from "./components/Footer";
-export type { FooterProps, FooterColumn, FooterLink } from "./components/Footer";
+export type {
+  FooterProps,
+  FooterColumn,
+  FooterLink,
+} from "./components/Footer";
