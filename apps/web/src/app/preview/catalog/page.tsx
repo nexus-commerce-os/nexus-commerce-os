@@ -7,7 +7,7 @@ import { toProductCardView } from '@/lib/product-card-view';
 import { FEED_ENV_VAR, loadSoundcoreFeed } from '@/lib/soundcore-preview-feed';
 
 /*
- * /preview/soundcore — NOT A PUBLIC PAGE.
+ * /preview/catalog — NOT A PUBLIC PAGE.
  *
  * The first real products this project has ever rendered, kept behind a route
  * nothing links to and robots are told to ignore. It exists to answer one
@@ -21,18 +21,34 @@ import { FEED_ENV_VAR, loadSoundcoreFeed } from '@/lib/soundcore-preview-feed';
  * and no buy buttons: no network-issued affiliate URL exists for this merchant.
  * There are no Soundcore or Anker logos; the merchant is named in text.
  *
+ * THE PATH CARRIES NO BRAND NAME, and that is a contract term rather than a
+ * preference. Soundcore's CJ program terms prohibit branded keywords in a
+ * publisher's URLs ("Website — URL keywords"), so `/preview/soundcore` would
+ * have breached the agreement the moment it was served — noindex does not
+ * help, because the restriction is about the URL, not about indexing.
+ *
  * This page is excluded from sitemap.ts by omission and from indexing by the
- * metadata below. Both are asserted by apps/web/scripts/verify-preview.mjs so
- * the exclusion cannot rot.
+ * metadata below. Both, and the absence of a brand term in any route path, are
+ * asserted by apps/web/scripts/verify-preview.mjs so they cannot rot.
  */
 
 /** How many products the preview shows. Deliberately small and deliberately fixed. */
 const PREVIEW_COUNT = 20;
 
 export const metadata: Metadata = {
-  title: 'Soundcore catalog preview — HonestTotal (internal)',
+  title: 'Catalog preview — HonestTotal (internal)',
   description: 'Internal, non-public preview of validated product data. Not indexed.',
   robots: { index: false, follow: false, nocache: true },
+  /*
+   * The root layout sets `canonical: '/'` so that pages which forget to declare
+   * one still point somewhere sane. Inheriting it here would tell a crawler
+   * that this page IS the home page while also telling it not to index this
+   * page — two instructions that contradict each other, and the kind of mixed
+   * signal that makes the rest of the site's canonicals less trustworthy.
+   * `null` emits no canonical at all, which is the honest answer for a page
+   * that is not a public URL.
+   */
+  alternates: { canonical: null },
 };
 
 export default function SoundcorePreviewPage() {

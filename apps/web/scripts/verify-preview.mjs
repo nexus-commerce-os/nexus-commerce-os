@@ -37,12 +37,39 @@ function check(name, fn) {
     .catch((err) => failures.push(`  FAIL ${name}\n       ${String(err.message).split('\n')[0]}`));
 }
 
-const PREVIEW_PAGE = join(webRoot, 'src/app/preview/soundcore/page.tsx');
+const PREVIEW_PAGE = join(webRoot, 'src/app/preview/catalog/page.tsx');
 
 await check('the preview page is noindex, nofollow', async () => {
   const src = await readFile(PREVIEW_PAGE, 'utf8');
   assert.match(src, /robots:\s*\{[^}]*index:\s*false/s, 'robots.index must be false');
   assert.match(src, /robots:\s*\{[^}]*follow:\s*false/s, 'robots.follow must be false');
+});
+
+/*
+ * Soundcore's CJ program terms prohibit branded keywords in a publisher's URLs.
+ * A route directory is a URL, so the check is against the filesystem rather
+ * than against anything rendered — by the time a brand name reaches the HTML
+ * the path already exists.
+ */
+const BRAND_TERMS = /soundcore|anker/i;
+
+await check('no route path contains a merchant brand term', async () => {
+  const appDir = join(webRoot, 'src/app');
+  const offenders = [];
+  async function walk(dir) {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (BRAND_TERMS.test(entry.name)) offenders.push(relative(appDir, join(dir, entry.name)));
+      await walk(join(dir, entry.name));
+    }
+  }
+  await walk(appDir);
+  assert.deepEqual(offenders, [], `branded route segments: ${offenders.join(', ')}`);
+});
+
+await check('the preview inherits no canonical from the root layout', async () => {
+  const src = await readFile(PREVIEW_PAGE, 'utf8');
+  assert.match(src, /alternates:\s*\{\s*canonical:\s*null\s*\}/, 'canonical must be explicitly null');
 });
 
 await check('the preview route is absent from the sitemap', async () => {
@@ -108,7 +135,7 @@ await check('no merchant feed is committed anywhere in the repository', async ()
 });
 
 await check('the exported preview, if present, holds no affiliate link', async () => {
-  const exported = join(webRoot, 'out/preview/soundcore.html');
+  const exported = join(webRoot, 'out/preview/catalog.html');
   try {
     await stat(exported);
   } catch {
