@@ -167,9 +167,12 @@ describe('ProductCard', () => {
     expect(media?.textContent).toContain('No image');
   });
 
-  it('hides the placeholder text from assistive tech when an image is present', () => {
+  it('renders no placeholder at all when an image is present', () => {
+    // Product photos are transparent PNGs. A label sitting behind one shows
+    // through it, which looked like a defect on every card.
     const { container } = render(<ProductCard {...synthetic()} />);
-    expect(container.querySelector('.pc-media-ph')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('.pc-media-ph')).toBeNull();
+    expect(container.querySelector('.pc-media')?.getAttribute('data-placeholder')).toBeNull();
   });
 
   /* ---------------- accessibility & states ---------------- */

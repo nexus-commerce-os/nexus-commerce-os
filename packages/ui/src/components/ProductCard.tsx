@@ -125,12 +125,13 @@ export function ProductCard({
        * caller chose not to pass one.
        */}
       <div className="pc-media" data-placeholder={imageUrl ? undefined : 'true'}>
-        <span className="pc-media-ph" aria-hidden="true">
-          No image
-        </span>
         {imageUrl ? (
           <img className="pc-img" src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
-        ) : null}
+        ) : (
+          <span className="pc-media-ph" aria-hidden="true">
+            No image
+          </span>
+        )}
       </div>
 
       <div className="pc-body">

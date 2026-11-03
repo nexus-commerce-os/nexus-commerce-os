@@ -60,6 +60,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@nexus/catalog':
+        specifier: workspace:*
+        version: link:../../services/catalog
       '@nexus/ui':
         specifier: workspace:*
         version: link:../../packages/ui

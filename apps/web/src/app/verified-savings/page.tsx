@@ -97,7 +97,7 @@ const FAQ = [
   },
   {
     q: 'How long does Pending last?',
-    a: 'As long as the merchant’s return and reversal window, which varies by merchant and is not ours to set. We would rather a saving take weeks to count and be true than count immediately and be withdrawn later. No merchant is connected yet, so we cannot publish real windows — when one is, its window will be stated rather than described in general terms.',
+    a: 'As long as the merchant’s return and reversal window, which varies by merchant and is not ours to set. We would rather a saving take weeks to count and be true than count immediately and be withdrawn later. One merchant feed is connected, but no purchase path to it exists, so there is still no window to publish — when there is, it will be stated rather than described in general terms.',
   },
   {
     q: 'What happens to a saving that gets reversed?',
@@ -113,11 +113,11 @@ const FAQ = [
   },
   {
     q: 'How much has been saved so far?',
-    a: 'Nothing. Zero dollars, and not because savings are stuck in Pending — because the product is not open, no merchant is connected, and nobody has bought anything through us. The counter is at zero because zero is the true figure today.',
+    a: 'Nothing. Zero dollars, and not because savings are stuck in Pending — because the product is not open, no affiliate link exists, and nobody has bought anything through us. Listing a merchant’s products is not a purchase path. The counter is at zero because zero is the true figure today.',
   },
   {
     q: 'Is any of this running right now?',
-    a: 'No. The four states are a published rule that the system is being built to follow, not a description of software in production. There is no connected merchant feed, no conversion reporting, and no total to keep. This page exists now so it cannot be quietly written to fit whatever ships later.',
+    a: 'No. The four states are a published rule that the system is being built to follow, not a description of software in production. A merchant feed is connected, but there is no purchase path, no conversion reporting and no total to keep. This page exists now so it cannot be quietly written to fit whatever ships later.',
   },
 ];
 
@@ -213,9 +213,10 @@ export default function VerifiedSavingsPage() {
               has to survive first.
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
-              <b>Pre-launch.</b> No merchant is connected and no purchase has ever been made through
-              this site. The states below are the rule we are bound to, published before there is
-              anything to count — §06 gives the running total, which is zero.
+              <b>Pre-launch.</b> One merchant feed is connected, but no purchase has ever been made
+              through this site and no link to buy exists. The states below are the rule we are
+              bound to, published before there is anything to count — §06 gives the running total,
+              which is zero.
             </p>
           </div>
         </section>
@@ -439,7 +440,7 @@ export default function VerifiedSavingsPage() {
               <span className="vms-label">Confirmed savings to date</span>
               <p className="vms-body">
                 Not zero because savings are waiting in Pending — zero because there are none of any
-                kind. The product is not open, no merchant is connected, and nobody has bought
+                kind. The product is not open, no affiliate link exists, and nobody has bought
                 anything through this site. When that changes, this figure changes, and it will be
                 dated so you can see how recently it was true.
               </p>

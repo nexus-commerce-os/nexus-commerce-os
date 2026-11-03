@@ -124,7 +124,7 @@ const FAQ = [
   },
   {
     q: 'What is actually running today?',
-    a: 'The site, and nothing else. There is no merchant feed connected, no catalogue, and no live ranking. Every figure you see on this site is illustrative and labelled. When that changes, this page changes with it.',
+    a: 'The site, and a product catalogue from one authorized merchant feed. What is NOT running is the part this page is about: there is no ranking, no comparison and no total, because the feed states no delivery cost for any of its products and a total we cannot verify is not a total. Prices are the item alone, labelled as such. There is no affiliate link, so nothing on the site earns us anything.',
   },
 ];
 
@@ -172,9 +172,11 @@ export default function HowWeRankPage() {
               to trust us. Both deserve the same answer.
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
-              <b>Pre-launch.</b> No merchant feed, catalogue, or partnership is connected yet. What
-              follows is the rule the product is built to follow — not a description of something
-              already running. §7 says exactly what is and is not live.
+              <b>Pre-launch.</b> One authorized merchant feed is connected and its products are
+              listed, but nothing is ranked or compared: that merchant publishes no delivery cost,
+              so there is no verified total to rank on. What follows is the rule the product is
+              built to follow — not a description of something already running. §7 says exactly what
+              is and is not live.
             </p>
           </div>
         </section>
@@ -444,9 +446,9 @@ export default function HowWeRankPage() {
               <div className="card blind blind-out">
                 <h3>Not connected today</h3>
                 <ul className="cross-list">
-                  <li>No merchant feed, catalogue, or product API is live</li>
-                  <li>No affiliate partnership is active</li>
-                  <li>No live ranking runs — every figure on this site is illustrative</li>
+                  <li>No delivered cost is verified for any listed product</li>
+                  <li>No ranking, comparison or cheapest-price claim runs</li>
+                  <li>No affiliate link is active, so no listing earns us anything</li>
                   <li>No shopper has used the product, because it is not open yet</li>
                 </ul>
               </div>
@@ -499,7 +501,7 @@ export default function HowWeRankPage() {
         </section>
       </main>
 
-      <SiteFooter note={<>Illustrative figures · pre-launch · nothing connected yet</>} />
+      <SiteFooter note={<>One merchant feed connected · no ranking · delivery cost unverified</>} />
     </>
   );
 }
