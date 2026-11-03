@@ -1,6 +1,6 @@
 # packages/ui — React design-system primitives
 
-**Status:** 🟢 In use (14 primitives; consumed by `apps/web`)
+**Status:** 🟢 In use (21 primitives; consumed by `apps/web` + `apps/admin`)
 **Owner:** `@nexus-commerce-os/frontend` `@nexus-commerce-os/platform` (per [`.github/CODEOWNERS`](../../.github/CODEOWNERS) `/packages/`)
 **Runtime / language:** TypeScript + React (consumed by `apps/web`, `apps/admin`)
 **Certified-architecture component:** shared presentation primitives for the Client tier ([04 §3](../../docs/04-system-architecture.md#3-context--container-map-c4-level-2))
@@ -53,6 +53,17 @@ the package ships raw TS (`main: src/index.ts`), the app declares
 | **`AgentPoint`** | `.apt` (marker + title + body) | `index` · `title` · `children` · `className?` |
 | **`AgentTerminal`** | `.term` window (bar + session + body) | `session` · `children` · `ariaLabel?` · `className?` |
 | **`Footer`** | `<footer>` (Brand + note + link columns + bottom bar) | `note` · `columns: FooterColumn[]` · `bottomLeft` · `bottomRight` |
+| **`Badge`** | `.badge .badge-{tone}` | `tone?: neutral\|accent\|warning\|danger` · `children` |
+| **`Field`** | `.field` — label + `.input` + hint/error | `label` · `type?` · `value?`/`defaultValue?` · `onChange?` · `hint?` · `error?` |
+| **`Table<T>`** | `.table` (type-safe, scroll-on-overflow, empty state) | `columns: TableColumn<T>[]` · `rows: T[]` · `getRowKey` · `empty?` |
+| **`Tabs`** | `.tabs` (**client**) | `tabs: Tab[]` · `initial?` |
+| **`Select`** | `.select` native `<select>` (presentational) | `options: SelectOption[]` · `value?`/`defaultValue?` · `onChange?` · `ariaLabel?` · `disabled?` |
+| **`Modal`** | `.modal` dialog (**client** — Escape/backdrop/× close) | `open` · `onClose` · `title?` · `children` |
+| **`ToastProvider` / `useToast`** | `.toast-viewport` + `.toast-{tone}` (**client**) | `toast(message, { tone?, duration? })` · tones `neutral\|accent\|warning\|danger` |
+
+The interactive primitives (`Tabs`, `Modal`, `Toast`) carry `"use client"`; the rest are
+server-renderable. `Select` is presentational (no `"use client"`) — wrap it in a client
+component when you need controlled state.
 
 `SavingsState` maps to the four ratified savings states ([11 §2](../../docs/11-product-guidelines.md) · [ADR-0021](../../docs/adr/ADR-0021-legal-product-truth.md) D4).
 

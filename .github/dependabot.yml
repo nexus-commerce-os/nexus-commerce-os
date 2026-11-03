@@ -9,6 +9,10 @@ updates:
     commit-message:
       prefix: "ci"
     labels: ["dependencies", "ci"]
+    # why: OWASP A06 supply-chain — hold a freshly published version for a cooldown so a
+    # compromised or yanked release is caught before it can land in an update PR.
+    cooldown:
+      default-days: 7
 
   # Node / pnpm workspace
   - package-ecosystem: "npm"
@@ -22,6 +26,8 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: "development"
+    cooldown:
+      default-days: 7
 
   # Go services
   - package-ecosystem: "gomod"
@@ -31,6 +37,8 @@ updates:
     commit-message:
       prefix: "chore"
     labels: ["dependencies", "go"]
+    cooldown:
+      default-days: 7
 
   # Terraform providers/modules
   - package-ecosystem: "terraform"
@@ -40,6 +48,8 @@ updates:
     commit-message:
       prefix: "chore"
     labels: ["dependencies", "terraform"]
+    cooldown:
+      default-days: 7
 
   # Python tooling (scripts, services/ai)
   - package-ecosystem: "pip"
@@ -49,3 +59,5 @@ updates:
     commit-message:
       prefix: "chore"
     labels: ["dependencies", "python"]
+    cooldown:
+      default-days: 7

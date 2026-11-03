@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from 'react';
 
 /*
  * A single product, as a card.
@@ -28,30 +28,29 @@ import type { CSSProperties, ReactNode } from "react";
 
 /** What is known about getting this item to a buyer. There is no third state. */
 export type ProductCardShipping =
-  | { readonly kind: "not-verified" }
+  | { readonly kind: 'not-verified' }
   | {
-      readonly kind: "verified";
+      readonly kind: 'verified';
       /** Pre-formatted, e.g. "$5.99". The card never computes it. */
       readonly label: string;
       /** Where that figure applies, e.g. "US". A cost without one is not verified. */
       readonly destination: string;
     };
 
-export type ProductCardAvailability =
-  "in_stock" | "out_of_stock" | "preorder" | "backorder";
+export type ProductCardAvailability = 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder';
 
 const AVAILABILITY_LABEL: Record<ProductCardAvailability, string> = {
-  in_stock: "In stock",
-  out_of_stock: "Out of stock",
-  preorder: "Pre-order",
-  backorder: "Backordered",
+  in_stock: 'In stock',
+  out_of_stock: 'Out of stock',
+  preorder: 'Pre-order',
+  backorder: 'Backordered',
 };
 
 const AVAILABILITY_TONE: Record<ProductCardAvailability, string> = {
-  in_stock: "ok",
-  out_of_stock: "off",
-  preorder: "warn",
-  backorder: "warn",
+  in_stock: 'ok',
+  out_of_stock: 'off',
+  preorder: 'warn',
+  backorder: 'warn',
 };
 
 export type ProductCardProps = {
@@ -85,10 +84,10 @@ export type ProductCardProps = {
 function idFrom(title: string, suffix: string): string {
   const slug = title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 40);
-  return `pc-${slug || "item"}-${suffix}`;
+  return `pc-${slug || 'item'}-${suffix}`;
 }
 
 export function ProductCard({
@@ -106,12 +105,12 @@ export function ProductCard({
   className,
   style,
 }: ProductCardProps) {
-  const titleId = idFrom(title, "title");
-  const reasonId = idFrom(title, "reason");
+  const titleId = idFrom(title, 'title');
+  const reasonId = idFrom(title, 'reason');
 
   return (
     <article
-      className={["card", "pcard", className].filter(Boolean).join(" ")}
+      className={['card', 'pcard', className].filter(Boolean).join(' ')}
       style={style}
       aria-labelledby={titleId}
     >
@@ -125,20 +124,12 @@ export function ProductCard({
        * image URL is not a valid https link, so an absent image here means the
        * caller chose not to pass one.
        */}
-      <div
-        className="pc-media"
-        data-placeholder={imageUrl ? undefined : "true"}
-      >
+      <div className="pc-media" data-placeholder={imageUrl ? undefined : 'true'}>
         <span className="pc-media-ph" aria-hidden="true">
           No image
         </span>
         {imageUrl ? (
-          <img
-            className="pc-img"
-            src={imageUrl}
-            alt={imageAlt ?? ""}
-            loading="lazy"
-          />
+          <img className="pc-img" src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
         ) : null}
       </div>
 
@@ -156,10 +147,9 @@ export function ProductCard({
           <div className="pc-fact">
             <dt>Shipping</dt>
             <dd>
-              {shipping.kind === "verified" ? (
+              {shipping.kind === 'verified' ? (
                 <span className="mono">
-                  {shipping.label}{" "}
-                  <span className="pc-dest">to {shipping.destination}</span>
+                  {shipping.label} <span className="pc-dest">to {shipping.destination}</span>
                 </span>
               ) : (
                 <span className="pc-unverified">Not verified</span>
@@ -194,16 +184,10 @@ export function ProductCard({
          * is the sentence that keeps the card honest when shipping is unknown.
          */}
         <p className="pc-note">
-          Item price only. We have not verified what delivery costs, so this is
-          not a total.
+          Item price only. We have not verified what delivery costs, so this is not a total.
         </p>
 
-        <button
-          className="btn btn-ghost pc-cta"
-          type="button"
-          disabled
-          aria-describedby={reasonId}
-        >
+        <button className="btn btn-ghost pc-cta" type="button" disabled aria-describedby={reasonId}>
           Link unavailable
         </button>
         <p className="pc-reason" id={reasonId}>
@@ -224,9 +208,7 @@ export function ProductCard({
 export function ProductCardSkeleton({ className }: { className?: string }) {
   return (
     <article
-      className={["card", "pcard", "pc-skel", className]
-        .filter(Boolean)
-        .join(" ")}
+      className={['card', 'pcard', 'pc-skel', className].filter(Boolean).join(' ')}
       aria-busy="true"
       aria-label="Loading product"
     >
@@ -252,15 +234,10 @@ export type ProductCardErrorProps = {
  * validation. It states that nothing is known rather than rendering a partial
  * product: half a product card is indistinguishable from a cheap one.
  */
-export function ProductCardError({
-  message,
-  className,
-}: ProductCardErrorProps) {
+export function ProductCardError({ message, className }: ProductCardErrorProps) {
   return (
     <article
-      className={["card", "pcard", "pc-err", className]
-        .filter(Boolean)
-        .join(" ")}
+      className={['card', 'pcard', 'pc-err', className].filter(Boolean).join(' ')}
       role="status"
     >
       <div className="pc-body">
