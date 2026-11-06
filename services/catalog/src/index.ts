@@ -53,11 +53,15 @@ export {
 
 export {
   assessFeedFreshness,
+  assessFeedWindow,
   describeFreshness,
   feedExportedAt,
+  feedExportWindow,
   isReleasable,
   MAX_CLOCK_SKEW_MS,
+  MAX_EXPORT_SPREAD_MS,
   MAX_FEED_AGE_MS,
+  type FeedExportWindow,
   type FeedFreshness,
 } from './freshness';
 

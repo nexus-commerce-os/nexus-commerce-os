@@ -27,10 +27,10 @@ import { readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 import {
-  assessFeedFreshness,
+  assessFeedWindow,
   buildCatalog,
   describeFreshness,
-  feedExportedAt,
+  feedExportWindow,
   isReleasable,
   parseShoppingFeed,
   type FeedFreshness,
@@ -143,13 +143,20 @@ export function loadSoundcoreFeed(
   }
 
   /*
-   * The provider's own generation time, taken from the newest LAST_UPDATED in
-   * the file. Deliberately not the file's mtime: copying a file refreshes its
-   * mtime without refreshing a single price, which is exactly the mistake this
-   * guard exists to catch.
+   * The provider's own generation window, taken from the row timestamps in the
+   * file. Deliberately not the file's mtime: copying a file refreshes its mtime
+   * without refreshing a single price, which is exactly the mistake this guard
+   * exists to catch.
+   *
+   * The verdict is anchored on the OLDEST row, so "this feed is fresh" means
+   * every price in it is — one item updated this morning cannot vouch for the
+   * rest. What is DISPLAYED is the newest, because that is when the provider
+   * finished writing the file; with a real export the two are a quarter of a
+   * second apart.
    */
-  const exportedAt = feedExportedAt(parse.rows);
-  const freshness = assessFeedFreshness(exportedAt, now);
+  const window = feedExportWindow(parse.rows);
+  const exportedAt = window.newestAt;
+  const freshness = assessFeedWindow(window, now);
   if (!isReleasable(freshness)) {
     // Local builds still render, so a developer can see the layout — but the
     // page says how old the data is, and release refuses outright.

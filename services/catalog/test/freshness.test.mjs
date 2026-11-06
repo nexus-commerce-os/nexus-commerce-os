@@ -8,8 +8,11 @@ import { test } from 'node:test';
 import {
   MAX_CLOCK_SKEW_MS,
   MAX_FEED_AGE_MS,
+  MAX_EXPORT_SPREAD_MS,
   assessFeedFreshness,
+  assessFeedWindow,
   describeFreshness,
+  feedExportWindow,
   feedExportedAt,
   isReleasable,
   parseShoppingFeed,
@@ -171,4 +174,119 @@ test('the description names the age and the limit and no product data', () => {
   assert.match(describeFreshness({ kind: 'absent' }), /no export timestamp/);
   assert.match(describeFreshness({ kind: 'unparsable' }), /could not be read/);
   assert.match(describeFreshness(assessFeedFreshness(EXPORTED, at(-HOUR))), /future/);
+});
+
+/* ---------------- the whole feed, not its luckiest row ---------------- */
+
+/*
+ * The weakness this section exists for: anchoring on the newest row lets one
+ * item updated this morning vouch for every other record in the file. These
+ * tests state the weakness and then prove the window check closes it.
+ */
+
+const TEN_DAYS_AGO = '2026-10-27T12:00:00.000Z';
+const NOW = new Date('2026-11-06T12:00:00.000Z');
+
+function windowOf(rows) {
+  return feedExportWindow(parseShoppingFeed(buildFeed(rows)).rows);
+}
+
+test('LAST_UPDATED dates the generation run, which is why a window is measurable', () => {
+  // Shape taken from the real exports: every row stamped, spread under a second.
+  const w = windowOf([
+    product({ id: 'A', lastUpdated: '2026-11-05T04:46:07.887-08:00' }),
+    product({ id: 'B', lastUpdated: '2026-11-05T04:46:08.126-08:00' }),
+  ]);
+  assert.equal(w.rowsTotal, 2);
+  assert.equal(w.rowsTimestamped, 2);
+  assert.equal(w.spreadMs, 239);
+  assert.equal(w.oldestAt, '2026-11-05T12:46:07.887Z');
+  assert.equal(w.newestAt, '2026-11-05T12:46:08.126Z');
+});
+
+test('ONE recently updated row cannot carry a stale catalogue', () => {
+  const rows = [];
+  for (let i = 0; i < 19; i += 1) rows.push(product({ id: `OLD-${i}`, lastUpdated: TEN_DAYS_AGO }));
+  rows.push(product({ id: 'NEW', lastUpdated: '2026-11-06T11:00:00.000Z' }));
+  const w = windowOf(rows);
+
+  // Anchoring on the newest row would have passed this feed — stated so the
+  // regression is visible if anyone ever switches the anchor back.
+  assert.equal(assessFeedFreshness(w.newestAt, NOW).kind, 'fresh');
+
+  // Judging the window refuses it, and says why.
+  const verdict = assessFeedWindow(w, NOW);
+  assert.equal(verdict.kind, 'inconsistent');
+  assert.equal(isReleasable(verdict), false);
+  assert.match(describeFreshness(verdict), /not dating the generation run/);
+});
+
+test('a uniformly stale feed is stale, not inconsistent', () => {
+  const w = windowOf([
+    product({ id: 'A', lastUpdated: TEN_DAYS_AGO }),
+    product({ id: 'B', lastUpdated: '2026-10-27T12:00:00.200Z' }),
+  ]);
+  const verdict = assessFeedWindow(w, NOW);
+  assert.equal(verdict.kind, 'stale', 'operator should be told to fetch a newer feed');
+  assert.equal(isReleasable(verdict), false);
+});
+
+test('the oldest row governs even inside one generation run', () => {
+  // A spread of 30 minutes — a plausible slow export, under the 1h limit — that
+  // straddles the cutoff: the oldest row is 10 minutes past it, the newest is
+  // 20 minutes inside. Anchoring on the newest would publish a price nobody
+  // can vouch for.
+  const oldest = new Date(NOW.getTime() - (48 * HOUR + 10 * 60 * 1000)).toISOString();
+  const newest = new Date(NOW.getTime() - (48 * HOUR - 20 * 60 * 1000)).toISOString();
+  const w = windowOf([
+    product({ id: 'A', lastUpdated: oldest }),
+    product({ id: 'B', lastUpdated: newest }),
+  ]);
+  assert.equal(assessFeedFreshness(w.newestAt, NOW).kind, 'fresh');
+  const verdict = assessFeedWindow(w, NOW);
+  assert.equal(verdict.kind, 'stale');
+});
+
+test('a row with no timestamp blocks the release rather than being skipped', () => {
+  const w = windowOf([
+    product({ id: 'A', lastUpdated: '2026-11-06T11:00:00.000Z' }),
+    product({ id: 'B', lastUpdated: '' }),
+  ]);
+  const verdict = assessFeedWindow(w, NOW);
+  assert.equal(verdict.kind, 'incomplete');
+  assert.equal(verdict.rowsMissing, 1);
+  assert.equal(verdict.rowsTotal, 2);
+  assert.equal(isReleasable(verdict), false);
+  assert.match(describeFreshness(verdict), /1 of 2 rows/);
+});
+
+test('a feed where no row is dated is absent, not fresh', () => {
+  const w = windowOf([
+    product({ id: 'A', lastUpdated: '' }),
+    product({ id: 'B', lastUpdated: '' }),
+  ]);
+  assert.equal(assessFeedWindow(w, NOW).kind, 'absent');
+});
+
+test('exactly at the spread limit is accepted; past it is not', () => {
+  const base = Date.parse('2026-11-06T06:00:00.000Z');
+  const at = (ms) => new Date(base + ms).toISOString();
+  const ok = windowOf([
+    product({ id: 'A', lastUpdated: at(0) }),
+    product({ id: 'B', lastUpdated: at(MAX_EXPORT_SPREAD_MS) }),
+  ]);
+  assert.equal(assessFeedWindow(ok, NOW).kind, 'fresh');
+
+  const over = windowOf([
+    product({ id: 'A', lastUpdated: at(0) }),
+    product({ id: 'B', lastUpdated: at(MAX_EXPORT_SPREAD_MS + 1) }),
+  ]);
+  assert.equal(assessFeedWindow(over, NOW).kind, 'inconsistent');
+});
+
+test('an empty feed yields an empty window, which is refused', () => {
+  const w = feedExportWindow([]);
+  assert.equal(w.rowsTotal, 0);
+  assert.equal(w.oldestAt, null);
+  assert.equal(assessFeedWindow(w, NOW).kind, 'absent');
 });
