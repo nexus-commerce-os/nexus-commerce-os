@@ -1,8 +1,15 @@
 # Soundcore — draft request: product image usage
 
-**Status:** DRAFT · **NOT SENT** · prepared 3 November 2026 · revised 6 November 2026
+**Status:** **SENT** — 6 November 2026, 8:11 PM (Asia/Dhaka), from `samsuzzaman@gmail.com`
 **Recipient:** `affiliate@anker.com` (Soundcore Affiliate Team, per the CJ advertiser record)
-**Authorisation to send:** NOT GIVEN. Do not send this without the founder saying so.
+**Authorisation:** given by the founder in chat, 6 November 2026, after reviewing the wording and recipient.
+**Awaiting reply.** Until one arrives, image display and hot-linking remain **UNKNOWN** and nothing
+using those images may be published. Record the reply here, with its date, the moment it lands.
+
+> Two cosmetic differences between the text below and what was sent: the questions were numbered
+> `(1)`–`(5)` rather than `1.`–`5.`, because Gmail's editor turns `1. ` at the start of a line into
+> an auto-numbered list and renumbers everything after it; and the signature dash is a hyphen. No
+> wording changed.
 
 ## Why this exists
 
