@@ -1,6 +1,6 @@
 # Soundcore — draft request: product image usage
 
-**Status:** DRAFT · **NOT SENT** · prepared 3 November 2026
+**Status:** DRAFT · **NOT SENT** · prepared 3 November 2026 · revised 6 November 2026
 **Recipient:** `affiliate@anker.com` (Soundcore Affiliate Team, per the CJ advertiser record)
 **Authorisation to send:** NOT GIVEN. Do not send this without the founder saying so.
 
@@ -36,22 +36,29 @@ permission, and this project does not treat a gap in a contract as a grant.
 >
 > Specifically I would like to know:
 >
-> 1. Whether displaying feed product images on our pages is permitted.
-> 2. Whether hot-linking the supplied image URLs is acceptable, or whether you would
->    prefer we copy the images to our own hosting.
-> 3. Whether any attribution or caption wording is required alongside them.
-> 4. Whether there is a caching or refresh expectation for feed data and images.
+> 1. **Display.** May we show the product images referenced by the feed's `IMAGE_LINK`
+>    field on our pages?
+> 2. **Hotlinking vs self-hosting.** May those images be loaded directly from the URLs the
+>    feed supplies, or would you prefer we copy them to our own hosting?
+> 3. **Attribution.** Is any credit line or caption wording required alongside them?
+> 4. **Caching and refresh.** How current must the feed data be? We currently refuse to
+>    publish a build from a feed more than 48 hours old, and would like to know whether
+>    that meets your expectation or whether a different window applies — to the images as
+>    well as to prices and availability.
+> 5. **Logos and trademarks.** What are the restrictions on the Soundcore and Anker word
+>    marks and logos? We use product names in text to identify what we are listing, and no
+>    logos at all. The "Use of Logos and Trademarks in Web sites" field in the program
+>    terms appears to contain the prohibited-content paragraph rather than a logo policy,
+>    so we have no written rule to follow and have assumed logos are not permitted.
 >
 > I ask because the program terms cover SEM, URLs, coupons and brand representation but do
-> not mention product images, and I would rather confirm than assume.
+> not mention product images at all, and we would rather confirm than assume.
 >
-> One related note: the "Use of Logos and Trademarks in Web sites" field in the program
-> terms appears to contain the prohibited-content text rather than a logo policy. We are
-> using no Soundcore or Anker logos and will continue not to until there is a written
-> policy, but you may want to correct the field.
->
-> For completeness: we publish no coupons, run no paid search, operate no social accounts
-> and use no sub-affiliates. No affiliate link to Soundcore is live today.
+> For completeness, so you can see what we are and are not doing: no affiliate link to
+> Soundcore is live, we have never sent you a click, we publish no coupons, run no paid
+> search, operate no social accounts and use no sub-affiliates. No page URL contains your
+> brand name. Our listings show the item price only and state plainly that we have not
+> verified delivery cost, because the feed does not carry one.
 >
 > Thank you,
 > Md Samsuzzaman — HonestTotal
@@ -63,4 +70,6 @@ permission, and this project does not treat a gap in a contract as a grant.
 | Images permitted, hot-linking fine | Blocker B2 clears; record the reply here with its date |
 | Images permitted, self-host required | Blocker B2 clears after images are copied to our own storage — a separate increment |
 | Attribution required | Add the required wording to the card before any publication |
+| Caching window stated | Compare it against the 48-hour release guard in `@nexus/catalog`; adopt theirs if it is stricter |
+| Logo policy stated | Record it here; until then no Soundcore or Anker mark is used anywhere |
 | No reply within a reasonable window | B2 stays **UNKNOWN**. Silence is not permission, and the catalogue stays unpublished or ships without images |

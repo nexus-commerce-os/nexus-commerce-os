@@ -4,6 +4,7 @@ import { ProductCard, ProductCardError } from '@nexus/ui';
 import { SiteFooter } from '@/components/SiteFooter';
 import { getMerchant, mayClaimAffiliateRelationship } from '@/lib/merchants';
 import { toProductCardView } from '@/lib/product-card-view';
+import { describeFreshness, isReleasable } from '@nexus/catalog';
 import { FEED_ENV_VAR, loadSoundcoreFeed } from '@/lib/soundcore-preview-feed';
 
 /*
@@ -100,9 +101,23 @@ export default function SoundcorePreviewPage() {
               </p>
             </div>
 
+            {feed.ok && !isReleasable(feed.freshness) ? (
+              <div
+                className="card"
+                style={{ padding: '14px 18px', marginTop: 16, borderColor: 'var(--danger)' }}
+              >
+                <p style={{ margin: 0, fontWeight: 600, color: 'var(--danger)' }}>
+                  Local preview only — this data is not fit to publish.
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: '.85rem' }}>
+                  {describeFreshness(feed.freshness)}. A release build refuses it.
+                </p>
+              </div>
+            ) : null}
+
             {feed.ok ? (
               <p className="foot-note" style={{ marginTop: 18, maxWidth: '72ch' }}>
-                Source: {feed.sourceName} · exported {feed.exportedAt.slice(0, 10)} ·{' '}
+                Source: {feed.sourceName} · exported {feed.exportedAt?.slice(0, 10) ?? 'unknown'} ·{' '}
                 {feed.offers.length} products passed validation
                 {feed.rejectedCount > 0 ? `, ${feed.rejectedCount} rejected` : ''}
                 {feed.malformedCount > 0 ? `, ${feed.malformedCount} malformed rows` : ''} · showing

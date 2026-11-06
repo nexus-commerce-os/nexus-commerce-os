@@ -21,7 +21,13 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { FEED_ENV_VAR, loadSoundcoreFeed } from '../src/lib/soundcore-preview-feed.ts';
+import {
+  FEED_ENV_VAR,
+  FeedReleaseError,
+  RELEASE_ENV_VAR,
+  isReleaseBuild,
+  loadSoundcoreFeed,
+} from '../src/lib/soundcore-preview-feed.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const webRoot = resolve(here, '..');
@@ -88,29 +94,78 @@ await check('the preview page renders no outbound merchant link', async () => {
   );
 });
 
+/*
+ * These two assert LOCAL behaviour, so they pass the environment explicitly
+ * rather than mutating process.env. Reading the ambient environment made them
+ * fail during a release build — they inherited HONESTTOTAL_RELEASE_BUILD and
+ * got the throw they were written to prove does not happen locally.
+ */
 await check('the feed loader refuses a path inside the repository', () => {
-  const previous = process.env[FEED_ENV_VAR];
   // A real file inside the tree: if the guard were missing this would load.
-  process.env[FEED_ENV_VAR] = join(webRoot, 'package.json');
-  try {
-    const load = loadSoundcoreFeed();
-    assert.equal(load.ok, false, 'an in-repo path must be refused');
-    assert.match(load.reason, /inside the repository/i);
-  } finally {
-    if (previous === undefined) delete process.env[FEED_ENV_VAR];
-    else process.env[FEED_ENV_VAR] = previous;
-  }
+  const load = loadSoundcoreFeed({ [FEED_ENV_VAR]: join(webRoot, 'package.json') });
+  assert.equal(load.ok, false, 'an in-repo path must be refused');
+  assert.match(load.reason, /inside the repository/i);
 });
 
 await check('the feed loader fails safely when nothing is configured', () => {
-  const previous = process.env[FEED_ENV_VAR];
-  delete process.env[FEED_ENV_VAR];
-  try {
-    const load = loadSoundcoreFeed();
-    assert.equal(load.ok, false);
-    assert.match(load.reason, new RegExp(FEED_ENV_VAR));
-  } finally {
-    if (previous !== undefined) process.env[FEED_ENV_VAR] = previous;
+  const load = loadSoundcoreFeed({});
+  assert.equal(load.ok, false);
+  assert.match(load.reason, new RegExp(FEED_ENV_VAR));
+});
+
+/*
+ * The two modes, exercised rather than described. `env` and `now` are
+ * parameters of the loader precisely so these can be tested without setting a
+ * clock or a real environment variable.
+ */
+const FRESH_FEED = { [FEED_ENV_VAR]: 'C:/nowhere/outside/the/repo/feed.txt' };
+
+await check('release mode is off unless explicitly switched on', () => {
+  assert.equal(isReleaseBuild({}), false);
+  assert.equal(isReleaseBuild({ [RELEASE_ENV_VAR]: '0' }), false);
+  assert.equal(isReleaseBuild({ [RELEASE_ENV_VAR]: 'true' }), false, 'only "1" counts');
+  assert.equal(isReleaseBuild({ [RELEASE_ENV_VAR]: '1' }), true);
+});
+
+await check('a local build with no feed reports, a release build refuses', () => {
+  const local = loadSoundcoreFeed({});
+  assert.equal(local.ok, false);
+  assert.match(local.reason, new RegExp(FEED_ENV_VAR));
+
+  assert.throws(
+    () => loadSoundcoreFeed({ [RELEASE_ENV_VAR]: '1' }),
+    FeedReleaseError,
+    'a release build must not succeed without a feed',
+  );
+});
+
+await check('a release build refuses a feed it cannot read', () => {
+  assert.throws(
+    () => loadSoundcoreFeed({ ...FRESH_FEED, [RELEASE_ENV_VAR]: '1' }),
+    FeedReleaseError,
+  );
+  // The same configuration in local mode reports rather than throws.
+  const local = loadSoundcoreFeed(FRESH_FEED);
+  assert.equal(local.ok, false);
+});
+
+await check('a release build refuses a feed inside the repository', () => {
+  const env = { [FEED_ENV_VAR]: join(webRoot, 'package.json'), [RELEASE_ENV_VAR]: '1' };
+  assert.throws(() => loadSoundcoreFeed(env), /inside the repository/i);
+});
+
+await check('the loader has no fallback: it reads the configured path and nothing else', async () => {
+  const raw = await readFile(join(webRoot, 'src/lib/soundcore-preview-feed.ts'), 'utf8');
+  // Strip comments first: this file explains at length that it has no
+  // fallback, and a scan that matched its own prose would be theatre.
+  const code = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal((code.match(/readFileSync\(/g) ?? []).length, 1, 'exactly one read');
+  for (const api of ['readdir', 'readdirSync', 'glob', 'existsSync', 'statSync']) {
+    assert.equal(
+      code.includes(`${api}(`),
+      false,
+      `${api}() would let the loader look somewhere it was not pointed`,
+    );
   }
 });
 

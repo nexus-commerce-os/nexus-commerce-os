@@ -52,6 +52,16 @@ export {
 } from './feed/cj-shopping-feed';
 
 export {
+  assessFeedFreshness,
+  describeFreshness,
+  feedExportedAt,
+  isReleasable,
+  MAX_CLOCK_SKEW_MS,
+  MAX_FEED_AGE_MS,
+  type FeedFreshness,
+} from './freshness';
+
+export {
   buildCatalog,
   isValidGtin,
   type CatalogBuild,

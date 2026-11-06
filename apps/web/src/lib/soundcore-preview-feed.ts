@@ -11,21 +11,52 @@
  * Nothing is written back: the records exist only in the rendered HTML of a
  * noindex preview route, and `out/` is git-ignored.
  *
- * It never throws and never logs a record. A missing or malformed feed returns
- * a reason the page can render, because a preview that explains why it is empty
- * is more useful than a build that dies — and a reason string that quoted feed
- * content would put product data into CI logs.
+ * TWO MODES, AND THE DIFFERENCE IS THE POINT.
+ *
+ *   local (default) — a missing, unreadable or stale feed renders a page that
+ *     says so. A developer wants to see the layout, not a stack trace, and a
+ *     preview that explains why it is empty beats a build that dies.
+ *
+ *   release (HONESTTOTAL_RELEASE_BUILD=1) — the same conditions THROW, which
+ *     fails `next build`. Nothing published may rest on a feed we cannot date
+ *     or on one older than the limit in @nexus/catalog. There is no fallback
+ *     path to an older file: this module reads the one path it was given and
+ *     has nowhere else to look.
  */
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
-import { buildCatalog, parseShoppingFeed, type Offer } from '@nexus/catalog';
+import {
+  assessFeedFreshness,
+  buildCatalog,
+  describeFreshness,
+  feedExportedAt,
+  isReleasable,
+  parseShoppingFeed,
+  type FeedFreshness,
+  type Offer,
+} from '@nexus/catalog';
 
 /** Where the operator points this at an extracted CJ Shopping export. */
 export const FEED_ENV_VAR = 'HONESTTOTAL_SOUNDCORE_FEED';
 
+/** Set to `1` for a build whose output is intended to be published. */
+export const RELEASE_ENV_VAR = 'HONESTTOTAL_RELEASE_BUILD';
+
 /** CJ advertiser 7382109 (Fantasia Trading LLC). A label, not a credential. */
 export const SOURCE_FEED = 'cj:shopping:7382109';
+
+/** Thrown only in release mode. Carries no feed content. */
+export class FeedReleaseError extends Error {
+  constructor(reason: string) {
+    super(`release build refused: ${reason}`);
+    this.name = 'FeedReleaseError';
+  }
+}
+
+export function isReleaseBuild(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env[RELEASE_ENV_VAR] === '1';
+}
 
 export type FeedLoad =
   | {
@@ -36,7 +67,9 @@ export type FeedLoad =
       readonly malformedCount: number;
       /** File name only — never the full path, which may name a person's home. */
       readonly sourceName: string;
-      readonly exportedAt: string;
+      /** The provider's own generation time, from the feed, not the file. */
+      readonly exportedAt: string | null;
+      readonly freshness: FeedFreshness;
     }
   | { readonly ok: false; readonly reason: string };
 
@@ -46,21 +79,35 @@ function repoRoot(): string {
 }
 
 /**
+ * Refuse in release mode, report in local mode. One place, so the two modes
+ * cannot drift apart.
+ */
+function refuse(reason: string, release: boolean): { readonly ok: false; readonly reason: string } {
+  if (release) throw new FeedReleaseError(reason);
+  return { ok: false, reason };
+}
+
+/**
  * Load and validate the feed. Returns offers in feed order — this applies no
  * ranking, because ranking requires a delivered cost nobody has verified.
  */
-export function loadSoundcoreFeed(): FeedLoad {
-  const configured = process.env[FEED_ENV_VAR];
+export function loadSoundcoreFeed(
+  env: NodeJS.ProcessEnv = process.env,
+  now: Date = new Date(),
+): FeedLoad {
+  const release = isReleaseBuild(env);
+  const configured = env[FEED_ENV_VAR];
+
   if (configured === undefined || configured.trim() === '') {
-    return {
-      ok: false,
-      reason: `No feed configured. Set ${FEED_ENV_VAR} to an extracted CJ Shopping export outside this repository.`,
-    };
+    return refuse(
+      `No feed configured. Set ${FEED_ENV_VAR} to an extracted CJ Shopping export outside this repository.`,
+      release,
+    );
   }
 
   const path = resolve(configured.trim());
   if (!isAbsolute(path)) {
-    return { ok: false, reason: `${FEED_ENV_VAR} must be an absolute path.` };
+    return refuse(`${FEED_ENV_VAR} must be an absolute path.`, release);
   }
 
   /*
@@ -70,42 +117,56 @@ export function loadSoundcoreFeed(): FeedLoad {
    */
   const inside = relative(repoRoot(), path);
   if (inside !== '' && !inside.startsWith('..') && !isAbsolute(inside)) {
-    return {
-      ok: false,
-      reason:
-        'Refusing to read the feed from inside the repository: provider records must stay out of version control.',
-    };
+    return refuse(
+      'Refusing to read the feed from inside the repository: provider records must stay out of version control.',
+      release,
+    );
   }
 
   let text: string;
-  let exportedAt: string;
   try {
     text = readFileSync(path, 'utf8');
-    exportedAt = statSync(path).mtime.toISOString();
   } catch {
     // The error object can carry the full path; the reason deliberately does not.
-    return { ok: false, reason: `Could not read the feed named by ${FEED_ENV_VAR}.` };
+    return refuse(`Could not read the feed named by ${FEED_ENV_VAR}.`, release);
   }
 
   const parse = parseShoppingFeed(text);
   if (parse.rows.length === 0) {
-    return { ok: false, reason: 'The feed contained no readable product rows.' };
+    return refuse('The feed contained no readable product rows.', release);
   }
   if (parse.missingColumns.length > 0) {
-    return {
-      ok: false,
-      reason: `The feed is missing expected columns: ${parse.missingColumns.join(', ')}.`,
-    };
+    return refuse(
+      `The feed is missing expected columns: ${parse.missingColumns.join(', ')}.`,
+      release,
+    );
+  }
+
+  /*
+   * The provider's own generation time, taken from the newest LAST_UPDATED in
+   * the file. Deliberately not the file's mtime: copying a file refreshes its
+   * mtime without refreshing a single price, which is exactly the mistake this
+   * guard exists to catch.
+   */
+  const exportedAt = feedExportedAt(parse.rows);
+  const freshness = assessFeedFreshness(exportedAt, now);
+  if (!isReleasable(freshness)) {
+    // Local builds still render, so a developer can see the layout — but the
+    // page says how old the data is, and release refuses outright.
+    if (release) throw new FeedReleaseError(describeFreshness(freshness));
   }
 
   const { offers, rejected } = buildCatalog(parse, {
     merchantId: 'soundcore',
     sourceFeed: SOURCE_FEED,
-    feedSnapshotAt: exportedAt,
+    // Rows carry their own timestamps; this is only the fallback for a row
+    // that does not, and it is the feed's own time, never the wall clock.
+    feedSnapshotAt: exportedAt ?? now.toISOString(),
+    now,
   });
 
   if (offers.length === 0) {
-    return { ok: false, reason: 'Every row in the feed failed validation.' };
+    return refuse('Every row in the feed failed validation.', release);
   }
 
   const name = path.split(/[\\/]/).pop() ?? 'feed';
@@ -116,5 +177,6 @@ export function loadSoundcoreFeed(): FeedLoad {
     malformedCount: parse.malformed.length,
     sourceName: name,
     exportedAt,
+    freshness,
   };
 }
