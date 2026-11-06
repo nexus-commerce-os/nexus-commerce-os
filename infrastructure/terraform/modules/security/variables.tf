@@ -15,16 +15,15 @@ variable "kms_keys" {
   description = <<-EOT
     Map of customer-managed KMS keys keyed by purpose (e.g. rds, redis, msk, s3,
     eks, secrets). Separate keys per data domain limit blast radius of a key
-    compromise. Each value:
+    compromise. Key rotation is always on and is not configurable — see
+    main.tf. Each value:
       description             = string
-      enable_rotation         = optional(bool, true)
       deletion_window_in_days = optional(number, 30)
       multi_region            = optional(bool, false)  # true for keys backing
                                                         # cross-region (non-personal) data
   EOT
   type = map(object({
     description             = string
-    enable_rotation         = optional(bool, true)
     deletion_window_in_days = optional(number, 30)
     multi_region            = optional(bool, false)
   }))
