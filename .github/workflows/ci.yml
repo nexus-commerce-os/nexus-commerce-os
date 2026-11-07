@@ -45,7 +45,7 @@ env:
   # why: pinned toolchain versions = reproducible builds across every runner (docs/10 §0.1 #1).
   NODE_VERSION: "20.17.0"
   PYTHON_VERSION: "3.12"
-  PNPM_VERSION: "9.7.0"
+  PNPM_VERSION: "10.34.9"
   TERRAFORM_VERSION: "1.9.5"
   # why: AWS wiring is via OIDC only; account/role are org vars, never secrets in Git (ADR-0018 R-065).
   AWS_REGION: ${{ vars.AWS_REGION }}
