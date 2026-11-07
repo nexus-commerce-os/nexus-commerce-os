@@ -4,10 +4,10 @@
   "private": true,
   "license": "LicenseRef-Proprietary",
   "description": "NEXUS Commerce OS monorepo — P0.1 Infrastructure Foundation. Platform scaffold only.",
-  "packageManager": "pnpm@9.7.0",
+  "packageManager": "pnpm@10.34.9",
   "engines": {
     "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "pnpm": ">=10.26.0"
   },
   "scripts": {
     "format": "turbo run format",
