@@ -1,0 +1,85 @@
+# Isolated review preview — NOT production.
+#
+# WHY THIS FILE EXISTS AT ALL, RATHER THAN A `--name` FLAG.
+#
+# `wrangler deploy --name something-else` changes only the Worker's name. The
+# `routes` block in wrangler.toml is still read and still applied, so that
+# command would attach honesttotal.com and www.honesttotal.com — both declared
+# there as `custom_domain = true` — to the newly named Worker. A custom domain
+# can only point at one Worker, so the live site would move onto the preview
+# build. The flag looks like the cautious option and is the dangerous one.
+#
+# A separate config file is the only way to deploy a build of this repository
+# with NO routes at all. Use it explicitly:
+#
+#     pnpm --filter @nexus/web exec wrangler deploy -c wrangler.preview.toml
+#
+# WHAT IS DELIBERATELY ABSENT, AND WHY
+#
+#   routes            — omitted entirely. No custom domain, no route pattern,
+#                       no DNS record is created or changed. The preview is
+#                       reachable only at its workers.dev address.
+#
+#   kv_namespaces     — omitted. Production's WAITLIST namespace
+#                       (12a90ce4e895472399c8cd741e5623ad) holds real sign-ups,
+#                       and a preview must not be able to write to it. The
+#                       consequence is stated rather than hidden: POST
+#                       /api/waitlist will fail on this deployment, because
+#                       `env.WAITLIST` is undefined. That is correct behaviour
+#                       for a review build — a preview should not be collecting
+#                       anyone's email address. Everything the review is for —
+#                       /products, the ten detail pages, search, filtering — is
+#                       static and served through ASSETS, so none of it depends
+#                       on this binding.
+#
+#   vars / secrets    — none exist in the production config either, so there is
+#                       nothing to copy and nothing to leak. The build reads no
+#                       secret: HONESTTOTAL_SOUNDCORE_FEED is a build-time path
+#                       on the operator's machine, not a Worker binding, and
+#                       the committed build has it unset.
+#
+# DELETING IT AFTERWARDS leaves production untouched, because this Worker
+# shares no name, no domain, no route and no namespace with it:
+#
+#     pnpm --filter @nexus/web exec wrangler delete honesttotal-catalog-preview
+#
+# (`wrangler delete` takes the name positionally, not as `--name`; check it
+# first with `--dry-run`.)
+
+# SITE-WIDE noindex. `worker/preview.ts` wraps the production handler and puts
+# `X-Robots-Tag: noindex, nofollow` on every response — not just the catalog.
+# The preview serves the whole site, and an indexable workers.dev copy of
+# honesttotal.com would compete with honesttotal.com. Production is untouched:
+# wrangler.toml still names worker/index.ts.
+
+name = "honesttotal-catalog-preview"
+main = "worker/preview.ts"
+compatibility_date = "2026-01-01"
+
+# Explicit rather than inherited. With no routes declared, Wrangler would
+# enable workers.dev anyway; saying so in the file means a reader does not have
+# to know that default to know where this lands.
+workers_dev = true
+
+[observability]
+enabled = true
+
+[assets]
+directory = "./out"
+binding = "ASSETS"
+not_found_handling = "404-page"
+# WITHOUT THIS THE WRAPPER NEVER RUNS FOR A REAL PAGE.
+#
+# By default Cloudflare serves a matching static asset directly and only
+# invokes the Worker when nothing matches. Measured against `wrangler dev`:
+# X-Robots-Tag was present on 404s and absent from every 200 — the homepage,
+# the guides, /products, the product pages, robots.txt and sitemap.xml were
+# all unprotected, which is precisely the set this header exists for. The
+# bundle contained the header; the responses did not. `--dry-run` cannot see
+# this, and only an actual HTTP request does.
+#
+# `run_worker_first` puts the Worker in front of the asset handler, so every
+# response passes through worker/preview.ts and gets decorated. Production
+# does not set it and keeps the default asset-first path, which is both faster
+# and what it should do.
+run_worker_first = true

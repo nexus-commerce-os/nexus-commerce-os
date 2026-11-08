@@ -12,5 +12,5 @@
     "types": ["@cloudflare/workers-types"],
     "noEmit": true
   },
-  "include": ["index.ts", "../src/lib/waitlist-contract.ts"]
+  "include": ["index.ts", "preview.ts", "noindex.ts", "../src/lib/waitlist-contract.ts"]
 }
