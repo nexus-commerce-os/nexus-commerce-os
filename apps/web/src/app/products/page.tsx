@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { SiteFooter } from '@/components/SiteFooter';
-import { CATEGORIES, PRODUCTS } from '@/data/catalog';
+import { PRODUCTS } from '@/data/catalog';
 
 import { ProductsBrowser } from './ProductsBrowser';
 
@@ -45,64 +45,31 @@ export const metadata: Metadata = {
 };
 
 export default function ProductsPage() {
-  const verifiedDates = PRODUCTS.map((p) => p.verifiedOn).sort();
-  const oldest = verifiedDates[0];
-  const newest = verifiedDates[verifiedDates.length - 1];
-
   return (
     <>
       <main>
         <section>
-          <div className="wrap" style={{ paddingTop: 48, paddingBottom: 8 }}>
+          <div className="wrap" style={{ paddingTop: 24, paddingBottom: 4 }}>
             <p className="eyebrow">Catalog · {PRODUCTS.length} products</p>
             <h1 style={{ fontSize: 'clamp(1.9rem,4vw,2.8rem)' }}>Products</h1>
             <p className="lede">
-              What each product <em>is</em> — panel type, interface, switch type, impedance — taken
-              from the manufacturer&rsquo;s own specification page and linked straight back to it.
-              This catalog deliberately carries{' '}
-              <strong>no price, no stock state and no merchant</strong>, because none of those has
-              been verified for these records and this project will not print a number it cannot
-              stand behind.
+              Specifications taken from each manufacturer&rsquo;s own page — every product here
+              links the exact page its values came from and the date we read it.{' '}
+              <strong>We do not verify prices</strong>, so none is shown.
             </p>
-
-            <div className="note" role="note">
-              <p>
-                <strong>Every record is sourced.</strong> Each product page links the exact maker
-                page its values were read from and the date they were read
-                {oldest && newest ? (
-                  <>
-                    {' '}
-                    — currently between {oldest} and {newest}
-                  </>
-                ) : null}
-                . Where a page states several variants, the record says so instead of picking one;
-                where a page states nothing, the field is simply absent.
-              </p>
-              <p>
-                <strong>Publishing a specification is not an endorsement</strong> and not a
-                partnership. We are not an affiliate, reseller or partner of any manufacturer named
-                here, there are no buy links, and no manufacturer imagery is used.
-              </p>
-              <p className="muted" style={{ marginBottom: 0 }}>
-                Read the <a href="/guides/over-ear-headphones">buying guides</a> for the criteria
-                these categories are judged on, and <a href="/how-we-rank">how we rank</a> for why
-                no ordering is applied here.
-              </p>
-            </div>
-
             <p className="muted">
-              Categories:{' '}
-              {CATEGORIES.map((category, index) => (
-                <span key={category.slug}>
-                  {index > 0 ? ' · ' : ''}
-                  {category.name}
-                </span>
-              ))}
+              No merchant, no buy links, no manufacturer imagery, and no ordering applied.{' '}
+              <a href="/how-we-rank">Why nothing is ranked yet</a>.
             </p>
           </div>
-        </section>
 
-        <section>
+          {/*
+            The browser lives INSIDE this section rather than in one of its
+            own. Two sections meant two 80px paddings plus a border between
+            the intro and the search box — 169px of nothing, which pushed the
+            first product card to 837px on a 812px-tall phone, i.e. entirely
+            below the fold. One section puts it around 650px.
+          */}
           <ProductsBrowser products={PRODUCTS} />
         </section>
       </main>

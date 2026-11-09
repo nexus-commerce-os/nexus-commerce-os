@@ -9,26 +9,38 @@
  * reader reasonably treats as facts. Two cards is the honest answer; one card
  * with four lies in it is not.
  *
- * It reuses the design system's own class names (`card pcard pc-*` from
- * `@nexus/ui` styles.css) so the two look like one family without copying any
- * CSS, and `@nexus/ui` itself is left untouched.
+ * TEXT-FIRST, AND NO MEDIA BOX AT ALL. The first version kept the design
+ * system's image frame and let its "No image" placeholder show through. Ten of
+ * those in a grid did not read as a principled refusal to use somebody else's
+ * photography — it read as a page that had failed to load, and it pushed the
+ * actual specifications below the fold. A card with no image area is a
+ * deliberate layout; a card with an empty one is a broken layout. There is
+ * still no image anywhere, for the same reason as before: reading a maker's
+ * public specification page grants no right to their imagery.
  *
- * It renders no image. `data-placeholder` makes the existing neutral tile show
- * through, which is exactly what is wanted: reading a manufacturer's public
- * specification page tells us what a product is, and grants no right at all to
- * their photography.
+ * WHY "Price not verified" IS PLAIN GREY AND NOT AN AMBER PILL. It is the
+ * normal, expected state of every record in this catalog, not an exception or
+ * a fault. Rendering it in the design system's warning colour — alongside an
+ * amber "Not verified" availability row and an amber "Not stated by maker"
+ * model row — turned a grid of ten honest records into a wall of warnings, and
+ * a page where everything is a warning teaches a reader to ignore warnings.
+ * The fact is unchanged and still stated on every card; only its visual weight
+ * is now proportionate.
+ *
+ * AVAILABILITY IS NOT ON THE CARD. Stock is not something this catalog tries
+ * to establish, so flagging it as unverified advertises a gap in work nobody
+ * is doing. Price is different — an honest total is the site's whole premise,
+ * so "not verified" there is information. Availability stays on the detail
+ * page, where the full provenance table belongs.
+ *
+ * A MISSING MODEL NUMBER IS NOT AN ERROR EITHER. Three manufacturers publish
+ * no model identifier on their own specification page. That is a fact about
+ * their page, not a defect in the record, so the row is simply omitted here
+ * and explained in full on the detail page.
  */
 import Link from 'next/link';
 
-import {
-  AVAILABILITY_STATUS,
-  PRICE_STATUS,
-  displayName,
-  formatVerifiedOn,
-  sourceHost,
-  type Category,
-  type Product,
-} from '@/data/catalog';
+import { PRICE_STATUS, displayName, type Category, type Product } from '@/data/catalog';
 
 function idFrom(slug: string, suffix: string): string {
   return `cc-${slug}-${suffix}`;
@@ -44,13 +56,6 @@ export function CatalogCard({ product, category }: CatalogCardProps) {
 
   return (
     <article className="card pcard" aria-labelledby={titleId}>
-      {/* No image is ever passed: the placeholder is the intended state. */}
-      <div className="pc-media" data-placeholder="true">
-        <span className="pc-media-ph" aria-hidden="true">
-          No image
-        </span>
-      </div>
-
       <div className="pc-body">
         {category ? <p className="eyebrow">{category.name}</p> : null}
 
@@ -58,43 +63,30 @@ export function CatalogCard({ product, category }: CatalogCardProps) {
           <Link href={`/products/${product.slug}`}>{displayName(product)}</Link>
         </h3>
 
-        <dl className="pc-facts">
-          <div className="pc-fact">
-            <dt>Model</dt>
-            <dd>{product.model ?? <span className="pc-unverified">Not stated by maker</span>}</dd>
-          </div>
+        {/* Omitted entirely when the maker publishes none — see the note above. */}
+        {product.model ? (
+          <p className="muted mono" style={{ margin: '0 0 12px', fontSize: '0.85rem' }}>
+            {product.model}
+          </p>
+        ) : null}
 
+        <dl className="pc-facts">
           {product.specs.slice(0, 3).map((spec) => (
             <div className="pc-fact" key={spec.label}>
               <dt>{spec.label}</dt>
               <dd>{spec.value}</dd>
             </div>
           ))}
-
-          <div className="pc-fact">
-            <dt>Price</dt>
-            <dd>
-              <span className="pc-unverified">{PRICE_STATUS}</span>
-            </dd>
-          </div>
-
-          <div className="pc-fact">
-            <dt>Availability</dt>
-            <dd>
-              <span className="pc-unverified">{AVAILABILITY_STATUS}</span>
-            </dd>
-          </div>
         </dl>
 
-        <p className="pc-note">
-          Specification only, read from {sourceHost(product)} on{' '}
-          <time dateTime={product.verifiedOn}>{formatVerifiedOn(product.verifiedOn)}</time>. We have
-          not verified price, stock or delivery cost for this product.
+        <p className="muted" style={{ marginBottom: 12 }}>
+          {PRICE_STATUS}
         </p>
 
-        <p className="pc-disc">
-          No merchant is named and no purchase link exists. We earn nothing from this page, and
-          publishing a maker&rsquo;s specification is not a partnership with them.
+        <p style={{ marginBottom: 0 }}>
+          <Link href={`/products/${product.slug}`}>
+            View product details<span className="sr-only"> for {displayName(product)}</span>
+          </Link>
         </p>
       </div>
     </article>

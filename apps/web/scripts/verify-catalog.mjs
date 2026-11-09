@@ -289,6 +289,34 @@ check('source scan: the card renders no <img> and no absolute URL', () => {
   return true;
 });
 
+/*
+ * The three checks below lock in the 9 Nov 2026 polish pass. Each one is a
+ * regression test for something the page actually did and that looked broken
+ * rather than principled — see the comments at the top of CatalogCard.tsx.
+ */
+check('source scan: the card renders no empty image frame', () => {
+  if (/pc-media/.test(card)) return 'the card still renders the design system image frame';
+  if (/No image/i.test(card)) return 'the card still renders a "No image" placeholder';
+  return true;
+});
+
+check('source scan: the card states price plainly, not as a warning badge', () => {
+  if (/pc-unverified/.test(card)) {
+    return 'the card uses the amber pc-unverified pill; "price not verified" is the normal state here, not a fault';
+  }
+  return true;
+});
+
+check('source scan: availability is on the detail page but not on the card', () => {
+  if (/AVAILABILITY_STATUS|Availability/.test(card)) {
+    return 'availability is back on the listing card; stock is not something this catalog establishes';
+  }
+  if (!/AVAILABILITY_STATUS/.test(detailPage)) {
+    return 'the detail page no longer states the availability position at all';
+  }
+  return true;
+});
+
 check('source scan: the detail page cites the source and the verification date', () => {
   if (!/sourceUrl/.test(detailPage)) return 'detail page never references sourceUrl';
   if (!/verifiedOn/.test(detailPage)) return 'detail page never references verifiedOn';
@@ -391,6 +419,43 @@ if (built !== null) {
     for (const p of PRODUCTS) scan(p.slug, read(`out/products/${p.slug}.html`));
     scan('products.html', built);
     return offenders.length === 0 ? true : offenders.slice(0, 3).join(', ');
+  });
+
+  check('built HTML: the listing page shows no empty image frame', () => {
+    const text = visibleText(built);
+    if (/No image/i.test(text)) return 'the rendered listing still says "No image"';
+    if (/class="pc-media"/.test(built)) return 'the rendered listing still has the image frame';
+    return true;
+  });
+
+  check('built HTML: the listing states price once per product, plainly', () => {
+    const count = (built.match(/Price not verified/g) || []).length;
+    if (count !== PRODUCTS.length) {
+      return `"Price not verified" appears ${count} times for ${PRODUCTS.length} products`;
+    }
+    if (/class="pc-unverified"/.test(built)) return 'the listing still renders amber warning pills';
+    return true;
+  });
+
+  check('built HTML: the intro stays short enough to leave products visible', () => {
+    /*
+     * The first version of this check measured `visibleText()`, which strips
+     * <script> but leaves every tag in place — so it counted markup and
+     * reported 3505 characters for an intro that is actually 474. Strip tags
+     * before measuring, or the number means nothing.
+     *
+     * 900 characters of READING TEXT before the first product name is roughly
+     * a phone screen of prose. The intro that prompted this pass was well past
+     * it; the replacement sits at about 470.
+     */
+    const reading = built
+      .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const first = reading.indexOf(displayName(PRODUCTS[0]));
+    if (first < 0) return 'the first product does not appear in the rendered text at all';
+    return first < 900 ? true : `first product starts ${first} characters of text into the page`;
   });
 
   check('built HTML: no catalog page renders a product image', () => {

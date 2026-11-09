@@ -37,7 +37,7 @@ export function ProductsBrowser({ products }: { products: readonly Product[] }) 
 
   return (
     <>
-      <div className="wrap" style={{ paddingBottom: 16 }}>
+      <div className="wrap" style={{ paddingTop: 20, paddingBottom: 16 }}>
         <form
           role="search"
           onSubmit={(event) => event.preventDefault()}
