@@ -12,6 +12,8 @@
  * documented in provider-access/research/SOUNDCORE-FEED-MEASUREMENT.md.
  */
 
+import { deflateRawSync } from 'node:zlib';
+
 /** The subset of the real 87-column header that the adapter maps. */
 export const HEADERS = [
   'ID',
@@ -115,4 +117,58 @@ export function source(overrides = {}) {
     now: new Date('2026-10-29T12:00:00.000Z'),
     ...overrides,
   };
+}
+
+/**
+ * Wraps feed text in a ZIP, so a test drives the real entry point rather than
+ * reaching past the archive reader. Shared because two suites need it and a
+ * second hand-rolled ZIP writer is a second place for the CRC to be wrong.
+ */
+export function zipOf(text) {
+  const data = Buffer.from(text, 'utf8');
+  const name = Buffer.from('feed.txt', 'utf8');
+  const body = deflateRawSync(data);
+  const crc = crc32(data);
+
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(8, 8);
+  local.writeUInt32LE(crc, 14);
+  local.writeUInt32LE(body.length, 18);
+  local.writeUInt32LE(data.length, 22);
+  local.writeUInt16LE(name.length, 26);
+
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(8, 10);
+  central.writeUInt32LE(crc, 16);
+  central.writeUInt32LE(body.length, 20);
+  central.writeUInt32LE(data.length, 24);
+  central.writeUInt16LE(name.length, 28);
+  central.writeUInt32LE(0, 42);
+
+  const localPart = Buffer.concat([local, name, body]);
+  const centralPart = Buffer.concat([central, name]);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(1, 8);
+  eocd.writeUInt16LE(1, 10);
+  eocd.writeUInt32LE(centralPart.length, 12);
+  eocd.writeUInt32LE(localPart.length, 16);
+  return Buffer.concat([localPart, centralPart, eocd]);
+}
+
+const CRC_TABLE = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n += 1) {
+    let c = n;
+    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(buf) {
+  let c = -1;
+  for (let i = 0; i < buf.length; i += 1) c = (c >>> 8) ^ CRC_TABLE[(c ^ buf[i]) & 0xff];
+  return (c ^ -1) >>> 0;
 }

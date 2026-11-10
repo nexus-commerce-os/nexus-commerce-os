@@ -73,3 +73,75 @@ export {
   type RejectedRow,
   type RejectionReason,
 } from './catalog-guard';
+
+export {
+  readDelimitedPayload,
+  readZipMembers,
+  isSafeEntryName,
+  ArchiveError,
+  MAX_ARCHIVE_BYTES,
+  MAX_COMPRESSION_RATIO,
+  MAX_ENTRY_BYTES,
+  type ArchiveFailure,
+  type ArchiveMember,
+  type DelimitedPayload,
+} from './feed/archive';
+
+export {
+  DuplicateApplyError,
+  toStoredOffer,
+  type ImportRun,
+  type ImportStatus,
+  type OfferState,
+  type OfferStore,
+  type OfferWriter,
+  type PriceChangeKind,
+  type PriceHistoryEntry,
+  type QuarantineEntry,
+  type StoredOffer,
+} from './store/offer-store';
+
+export {
+  driverErrorOf,
+  safeFailureReason,
+  PG_CHECK_VIOLATION,
+  PG_IN_FAILED_TRANSACTION,
+  PG_UNIQUE_VIOLATION,
+  type DriverError,
+} from './store/failure-reason';
+
+export { InMemoryOfferStore } from './store/in-memory-offer-store';
+
+/*
+ * The Postgres adapter. Exported from the package root like every other
+ * adapter, and safe to import anywhere: `pg` appears in these modules only in
+ * `import type` position, so nothing here pulls a driver into a bundle that
+ * does not construct a Pool itself.
+ */
+export {
+  withTransaction,
+  type SqlExecutor,
+} from './store/postgres/connection';
+
+export {
+  CatalogMigrationRunner,
+  type AppliedMigration,
+} from './store/postgres/migration-runner';
+
+export {
+  PostgresOfferStore,
+  PostgresOfferWriter,
+} from './store/postgres/postgres-offer-store';
+
+export {
+  reconcile,
+  priceChangeKind,
+  type OfferChange,
+  type Reconciliation,
+} from './sync/reconcile';
+
+export {
+  importFeedArchive,
+  type ImportOptions,
+  type ImportResult,
+} from './sync/import-feed';
