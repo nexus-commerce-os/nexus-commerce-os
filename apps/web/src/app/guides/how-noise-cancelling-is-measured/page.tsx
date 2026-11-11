@@ -98,7 +98,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'One number cannot describe noise cancellation.',
-    description: 'What a dB claim measures, what it leaves out, and what to ask before believing it.',
+    description:
+      'What a dB claim measures, what it leaves out, and what to ask before believing it.',
   },
 };
 
@@ -334,9 +335,9 @@ export default function AncMeasurementGuidePage() {
               fit was controlled, and what the reduction was measured against.
             </p>
             <p className="lede">
-              None of that makes decibel figures meaningless. It makes them incomplete on their
-              own. This page explains what the measurements actually are, so that a claim can be
-              read for what it says rather than taken at the size of its number.
+              None of that makes decibel figures meaningless. It makes them incomplete on their own.
+              This page explains what the measurements actually are, so that a claim can be read for
+              what it says rather than taken at the size of its number.
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
               <b>No models named, no measurements published.</b> This is methodology — true of how
@@ -422,8 +423,8 @@ export default function AncMeasurementGuidePage() {
             </div>
             <p className="note">
               In practice this is why steady engine drone and air conditioning are the sounds people
-              notice ANC working on, while conversation nearby is softened rather than removed —
-              the mechanism behind that is covered in{' '}
+              notice ANC working on, while conversation nearby is softened rather than removed — the
+              mechanism behind that is covered in{' '}
               <a href="/guides/how-anc-works">how noise cancelling actually works</a>.
             </p>
           </div>
@@ -440,7 +441,11 @@ export default function AncMeasurementGuidePage() {
                 measurement standards are unambiguous about it.
               </p>
             </div>
-            <div className="fresh-table" role="table" aria-label="What each measured quantity covers">
+            <div
+              className="fresh-table"
+              role="table"
+              aria-label="What each measured quantity covers"
+            >
               <div className="fresh-head" role="row">
                 <span role="columnheader">Quantity</span>
                 <span role="columnheader">What it covers</span>
@@ -460,9 +465,9 @@ export default function AncMeasurementGuidePage() {
             </div>
             <p className="note">
               The standards do not merge these by accident of convenience — they specify how the
-              active contribution is to be combined with separately measured passive attenuation.
-              If the people who wrote the methods keep the two apart, a claim that does not say
-              which one it means is not ready to be compared with anything.
+              active contribution is to be combined with separately measured passive attenuation. If
+              the people who wrote the methods keep the two apart, a claim that does not say which
+              one it means is not ready to be compared with anything.
             </p>
           </div>
         </section>
@@ -582,10 +587,10 @@ export default function AncMeasurementGuidePage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                Two figures are comparable when they were produced the same way. A manufacturer&rsquo;s
-                headline and an independent laboratory&rsquo;s band data are not two measurements of
-                the same thing, and putting them side by side produces a conclusion neither of them
-                supports.
+                Two figures are comparable when they were produced the same way. A
+                manufacturer&rsquo;s headline and an independent laboratory&rsquo;s band data are
+                not two measurements of the same thing, and putting them side by side produces a
+                conclusion neither of them supports.
               </p>
               <p className="muted">
                 Attenuation magnitude is also not the whole of what makes cancellation good to live

@@ -650,6 +650,118 @@ test(
   },
 );
 
+// ── what only a real server can show ────────────────────────────────────────
+
+test('the pool opens a connection per concurrent transaction', { skip }, async () => {
+  await reset();
+  const target = store();
+
+  /*
+   * `applyRun` has to take its own connection, or two overlapping imports would
+   * interleave BEGIN and COMMIT on one session and corrupt each other. Proving
+   * that needs a real server: five transactions are opened and HELD open behind
+   * a gate, and the server itself is asked how many sessions are sitting in a
+   * transaction. An adapter that serialised on a single connection could never
+   * reach five, and would in fact deadlock against its own gate.
+   */
+  let release = () => {};
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+
+  const held = Array.from({ length: 5 }, () => target.applyRun(async () => gate));
+
+  const inTransaction = async () =>
+    (
+      await db.pool.query(
+        `SELECT count(*)::int AS c FROM pg_stat_activity
+          WHERE datname = current_database() AND state = 'idle in transaction'`,
+      )
+    ).rows[0].c;
+
+  let peak = 0;
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    peak = Math.max(peak, await inTransaction());
+    if (peak >= 5) break;
+  }
+  release();
+  await Promise.all(held);
+
+  assert.equal(peak, 5, `expected 5 concurrent transactions, saw ${peak}`);
+
+  // And the connections go back: the pool is reusable after the burst.
+  assert.equal((await store().listOffers(MERCHANT)).length, 0);
+});
+
+test('timestamps survive the round trip to the millisecond', { skip }, async () => {
+  await reset();
+  const target = store();
+
+  /*
+   * timestamptz keeps microseconds and JavaScript keeps milliseconds, so the
+   * lossy direction is reading, not writing. A silent truncation here would
+   * move a feed's export time and could make a fresh export look stale — the
+   * 48-hour guard is computed from exactly this field.
+   */
+  const exported = '2026-11-10T12:30:00.123Z';
+  const at = new Date('2026-11-10T13:00:00.456Z');
+  await runImport(
+    target,
+    [
+      product({
+        lastUpdated: exported,
+        id: 'SKU-1',
+        gtin: gtin12('01234567891'),
+        price: '79.99 USD',
+      }),
+    ],
+    at,
+  );
+
+  const offer = await target.findOffer(MERCHANT, 'SKU-1');
+  assert.equal(Date.parse(offer.snapshotAt), Date.parse(exported), 'the export stamp kept its ms');
+  assert.equal(offer.lastSeenAt, at.toISOString(), 'the sighting kept its ms exactly');
+
+  const run = (await target.listRuns(MERCHANT))[0];
+  assert.equal(Date.parse(run.feedExportedAt), Date.parse(exported));
+  assert.equal(run.startedAt, at.toISOString());
+
+  // Reading twice must give the same string: no re-formatting drift.
+  assert.equal((await target.findOffer(MERCHANT, 'SKU-1')).lastSeenAt, offer.lastSeenAt);
+});
+
+test('a BIGINT at the edge of exact representation reads back exactly', { skip }, async () => {
+  await reset();
+  const target = store();
+  await runImport(target, oneProduct(NOW, '79.99 USD'));
+  const offer = await target.findOffer(MERCHANT, 'SKU-1');
+
+  /*
+   * 2^53 − 1: the largest integer a JS number holds exactly, and well inside
+   * int8. node-postgres hands int8 back as a STRING precisely so this does not
+   * go through a float — asserting the value rather than the type keeps the
+   * test about the guarantee instead of the driver's choice of representation.
+   * The companion test above covers 2^53 + 1, which must be refused.
+   */
+  const edge = 9007199254740991;
+  await db.pool.query('UPDATE catalog.merchant_offer SET list_price_minor = $1 WHERE id = $2', [
+    String(edge),
+    offer.id,
+  ]);
+
+  const read = await target.findOffer(MERCHANT, 'SKU-1');
+  assert.equal(read.listPrice.amountMinor, edge);
+  assert.equal(Number.isSafeInteger(read.listPrice.amountMinor), true);
+
+  // The price history column is the same type and must behave the same way.
+  await db.pool.query('UPDATE catalog.offer_price_history SET list_price_minor = $1', [
+    String(edge),
+  ]);
+  const history = await target.listPriceHistory(offer.id);
+  assert.equal(history[0].listPrice.amountMinor, edge);
+});
+
 // ── the real exports ────────────────────────────────────────────────────────
 
 const FEED_A = process.env['HONESTTOTAL_FEED_A'];

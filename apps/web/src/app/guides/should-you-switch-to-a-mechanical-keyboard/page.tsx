@@ -326,12 +326,12 @@ export default function ShouldYouSwitchKeyboardPage() {
               <p className="eyebrow">Decision guide · keyboards</p>
             </span>
             <h1 className="hero-h1" style={{ maxWidth: '24ch' }}>
-              <span className="h1-underlined">Should you switch</span> to a{' '}
-              <em>mechanical</em> keyboard?
+              <span className="h1-underlined">Should you switch</span> to a <em>mechanical</em>{' '}
+              keyboard?
             </h1>
             <p className="lede" style={{ marginTop: 24 }}>
-              If your current keyboard is not bothering you, no. That is the honest answer and it
-              is not a cautious one — switching buys consistency, repairability and the ability to
+              If your current keyboard is not bothering you, no. That is the honest answer and it is
+              not a cautious one — switching buys consistency, repairability and the ability to
               change how the thing feels, and it does not reliably buy speed, accuracy or comfort.
             </p>
             <p className="lede">
@@ -405,8 +405,8 @@ export default function ShouldYouSwitchKeyboardPage() {
               <p className="eyebrow">03 · What does not automatically improve</p>
               <h2>Preference and performance are not the same thing.</h2>
               <p>
-                A keyboard can be more pleasant to use and change nothing you could measure. Most
-                of this category&rsquo;s overclaiming lives in the gap between those two ideas.
+                A keyboard can be more pleasant to use and change nothing you could measure. Most of
+                this category&rsquo;s overclaiming lives in the gap between those two ideas.
               </p>
             </div>
             <div
@@ -433,8 +433,8 @@ export default function ShouldYouSwitchKeyboardPage() {
             </div>
             <p className="note">
               None of this is an argument against mechanical keyboards. Liking the thing you touch
-              for six hours a day is a perfectly good reason to buy it. It stops being a good
-              reason the moment it is sold as something else.
+              for six hours a day is a perfectly good reason to buy it. It stops being a good reason
+              the moment it is sold as something else.
             </p>
           </div>
         </section>
@@ -501,8 +501,9 @@ export default function ShouldYouSwitchKeyboardPage() {
             <div className="card rule-card">
               <p className="rule-quote">
                 A standard mechanical keyboard raises your hands relative to a laptop deck. Whether
-                that helps, hurts or changes nothing depends on <b>desk height, chair height and
-                how you hold your hands</b> — none of which are properties of the keyboard.
+                that helps, hurts or changes nothing depends on{' '}
+                <b>desk height, chair height and how you hold your hands</b> — none of which are
+                properties of the keyboard.
               </p>
               <p className="muted">
                 Research on short-travel keyboards found that travel distance alone did not predict
@@ -596,7 +597,9 @@ export default function ShouldYouSwitchKeyboardPage() {
               <ul className="tick-list">
                 <li>Name what is wrong with your current keyboard — if nothing is, stop here</li>
                 <li>Decide whether the room you work in can tolerate the sound</li>
-                <li>Measure the desk: an external keyboard needs space, and the laptop needs raising</li>
+                <li>
+                  Measure the desk: an external keyboard needs space, and the laptop needs raising
+                </li>
                 <li>Check the return window outlasts a two-week adaptation period</li>
                 <li>Consider low profile if the height rather than the feel is your concern</li>
                 <li>Be clear that you are buying a better object, not a measurable improvement</li>

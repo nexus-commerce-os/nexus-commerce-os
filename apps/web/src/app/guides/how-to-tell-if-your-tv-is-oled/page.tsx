@@ -234,10 +234,11 @@ export default function TellIfOledPage() {
               enough that the picture alone cannot settle it.
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
-              <b>This page is about identifying a set you already have or are standing in front
-              of.</b>{' '}
-              If you are choosing a new one, the{' '}
-              <a href="/guides/oled-tv">OLED buying guide</a> is the other half of the subject.
+              <b>
+                This page is about identifying a set you already have or are standing in front of.
+              </b>{' '}
+              If you are choosing a new one, the <a href="/guides/oled-tv">OLED buying guide</a> is
+              the other half of the subject.
             </p>
           </div>
         </section>

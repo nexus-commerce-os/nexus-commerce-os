@@ -212,9 +212,9 @@ export default function AncOnOffPage() {
               whole time it is running.
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
-              <b>This page is about choosing a setting.</b> If you want to know how the
-              cancellation itself works — feedforward, feedback, why voices get through — that is
-              the <a href="/guides/how-anc-works">ANC explainer</a>.
+              <b>This page is about choosing a setting.</b> If you want to know how the cancellation
+              itself works — feedforward, feedback, why voices get through — that is the{' '}
+              <a href="/guides/how-anc-works">ANC explainer</a>.
             </p>
           </div>
         </section>
@@ -248,9 +248,9 @@ export default function AncOnOffPage() {
             <p className="note">
               The part most people miss: switching ANC off does not make headphones transparent. It
               removes the electronics from the path and leaves the physical seal, which on over-ears
-              and sealed earbuds still muffles a fair amount. That split matters when reading
-              claims too — the seal and the electronics are measured as separate quantities, which
-              is covered in{' '}
+              and sealed earbuds still muffles a fair amount. That split matters when reading claims
+              too — the seal and the electronics are measured as separate quantities, which is
+              covered in{' '}
               <a href="/guides/how-noise-cancelling-is-measured">
                 how noise cancelling is measured
               </a>
@@ -293,8 +293,8 @@ export default function AncOnOffPage() {
               <p className="eyebrow">03 · When to turn it off</p>
               <h2>Quiet rooms, low battery, and personal comfort.</h2>
               <p>
-                None of these are faults. They are situations where the processing is spending
-                power for very little return, or where you simply prefer it off.
+                None of these are faults. They are situations where the processing is spending power
+                for very little return, or where you simply prefer it off.
               </p>
             </div>
             <div className="card blind blind-out" style={{ maxWidth: 760 }}>
@@ -307,9 +307,8 @@ export default function AncOnOffPage() {
             </div>
             <p className="note">
               Comfort is a legitimate reason on its own. The pressure sensation some people notice
-              is real, varies between people, and is not something to push through if it bothers
-              you — the{' '}
-              <a href="/guides/how-anc-works">ANC explainer</a> covers why it happens.
+              is real, varies between people, and is not something to push through if it bothers you
+              — the <a href="/guides/how-anc-works">ANC explainer</a> covers why it happens.
             </p>
           </div>
         </section>
