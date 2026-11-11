@@ -165,18 +165,6 @@ jobs:
       - name: CodeQL analyze
         # why: docs/10 §2 — a high/critical CodeQL alert blocks merge (fail-closed).
         uses: github/codeql-action/analyze@4dd160e2a852cbaf3ff0d24bade91a35db19d7b6 # v3.26.9
-      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
-        # why: Semgrep is a Python package and this job had no interpreter pin, so `pip install`
-        #      used whatever the runner image ships. That is now Python 3.14, whose protobuf
-        #      raises `TypeError: Metaclasses with custom tp_new are not supported` the moment
-        #      semgrep imports it — so EVERY run of this job died before a single rule was
-        #      evaluated, on main and on every PR, and took ci-gate red with it.
-        #
-        #      This pins the interpreter to the repository's own PYTHON_VERSION (3.12), which
-        #      semgrep 1.85.0 supports. Nothing is skipped, suppressed or downgraded: the scan
-        #      goes from "never ran" to "runs", which is strictly more checking than before.
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
       - name: Semgrep scan
         # why: fast rule-based SAST (OWASP + custom rules in .semgrep/); complements CodeQL, blocks on findings.
         run: |
