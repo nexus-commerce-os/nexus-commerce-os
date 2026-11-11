@@ -73,6 +73,27 @@ async function openDatabase() {
 }
 
 const db = await openDatabase();
+
+/*
+ * IN CI, A MISSING DATABASE IS A FAILURE, NOT A SKIP.
+ *
+ * Skipping is the right answer on a workstation with no container runtime. It
+ * is the wrong answer on a runner, where it would turn "the adapter is
+ * unproven" into a green build — which is exactly the bug turbo.json already
+ * carries a warning about, from the time an undeclared env var let the auth
+ * service's Postgres suites skip silently. The flag is set in ci.yml's
+ * unit-tests job; if it ever stops being set, this stops the build instead of
+ * quietly dropping the only tests that touch a real database.
+ */
+if (!db && process.env['CI'] === 'true') {
+  throw new Error(
+    'CI has no PostgreSQL for the catalog adapter suite. Expected NEXUS_PG_TESTS=1 ' +
+      '(testcontainers) or HONESTTOTAL_PG_DSN. Refusing to skip: these are the only ' +
+      'tests that prove the unique indexes, the transaction boundary and the ' +
+      'concurrent-apply guarantee.',
+  );
+}
+
 const skip = db
   ? false
   : 'no PostgreSQL: set HONESTTOTAL_PG_DSN, or NEXUS_PG_TESTS=1 with a container runtime';
@@ -87,7 +108,9 @@ if (db) {
 
 /** A clean catalog schema between tests, without re-running the migration. */
 async function reset() {
-  await db.pool.query('TRUNCATE catalog.import_run, catalog.merchant_offer, catalog.offer_price_history, catalog.quarantined_row');
+  await db.pool.query(
+    'TRUNCATE catalog.import_run, catalog.merchant_offer, catalog.offer_price_history, catalog.quarantined_row',
+  );
 }
 
 function store() {
@@ -141,29 +164,33 @@ async function count(table, where = '', params = []) {
 
 // ── migration ───────────────────────────────────────────────────────────────
 
-test('the migration applies to a fresh database and is a no-op on a second run', { skip }, async () => {
-  const runner = new CatalogMigrationRunner(db.pool, MIGRATIONS_DIR);
-  // It already ran above, so there is nothing outstanding — which is the
-  // property worth asserting: applying twice must not try to recreate a table.
-  assert.deepEqual(await runner.migrate(), []);
+test(
+  'the migration applies to a fresh database and is a no-op on a second run',
+  { skip },
+  async () => {
+    const runner = new CatalogMigrationRunner(db.pool, MIGRATIONS_DIR);
+    // It already ran above, so there is nothing outstanding — which is the
+    // property worth asserting: applying twice must not try to recreate a table.
+    assert.deepEqual(await runner.migrate(), []);
 
-  const applied = (await runner.applied()).map((m) => m.version);
-  assert.deepEqual(applied, await runner.available());
-  assert.ok(applied.includes('0001_catalog_init'));
+    const applied = (await runner.applied()).map((m) => m.version);
+    assert.deepEqual(applied, await runner.available());
+    assert.ok(applied.includes('0001_catalog_init'));
 
-  const tables = (
-    await db.pool.query(
-      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'catalog' ORDER BY table_name`,
-    )
-  ).rows.map((r) => r.table_name);
-  assert.deepEqual(tables, [
-    'import_run',
-    'merchant_offer',
-    'offer_price_history',
-    'quarantined_row',
-    'schema_migration',
-  ]);
-});
+    const tables = (
+      await db.pool.query(
+        `SELECT table_name FROM information_schema.tables WHERE table_schema = 'catalog' ORDER BY table_name`,
+      )
+    ).rows.map((r) => r.table_name);
+    assert.deepEqual(tables, [
+      'import_run',
+      'merchant_offer',
+      'offer_price_history',
+      'quarantined_row',
+      'schema_migration',
+    ]);
+  },
+);
 
 test('every table lives in the catalog schema and nowhere else', { skip }, async () => {
   // The per-context schema IS the architectural boundary (docs/06 §4,
@@ -182,15 +209,20 @@ test('every table lives in the catalog schema and nowhere else', { skip }, async
 
 // ── constraints the in-memory adapter cannot enforce ────────────────────────
 
-test('offer identity is (merchant_id, merchant_offer_id) and the database says so', { skip }, async () => {
-  await reset();
-  await runImport(store(), twoProducts());
+test(
+  'offer identity is (merchant_id, merchant_offer_id) and the database says so',
+  { skip },
+  async () => {
+    await reset();
+    await runImport(store(), twoProducts());
 
-  const [offer] = (await store().listOffers(MERCHANT)).filter((o) => o.merchantOfferId === 'SKU-1');
-  await assert.rejects(
-    () =>
-      db.pool.query(
-        `INSERT INTO catalog.merchant_offer (
+    const [offer] = (await store().listOffers(MERCHANT)).filter(
+      (o) => o.merchantOfferId === 'SKU-1',
+    );
+    await assert.rejects(
+      () =>
+        db.pool.query(
+          `INSERT INTO catalog.merchant_offer (
            id, merchant_id, merchant_offer_id, brand, title, list_price_minor, currency,
            availability, condition, product_url, image_url, snapshot_at, source_feed,
            first_seen_run, last_seen_run, last_seen_at
@@ -199,39 +231,43 @@ test('offer identity is (merchant_id, merchant_offer_id) and the database says s
                   image_url, snapshot_at, source_feed, first_seen_run, last_seen_run,
                   last_seen_at
              FROM catalog.merchant_offer WHERE id = $1`,
-        [offer.id],
-      ),
-    (error) => error.code === '23505' && error.constraint === 'merchant_offer_identity',
-  );
-});
+          [offer.id],
+        ),
+      (error) => error.code === '23505' && error.constraint === 'merchant_offer_identity',
+    );
+  },
+);
 
-test('a verified shipping cost without a destination is refused by the schema', { skip }, async () => {
-  await reset();
-  await runImport(store(), twoProducts());
-  const [offer] = await store().listOffers(MERCHANT);
+test(
+  'a verified shipping cost without a destination is refused by the schema',
+  { skip },
+  async () => {
+    await reset();
+    await runImport(store(), twoProducts());
+    const [offer] = await store().listOffers(MERCHANT);
 
-  // This is the constraint that stops a future writer from inventing a
-  // delivered total: a cost with no destination is not a verified cost.
-  await assert.rejects(
-    () =>
-      db.pool.query(
-        `UPDATE catalog.merchant_offer
+    // This is the constraint that stops a future writer from inventing a
+    // delivered total: a cost with no destination is not a verified cost.
+    await assert.rejects(
+      () =>
+        db.pool.query(
+          `UPDATE catalog.merchant_offer
             SET shipping_verified = true, shipping_cost_minor = 500
           WHERE id = $1`,
-        [offer.id],
-      ),
-    (error) => error.code === '23514' && error.constraint === 'merchant_offer_shipping_complete',
-  );
+          [offer.id],
+        ),
+      (error) => error.code === '23514' && error.constraint === 'merchant_offer_shipping_complete',
+    );
 
-  await assert.rejects(
-    () =>
-      db.pool.query(
-        `UPDATE catalog.merchant_offer SET fees_verified = true WHERE id = $1`,
-        [offer.id],
-      ),
-    (error) => error.code === '23514' && error.constraint === 'merchant_offer_fees_complete',
-  );
-});
+    await assert.rejects(
+      () =>
+        db.pool.query(`UPDATE catalog.merchant_offer SET fees_verified = true WHERE id = $1`, [
+          offer.id,
+        ]),
+      (error) => error.code === '23514' && error.constraint === 'merchant_offer_fees_complete',
+    );
+  },
+);
 
 test('nothing imported from this feed carries a shipping or fee figure', { skip }, async () => {
   await reset();
@@ -282,24 +318,28 @@ test('a stale export is refused and the refusal is in the ledger', { skip }, asy
   assert.equal(await count('import_run'), 1, 'but the attempt is recorded');
 });
 
-test('re-importing the same payload changes nothing and is recorded as a duplicate', { skip }, async () => {
-  await reset();
-  const target = store();
-  const rows = twoProducts();
-  await runImport(target, rows);
+test(
+  're-importing the same payload changes nothing and is recorded as a duplicate',
+  { skip },
+  async () => {
+    await reset();
+    const target = store();
+    const rows = twoProducts();
+    await runImport(target, rows);
 
-  const offersBefore = await count('merchant_offer');
-  const historyBefore = await count('offer_price_history');
+    const offersBefore = await count('merchant_offer');
+    const historyBefore = await count('offer_price_history');
 
-  const again = await runImport(target, rows, new Date(NOW.getTime() + 60_000));
-  assert.equal(again.applied, false);
-  assert.equal(again.run.status, 'skipped_duplicate');
+    const again = await runImport(target, rows, new Date(NOW.getTime() + 60_000));
+    assert.equal(again.applied, false);
+    assert.equal(again.run.status, 'skipped_duplicate');
 
-  assert.equal(await count('merchant_offer'), offersBefore, 'no duplicate offers');
-  assert.equal(await count('offer_price_history'), historyBefore, 'no duplicate history');
-  assert.equal(await count('import_run'), 2, 'both attempts are in the ledger');
-  assert.equal(await count('import_run', "WHERE status = 'applied'"), 1);
-});
+    assert.equal(await count('merchant_offer'), offersBefore, 'no duplicate offers');
+    assert.equal(await count('offer_price_history'), historyBefore, 'no duplicate history');
+    assert.equal(await count('import_run'), 2, 'both attempts are in the ledger');
+    assert.equal(await count('import_run', "WHERE status = 'applied'"), 1);
+  },
+);
 
 // ── transactions ────────────────────────────────────────────────────────────
 
@@ -337,41 +377,54 @@ test('a write phase that throws leaves the catalogue untouched', { skip }, async
   assert.equal(await count('merchant_offer', "WHERE title = 'HALF-WRITTEN'"), 0);
 });
 
-test('a failed import is recorded as failed, with no partial offers and no feed content in the reason', { skip }, async () => {
-  await reset();
+test(
+  'a failed import is recorded as failed, with no partial offers and no feed content in the reason',
+  { skip },
+  async () => {
+    await reset();
 
-  /*
-   * The failure is injected at the LAST write of the phase, so if atomicity
-   * were broken the 2 offers ahead of it would already be committed. A
-   * constraint violation is used rather than a thrown Error because that is
-   * the realistic failure — and because its Postgres message quotes the
-   * offending row, which is what `skip_reason` must not end up holding.
-   */
-  const target = store();
-  const broken = new Proxy(target, {
-    get(inner, key, receiver) {
-      if (key !== 'applyRun') return Reflect.get(inner, key, receiver);
-      return (work) =>
-        inner.applyRun(async (tx) => {
-          await work(tx);
-          await tx.recordQuarantine([
-            { importRunId: '00000000-0000-4000-8000-000000000000', merchantId: MERCHANT, rowNumber: 1, merchantOfferId: 'X', reasons: ['injected'] },
-          ]);
-        });
-    },
-  });
+    /*
+     * The failure is injected at the LAST write of the phase, so if atomicity
+     * were broken the 2 offers ahead of it would already be committed. A
+     * constraint violation is used rather than a thrown Error because that is
+     * the realistic failure — and because its Postgres message quotes the
+     * offending row, which is what `skip_reason` must not end up holding.
+     */
+    const target = store();
+    const broken = new Proxy(target, {
+      get(inner, key, receiver) {
+        if (key !== 'applyRun') return Reflect.get(inner, key, receiver);
+        return (work) =>
+          inner.applyRun(async (tx) => {
+            await work(tx);
+            await tx.recordQuarantine([
+              {
+                importRunId: '00000000-0000-4000-8000-000000000000',
+                merchantId: MERCHANT,
+                rowNumber: 1,
+                merchantOfferId: 'X',
+                reasons: ['injected'],
+              },
+            ]);
+          });
+      },
+    });
 
-  await assert.rejects(() => runImport(broken, twoProducts()), (error) => error.code === '23503');
+    await assert.rejects(
+      () => runImport(broken, twoProducts()),
+      (error) => error.code === '23503',
+    );
 
-  assert.equal(await count('merchant_offer'), 0, 'not one offer survived the failure');
-  assert.equal(await count('offer_price_history'), 0);
-  const runs = await store().listRuns(MERCHANT);
-  assert.equal(runs.length, 1);
-  assert.equal(runs[0].status, 'failed');
-  assert.match(runs[0].skipReason, /^database 23503/);
-  // The reason carries a code and a constraint name. Nothing else.
-  assert.ok(!/SKU-|79\.99|http/.test(runs[0].skipReason), runs[0].skipReason);
-});
+    assert.equal(await count('merchant_offer'), 0, 'not one offer survived the failure');
+    assert.equal(await count('offer_price_history'), 0);
+    const runs = await store().listRuns(MERCHANT);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].status, 'failed');
+    assert.match(runs[0].skipReason, /^database 23503/);
+    // The reason carries a code and a constraint name. Nothing else.
+    assert.ok(!/SKU-|79\.99|http/.test(runs[0].skipReason), runs[0].skipReason);
+  },
+);
 
 // ── concurrency ─────────────────────────────────────────────────────────────
 
@@ -389,10 +442,7 @@ test('two simultaneous imports of one export apply exactly once', { skip }, asyn
   // Separate store instances over the same pool: two connections, two
   // transactions, no shared in-process state to coordinate them. The database
   // is the only arbiter.
-  const settled = await Promise.allSettled([
-    runImport(store(), rows),
-    runImport(store(), rows),
-  ]);
+  const settled = await Promise.allSettled([runImport(store(), rows), runImport(store(), rows)]);
 
   assert.deepEqual(
     settled.map((s) => s.status),
@@ -410,39 +460,43 @@ test('two simultaneous imports of one export apply exactly once', { skip }, asyn
   assert.equal(await count('offer_price_history'), rows.length, 'no doubled history');
 });
 
-test('the applied-once index refuses a second applied run for the same payload', { skip }, async () => {
-  await reset();
-  const target = store();
-  const rows = twoProducts();
-  const first = await runImport(target, rows);
-  assert.equal(first.applied, true);
+test(
+  'the applied-once index refuses a second applied run for the same payload',
+  { skip },
+  async () => {
+    await reset();
+    const target = store();
+    const rows = twoProducts();
+    const first = await runImport(target, rows);
+    assert.equal(first.applied, true);
 
-  // The race loser's exact path, driven deterministically: a second run that
-  // did the work and only then tried to claim the payload.
-  const second = '11111111-1111-4111-8111-111111111111';
-  await target.beginRun({
-    id: second,
-    merchantId: MERCHANT,
-    sourceFeed: SOURCE,
-    contentSha256: first.run.contentSha256,
-    feedExportedAt: first.run.feedExportedAt,
-    startedAt: NOW.toISOString(),
-    rowsTotal: rows.length,
-    offersAdded: null,
-    offersRemoved: null,
-    offersUpdated: null,
-    offersUnchanged: null,
-    rowsQuarantined: null,
-    skipReason: null,
-    status: 'started',
-  });
+    // The race loser's exact path, driven deterministically: a second run that
+    // did the work and only then tried to claim the payload.
+    const second = '11111111-1111-4111-8111-111111111111';
+    await target.beginRun({
+      id: second,
+      merchantId: MERCHANT,
+      sourceFeed: SOURCE,
+      contentSha256: first.run.contentSha256,
+      feedExportedAt: first.run.feedExportedAt,
+      startedAt: NOW.toISOString(),
+      rowsTotal: rows.length,
+      offersAdded: null,
+      offersRemoved: null,
+      offersUpdated: null,
+      offersUnchanged: null,
+      rowsQuarantined: null,
+      skipReason: null,
+      status: 'started',
+    });
 
-  await assert.rejects(
-    () => target.applyRun((tx) => tx.finishRun(second, { status: 'applied' })),
-    (error) => error instanceof DuplicateApplyError,
-  );
-  assert.equal(await count('import_run', "WHERE status = 'applied'"), 1);
-});
+    await assert.rejects(
+      () => target.applyRun((tx) => tx.finishRun(second, { status: 'applied' })),
+      (error) => error instanceof DuplicateApplyError,
+    );
+    assert.equal(await count('import_run', "WHERE status = 'applied'"), 1);
+  },
+);
 
 // ── lifecycle and history ───────────────────────────────────────────────────
 
@@ -568,29 +622,33 @@ test('money survives the round trip as integer minor units', { skip }, async () 
   assert.equal(column.rows[0].data_type, 'bigint');
 });
 
-test('an amount beyond exact representation is refused on read, never rounded', { skip }, async () => {
-  await reset();
-  const target = store();
-  await runImport(target, oneProduct(NOW, '79.99 USD'));
-  const offer = await target.findOffer(MERCHANT, 'SKU-1');
+test(
+  'an amount beyond exact representation is refused on read, never rounded',
+  { skip },
+  async () => {
+    await reset();
+    const target = store();
+    await runImport(target, oneProduct(NOW, '79.99 USD'));
+    const offer = await target.findOffer(MERCHANT, 'SKU-1');
 
-  /*
-   * 2^53 + 1: a value int8 holds exactly and a JS number cannot. It is written
-   * past the adapter on purpose — the question is what happens when a row
-   * ALREADY holds such a figure, because `Number()` would hand back
-   * 9007199254740992 and every total computed from it would be silently one
-   * unit wrong, forever. Reading has to fail loudly instead.
-   *
-   * Asserting this rather than the driver's int8-to-string mapping keeps the
-   * test about THIS adapter's guarantee, which is the one that matters and the
-   * one that holds whatever maps the column.
-   */
-  await db.pool.query(
-    'UPDATE catalog.merchant_offer SET list_price_minor = 9007199254740993 WHERE id = $1',
-    [offer.id],
-  );
-  await assert.rejects(() => target.findOffer(MERCHANT, 'SKU-1'), /not a safe integer/);
-});
+    /*
+     * 2^53 + 1: a value int8 holds exactly and a JS number cannot. It is written
+     * past the adapter on purpose — the question is what happens when a row
+     * ALREADY holds such a figure, because `Number()` would hand back
+     * 9007199254740992 and every total computed from it would be silently one
+     * unit wrong, forever. Reading has to fail loudly instead.
+     *
+     * Asserting this rather than the driver's int8-to-string mapping keeps the
+     * test about THIS adapter's guarantee, which is the one that matters and the
+     * one that holds whatever maps the column.
+     */
+    await db.pool.query(
+      'UPDATE catalog.merchant_offer SET list_price_minor = 9007199254740993 WHERE id = $1',
+      [offer.id],
+    );
+    await assert.rejects(() => target.findOffer(MERCHANT, 'SKU-1'), /not a safe integer/);
+  },
+);
 
 // ── the real exports ────────────────────────────────────────────────────────
 
@@ -598,63 +656,67 @@ const FEED_A = process.env['HONESTTOTAL_FEED_A'];
 const FEED_B = process.env['HONESTTOTAL_FEED_B'];
 const realSkip = skip || (FEED_A && FEED_B ? false : 'HONESTTOTAL_FEED_A/B not set');
 
-test('the 9 and 10 November exports reconcile in Postgres exactly as measured', { skip: realSkip }, async () => {
-  await reset();
-  const target = store();
-  const options = { merchantId: MERCHANT, sourceFeed: SOURCE };
+test(
+  'the 9 and 10 November exports reconcile in Postgres exactly as measured',
+  { skip: realSkip },
+  async () => {
+    await reset();
+    const target = store();
+    const options = { merchantId: MERCHANT, sourceFeed: SOURCE };
 
-  const first = await importFeedArchive(readFileSync(FEED_A), target, {
-    ...options,
-    now: new Date('2026-11-09T13:30:00.000Z'),
-  });
-  assert.equal(first.applied, true);
-  assert.equal(first.run.rowsTotal, 225);
-  assert.equal(await count('merchant_offer'), 225);
-  assert.equal(await count('offer_price_history'), 225);
+    const first = await importFeedArchive(readFileSync(FEED_A), target, {
+      ...options,
+      now: new Date('2026-11-09T13:30:00.000Z'),
+    });
+    assert.equal(first.applied, true);
+    assert.equal(first.run.rowsTotal, 225);
+    assert.equal(await count('merchant_offer'), 225);
+    assert.equal(await count('offer_price_history'), 225);
 
-  const second = await importFeedArchive(readFileSync(FEED_B), target, {
-    ...options,
-    now: new Date('2026-11-10T13:30:00.000Z'),
-  });
-  assert.equal(second.applied, true);
+    const second = await importFeedArchive(readFileSync(FEED_B), target, {
+      ...options,
+      now: new Date('2026-11-10T13:30:00.000Z'),
+    });
+    assert.equal(second.applied, true);
 
-  const r = second.reconciliation;
-  assert.equal(r.added.length, 1);
-  assert.equal(r.removed.length, 1);
-  assert.equal(r.updated.length, 183);
-  assert.equal(r.unchanged.length, 41);
-  assert.equal(second.quarantined, 0);
+    const r = second.reconciliation;
+    assert.equal(r.added.length, 1);
+    assert.equal(r.removed.length, 1);
+    assert.equal(r.updated.length, 183);
+    assert.equal(r.unchanged.length, 41);
+    assert.equal(second.quarantined, 0);
 
-  const combos = new Map();
-  for (const u of r.updated) {
-    const key = [...u.changedFields].sort().join('+');
-    combos.set(key, (combos.get(key) ?? 0) + 1);
-  }
-  assert.deepEqual(Object.fromEntries([...combos].sort()), {
-    imageUrl: 1,
-    productUrl: 147,
-    'productUrl+salePrice': 31,
-    salePrice: 4,
-  });
-  assert.equal((combos.get('productUrl') ?? 0) + (combos.get('productUrl+salePrice') ?? 0), 178);
-  assert.equal(r.updated.filter((u) => u.priceChange !== null).length, 35);
+    const combos = new Map();
+    for (const u of r.updated) {
+      const key = [...u.changedFields].sort().join('+');
+      combos.set(key, (combos.get(key) ?? 0) + 1);
+    }
+    assert.deepEqual(Object.fromEntries([...combos].sort()), {
+      imageUrl: 1,
+      productUrl: 147,
+      'productUrl+salePrice': 31,
+      salePrice: 4,
+    });
+    assert.equal((combos.get('productUrl') ?? 0) + (combos.get('productUrl+salePrice') ?? 0), 178);
+    assert.equal(r.updated.filter((u) => u.priceChange !== null).length, 35);
 
-  // …and the same figures read back out of the database rather than from the
-  // return value, because what matters is what was stored.
-  assert.equal(await count('merchant_offer'), 226);
-  assert.equal(await count('merchant_offer', "WHERE state = 'active'"), 225);
-  assert.equal(await count('merchant_offer', "WHERE state = 'inactive'"), 1);
-  assert.equal(await count('offer_price_history'), 225 + 1 + 35);
-  assert.equal(await count('quarantined_row'), 0);
-  assert.equal(await count('merchant_offer', 'WHERE shipping_verified OR fees_verified'), 0);
+    // …and the same figures read back out of the database rather than from the
+    // return value, because what matters is what was stored.
+    assert.equal(await count('merchant_offer'), 226);
+    assert.equal(await count('merchant_offer', "WHERE state = 'active'"), 225);
+    assert.equal(await count('merchant_offer', "WHERE state = 'inactive'"), 1);
+    assert.equal(await count('offer_price_history'), 225 + 1 + 35);
+    assert.equal(await count('quarantined_row'), 0);
+    assert.equal(await count('merchant_offer', 'WHERE shipping_verified OR fees_verified'), 0);
 
-  const runs = await target.listRuns(MERCHANT);
-  assert.deepEqual(
-    runs.map((run) => run.status),
-    ['applied', 'applied'],
-  );
-  assert.equal(runs[1].offersAdded, 1);
-  assert.equal(runs[1].offersRemoved, 1);
-  assert.equal(runs[1].offersUpdated, 183);
-  assert.equal(runs[1].offersUnchanged, 41);
-});
+    const runs = await target.listRuns(MERCHANT);
+    assert.deepEqual(
+      runs.map((run) => run.status),
+      ['applied', 'applied'],
+    );
+    assert.equal(runs[1].offersAdded, 1);
+    assert.equal(runs[1].offersRemoved, 1);
+    assert.equal(runs[1].offersUpdated, 183);
+    assert.equal(runs[1].offersUnchanged, 41);
+  },
+);

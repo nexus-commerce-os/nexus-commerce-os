@@ -126,7 +126,10 @@ test('importing both days reconciles to 1 added and 1 removed', { skip: !have },
   const after = await store.listOffers(MERCHANT);
   assert.equal(after.length, before.length + EXPECTED.added);
   assert.equal(after.filter((o) => o.state === 'inactive').length, EXPECTED.removed);
-  assert.equal(after.filter((o) => o.state === 'active').length, EXPECTED.rowsPerExport - second.quarantined);
+  assert.equal(
+    after.filter((o) => o.state === 'active').length,
+    EXPECTED.rowsPerExport - second.quarantined,
+  );
 
   // Price movement, not sightings: only the sale-price changes are recorded.
   const salePriceMoves = r.updated.filter((u) => u.priceChange !== null);
@@ -152,10 +155,12 @@ test('importing both days reconciles to 1 added and 1 removed', { skip: !have },
     const key = [...u.changedFields].sort().join('+');
     combos.set(key, (combos.get(key) ?? 0) + 1);
   }
-  assert.deepEqual(
-    Object.fromEntries([...combos].sort()),
-    { imageUrl: 1, productUrl: 147, 'productUrl+salePrice': 31, salePrice: 4 },
-  );
+  assert.deepEqual(Object.fromEntries([...combos].sort()), {
+    imageUrl: 1,
+    productUrl: 147,
+    'productUrl+salePrice': 31,
+    salePrice: 4,
+  });
   assert.equal(r.updated.length, 183);
   assert.equal(r.unchanged.length, 41);
   assert.equal(r.updated.length + r.unchanged.length, EXPECTED.commonIds);
@@ -194,7 +199,20 @@ test('IMPRESSION_URL churn on every row produces no product change', { skip: !ha
   assert.equal(fields.has('impressionUrl'), false);
   for (const f of fields) {
     assert.ok(
-      ['productUrl', 'salePrice', 'listPrice', 'title', 'imageUrl', 'availability', 'brand', 'gtin', 'mpn', 'condition', 'shippingVerified', 'feesVerified'].includes(f),
+      [
+        'productUrl',
+        'salePrice',
+        'listPrice',
+        'title',
+        'imageUrl',
+        'availability',
+        'brand',
+        'gtin',
+        'mpn',
+        'condition',
+        'shippingVerified',
+        'feesVerified',
+      ].includes(f),
       `unexpected changed field: ${f}`,
     );
   }
@@ -220,13 +238,21 @@ test('re-importing the later export changes nothing', { skip: !have }, async () 
   assert.equal(store.priceHistoryCount, historyBefore, 'no duplicate price history');
 });
 
-test('no offer from the real feed is eligible for delivered-price ranking', { skip: !have }, async () => {
-  // Seven consecutive exports have carried no shipping on any row. If this
-  // ever fails, the feed changed and the revenue question genuinely reopened.
-  const store = new InMemoryOfferStore();
-  await importFeedArchive(load(B), store, { merchantId: MERCHANT, sourceFeed: SOURCE, now: AT_B });
-  const offers = await store.listOffers(MERCHANT);
-  assert.ok(offers.length > 0);
-  assert.equal(offers.filter((o) => o.shippingVerified).length, 0, 'no verified shipping');
-  assert.equal(offers.filter((o) => o.feesVerified).length, 0, 'no verified fees');
-});
+test(
+  'no offer from the real feed is eligible for delivered-price ranking',
+  { skip: !have },
+  async () => {
+    // Seven consecutive exports have carried no shipping on any row. If this
+    // ever fails, the feed changed and the revenue question genuinely reopened.
+    const store = new InMemoryOfferStore();
+    await importFeedArchive(load(B), store, {
+      merchantId: MERCHANT,
+      sourceFeed: SOURCE,
+      now: AT_B,
+    });
+    const offers = await store.listOffers(MERCHANT);
+    assert.ok(offers.length > 0);
+    assert.equal(offers.filter((o) => o.shippingVerified).length, 0, 'no verified shipping');
+    assert.equal(offers.filter((o) => o.feesVerified).length, 0, 'no verified fees');
+  },
+);

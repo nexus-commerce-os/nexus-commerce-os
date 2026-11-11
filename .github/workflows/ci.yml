@@ -139,6 +139,13 @@ jobs:
         # database via testcontainers (this runner has Docker), which is the only way the unique
         # indexes and concurrent single-use guarantees are actually proven. Without the flag they
         # skip loudly on a workstation with no Docker rather than passing silently.
+        #
+        # This now covers services/catalog as well as services/auth, and for the catalog
+        # adapter the runner is the ONLY place three of its guarantees are ever exercised:
+        # two simultaneous imports of one export applying exactly once, server-side locking
+        # under contention, and node-postgres' own int8/timestamptz mapping. None of them
+        # can run on a machine without a container runtime, so that suite fails rather than
+        # skips when CI=true finds no database.
         env:
           NEXUS_PG_TESTS: '1'
           # Same reasoning for the Redis limiter: the in-memory double cannot prove the

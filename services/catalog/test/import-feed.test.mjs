@@ -90,7 +90,10 @@ test('a changed tracking URL refreshes the offer and creates no new product', as
   const before = row({ id: 'SKU-1', gtin: gtin12('01234567891'), price: '79.99 USD' });
   await runImport(store, feed([before]));
 
-  const after = { ...before, link: 'https://example.test/track?v=2&url=https%3A%2F%2Fshop.test%2Fp' };
+  const after = {
+    ...before,
+    link: 'https://example.test/track?v=2&url=https%3A%2F%2Fshop.test%2Fp',
+  };
   const result = await runImport(store, feed([after]));
 
   assert.equal(result.reconciliation.added.length, 0);
@@ -116,7 +119,10 @@ test('a price move appends exactly one history row, and an unchanged price appen
   assert.equal(history[1].changeKind, 'sale');
 
   // Same prices again, only the generation stamp moves: no new history.
-  await runImport(store, feed([{ ...base, salePrice: '67.99 USD', lastUpdated: '2026-11-10T12:40:00.000Z' }]));
+  await runImport(
+    store,
+    feed([{ ...base, salePrice: '67.99 USD', lastUpdated: '2026-11-10T12:40:00.000Z' }]),
+  );
   history = await store.listPriceHistory(offer.id);
   assert.equal(history.length, 2, 'an unchanged price is not an observation');
 });
@@ -164,7 +170,10 @@ test('a returning product is revived rather than duplicated', async () => {
 
 test('a stale export is refused and the store is left untouched', async () => {
   const store = new InMemoryOfferStore();
-  await runImport(store, feed([row({ id: 'SKU-1', gtin: gtin12('01234567891'), price: '79.99 USD' })]));
+  await runImport(
+    store,
+    feed([row({ id: 'SKU-1', gtin: gtin12('01234567891'), price: '79.99 USD' })]),
+  );
   const before = (await store.listOffers(MERCHANT)).length;
 
   // Same feed stamp, read three days later.

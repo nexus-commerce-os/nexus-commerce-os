@@ -95,10 +95,7 @@ export class InMemoryOfferStore implements OfferStore {
     }
   }
 
-  async finishRun(
-    id: string,
-    patch: Partial<ImportRun> & { status: ImportStatus },
-  ): Promise<void> {
+  async finishRun(id: string, patch: Partial<ImportRun> & { status: ImportStatus }): Promise<void> {
     const existing = this.runs.get(id);
     if (!existing) throw new Error(`unknown import run: ${id}`);
     if (patch.status === 'applied') {

@@ -64,12 +64,7 @@ export interface QuarantineEntry {
   readonly reasons: readonly string[];
 }
 
-export type ImportStatus =
-  | 'started'
-  | 'applied'
-  | 'skipped_duplicate'
-  | 'skipped_stale'
-  | 'failed';
+export type ImportStatus = 'started' | 'applied' | 'skipped_duplicate' | 'skipped_stale' | 'failed';
 
 export interface ImportRun {
   readonly id: string;

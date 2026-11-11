@@ -118,20 +118,11 @@ export { InMemoryOfferStore } from './store/in-memory-offer-store';
  * `import type` position, so nothing here pulls a driver into a bundle that
  * does not construct a Pool itself.
  */
-export {
-  withTransaction,
-  type SqlExecutor,
-} from './store/postgres/connection';
+export { withTransaction, type SqlExecutor } from './store/postgres/connection';
 
-export {
-  CatalogMigrationRunner,
-  type AppliedMigration,
-} from './store/postgres/migration-runner';
+export { CatalogMigrationRunner, type AppliedMigration } from './store/postgres/migration-runner';
 
-export {
-  PostgresOfferStore,
-  PostgresOfferWriter,
-} from './store/postgres/postgres-offer-store';
+export { PostgresOfferStore, PostgresOfferWriter } from './store/postgres/postgres-offer-store';
 
 export {
   reconcile,
@@ -140,8 +131,4 @@ export {
   type Reconciliation,
 } from './sync/reconcile';
 
-export {
-  importFeedArchive,
-  type ImportOptions,
-  type ImportResult,
-} from './sync/import-feed';
+export { importFeedArchive, type ImportOptions, type ImportResult } from './sync/import-feed';

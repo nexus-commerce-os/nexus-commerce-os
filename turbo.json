@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned. The test task declares NEXUS_PG_TESTS/NEXUS_REDIS_TESTS/NEXUS_SMTP_TESTS/CI because turbo strips undeclared env vars, which once let the Postgres suites skip inside a green build.",
+  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned. The test task declares every env var that decides whether a suite RUNS, because turbo strips undeclared ones and that once let the Postgres suites skip inside a green build. HONESTTOTAL_PG_DSN points the catalog adapter suite at an existing server instead of testcontainers; HONESTTOTAL_FEED_A/B point the catalog suites at the two provider exports, which live outside this repository and are absent in CI.",
   "globalDependencies": [".env.example", "tsconfig.base.json"],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".next/**", "!.next/cache/**"] },
@@ -10,7 +10,15 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
-      "env": ["NEXUS_PG_TESTS", "NEXUS_REDIS_TESTS", "NEXUS_SMTP_TESTS", "CI"]
+      "env": [
+        "CI",
+        "HONESTTOTAL_FEED_A",
+        "HONESTTOTAL_FEED_B",
+        "HONESTTOTAL_PG_DSN",
+        "NEXUS_PG_TESTS",
+        "NEXUS_REDIS_TESTS",
+        "NEXUS_SMTP_TESTS"
+      ]
     }
   }
 }
