@@ -280,7 +280,17 @@ jobs:
       - name: Trivy image scan
         # why: docs/10 §2 — critical OS/lib CVE with an available fix blocks (defense-in-depth vs. dep-scan).
         if: steps.detect.outputs.exists == 'true'
-        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5 # v0.24.0
+        # why this SHA and not 6c175e9c (v0.24.0): v0.24.0's own action.yaml calls
+        #      `aquasecurity/setup-trivy@v0.2.2` — a MOVING TAG, and one that upstream has
+        #      since removed (setup-trivy now publishes v0.2.6, v0.3.0 and v0.3.1 only).
+        #      GitHub resolves nested `uses:` at job start, so the job died with
+        #      `Unable to resolve action aquasecurity/setup-trivy@v0.2.2` before a single
+        #      image was scanned (run 43119613840) — i.e. the container gate has never
+        #      actually run. v0.36.0 pins its nested action to a full commit SHA
+        #      (setup-trivy@3fb12ec1 # v0.2.6), which cannot be retagged out from under us.
+        #      The scan's own settings below are untouched: CRITICAL,HIGH, ignore-unfixed,
+        #      exit-code 1.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: nexus/${{ matrix.service }}:${{ env.IMAGE_TAG }}
           format: sarif
