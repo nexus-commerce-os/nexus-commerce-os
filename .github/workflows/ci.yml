@@ -166,8 +166,18 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Semgrep scan
         # why: fast rule-based SAST (OWASP + custom rules in .semgrep/); complements CodeQL, blocks on findings.
+        # why 1.182.0 and not 1.85.0: 1.85.0 pins opentelemetry-instrumentation-requests~=0.46b0,
+        #      whose opentelemetry-instrumentation 0.46b0 imports `pkg_resources` and declares
+        #      `setuptools>=16.0` for it. setuptools REMOVED pkg_resources in 82.0.0 (present in
+        #      81.0.0, gone in 82.0.0), so pip satisfies the pin with 84.x and the module the pin
+        #      exists for is absent -- `ModuleNotFoundError: No module named 'pkg_resources'`,
+        #      again before a single rule is evaluated (run 43115733583). The `~=0.46b0` pin can
+        #      never reach the 0.50b0 that dropped pkg_resources, so the engine has to move:
+        #      1.182.0 pins ~=0.58b0, which needs no setuptools at all. Rules are untouched --
+        #      .semgrep/ is ours and p/owasp-top-ten is fetched from the registry at scan time,
+        #      not carried by the engine -- and a newer engine reports more, never less.
         run: |
-          pip install --quiet semgrep==1.85.0
+          pip install --quiet semgrep==1.182.0
           semgrep --config .semgrep --config p/owasp-top-ten --error --skip-unknown-extensions .
 
   # ---------------------------------------------------------------------------
