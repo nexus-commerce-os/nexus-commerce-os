@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
+    "test": "node scripts/verify-email-regex.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
