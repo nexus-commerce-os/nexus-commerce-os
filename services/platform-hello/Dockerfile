@@ -32,7 +32,15 @@ RUN go build -trimpath -ldflags="-s -w -X main.version=${APP_VERSION}" -o /out/p
 
 # ---- runtime stage --------------------------------------------------------
 # distroless-static:nonroot ships as uid/gid 65532 with no shell.
-FROM gcr.io/distroless/static-debian12:nonroot AS runtime
+# Debian 13, not 12. The first real Trivy scan of this image reported four
+# fixed Debian advisories against the debian12 base — tzdata 2026b (fixed in
+# 2026c/2026e/2026f) and ca-certificates 20250419~deb12u1 (fixed in u2) — and
+# with `ignore-unfixed: true` a fixed advisory blocks. debian12 is in LTS and
+# its distroless rebuild lags; debian13 is current stable and carries the newer
+# packages. distroless/static holds only a CA bundle, tzdata and the nonroot
+# passwd entry, and the binary is CGO_ENABLED=0 static, so nothing links
+# against the base - uid/gid 65532 is identical on both.
+FROM gcr.io/distroless/static-debian13:nonroot AS runtime
 
 # OCI provenance labels (SBOM + cosign signature attached in CI, docs/10 §3/§6).
 LABEL org.opencontainers.image.title="platform-hello" \
