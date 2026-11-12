@@ -1,6 +1,38 @@
 # pnpm workspace — the JS/TS side of the monorepo (Go/Python services build via their own toolchains).
 # Rationale: pnpm's content-addressable store gives reproducible, fast installs; workspaces let
 # packages/* be consumed by apps/* and services/* without publishing.
+#
+# SUPPLY-CHAIN SETTINGS. The three below are pnpm >= 10 features and are the
+# reason this repo moved off pnpm 9. They live here rather than in .npmrc
+# because pnpm 10 reads everything except auth/registry/TLS/proxy from this
+# file. Each closes a different route by which code nobody chose ends up
+# executing on a laptop or in CI.
+
+# Do not install a version published in the last seven days (value in minutes).
+#
+# Nearly every npm compromise of recent years was caught and the version pulled
+# within days of publication, so the whole value of waiting sits in that window.
+# Seven days matches `cooldown: default-days: 7` in .github/dependabot.yml
+# deliberately — two mechanisms, one number, so there is no gap where Dependabot
+# proposes a version pnpm would then refuse to install.
+#
+# It does not slow CI: `pnpm install --frozen-lockfile` skips resolution
+# entirely, so the rule bites when a lockfile CHANGES, which is exactly when a
+# new version first enters the repo.
+minimumReleaseAge: 10080
+
+# Fail when a package's trust level has dropped since an earlier release,
+# instead of installing it and finding out afterwards.
+trustPolicy: no-downgrade
+
+# Transitive dependencies must come from the registry. A direct dependency on a
+# git URL or a tarball is a decision someone made and can defend; the same thing
+# arriving three levels down, from a repository nobody here has read, is not.
+# Checked before enabling: this lockfile holds zero tarball, git or directory
+# resolutions, so switching it on changes nothing today — which is precisely
+# when a rule like this is cheap to adopt.
+blockExoticSubdeps: true
+
 packages:
   - "apps/*"
   - "services/*"          # TS services (auth, etc.); Go/Python services ignore this
