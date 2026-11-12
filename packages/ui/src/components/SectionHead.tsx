@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Eyebrow } from "./Eyebrow";
+import type { ReactNode } from 'react';
+import { Eyebrow } from './Eyebrow';
 
 export type SectionHeadProps = {
   eyebrow: string;

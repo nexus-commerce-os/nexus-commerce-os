@@ -48,10 +48,9 @@ variable "enable_flow_logs" {
 
 # ---- security (KMS + secrets + IRSA) ----
 variable "kms_keys" {
-  description = "Per-domain KMS keys (must include keys named eks, rds, redis, msk, s3, secrets used below)."
+  description = "Per-domain KMS keys (must include keys named eks, rds, redis, msk, s3, secrets used below). Rotation is always on; see modules/security."
   type = map(object({
     description             = string
-    enable_rotation         = optional(bool, true)
     deletion_window_in_days = optional(number, 30)
     multi_region            = optional(bool, false)
   }))
