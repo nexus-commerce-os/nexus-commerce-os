@@ -9,7 +9,13 @@
 # ============================================================================
 
 # ---- build stage ----------------------------------------------------------
-FROM golang:1.22 AS build
+# The toolchain is pinned to a PATCH release on purpose. Trivy scans the Go
+# stdlib compiled into the static binary, so the builder image — not the `go`
+# directive in go.mod — is what decides whether the stdlib CVE class is clear.
+# 1.26.11 is the current 1.26 patch (go.dev/dl, pushed 2026-11-10); go.mod asks
+# for a minimum of 1.26.5, which this satisfies, and no module version moves, so
+# go.sum is unaffected. Bump this line whenever Go ships a patch release.
+FROM golang:1.26.11 AS build
 WORKDIR /src
 
 # Cache module downloads separately from source for fast rebuilds.
