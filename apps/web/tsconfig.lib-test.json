@@ -1,0 +1,15 @@
+{
+  "//": "Compiles the framework-free part of src/lib so Node's own test runner can exercise it. Same tsc -> dist -> node --test pattern services/catalog uses, so no test-runner dependency is added to a Next app.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false,
+    "jsx": "preserve",
+    "types": ["node"]
+  },
+  "include": ["src/lib"]
+}

@@ -20,6 +20,9 @@ import {
 export const metadata: Metadata = {
   title: '@nexus/ui — component gallery',
   description: 'Live gallery of the @nexus/ui design-system primitives.',
+  // Already noindex before this change. The X-Robots-Tag header in
+  // next.config.mjs and the robots.txt disallow are defence in depth, for the
+  // case where the page is served in a way that skips this metadata.
   robots: { index: false, follow: false },
 };
 
@@ -120,7 +123,7 @@ export default function Gallery() {
             <div style={{ ...galleryGrid, marginTop: '18px' }}>
               <Demo name="Receipt">
                 <Receipt
-                  title="NEXUS · VERIFIED"
+                  title="HonestTotal · VERIFIED"
                   code="RCPT #0001"
                   rows={[
                     { label: 'Best price', value: '$328.00', mono: true },
@@ -156,7 +159,7 @@ export default function Gallery() {
             links: [{ label: 'packages/ui/README', href: '/' }],
           },
         ]}
-        bottomLeft="© 2026 NEXUS Commerce OS"
+        bottomLeft="© 2026 HonestTotal"
         bottomRight="component gallery"
       />
     </>

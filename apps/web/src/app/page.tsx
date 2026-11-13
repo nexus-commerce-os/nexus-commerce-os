@@ -18,11 +18,18 @@ import {
   Step,
 } from '@nexus/ui';
 
-const DEFAULT_NOTE = 'No spam — just one email the moment NEXUS opens in your region.';
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// The SAME validator the API route uses. This file used to carry its own copy
+// of the pattern, which is how the ReDoS CodeQL flagged on the route survived
+// here after the route was fixed — and how the two sides came to disagree about
+// addresses like `user@example..com`.
+import { isValidEmail } from '@/lib/email';
+
+const DEFAULT_NOTE =
+  'One email when HonestTotal opens in your region, and nothing else. Unsubscribe any time.';
 
 export default function NexusLanding() {
   const countRef = useRef<HTMLSpanElement>(null);
+  const [trap, setTrap] = useState('');
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,7 +47,13 @@ export default function NexusLanding() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const v = email.trim();
-    if (!EMAIL_RE.test(v)) {
+    if (trap !== '') {
+      // Silently pretend it worked. An explicit rejection is free feedback to
+      // whoever is probing, and nothing reaches the API.
+      setSubmitted(true);
+      return;
+    }
+    if (!isValidEmail(v)) {
       setNote('Please enter a valid email address.');
       setNoteErr(true);
       return;
@@ -50,7 +63,10 @@ export default function NexusLanding() {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: v }),
+        // `company` is the honeypot, sent even when empty so the server
+        // sees the field and can reject a filled one. The check below is
+        // a convenience; the server's is the defence.
+        body: JSON.stringify({ email: v, company: trap }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {
@@ -204,9 +220,9 @@ export default function NexusLanding() {
                 We only make money <em>when you save money.</em>
               </h1>
               <p className="lede">
-                NEXUS is an AI buying agent that finds the genuinely best price across authorized
-                merchants, hands you off to check out directly, and counts a saving only once
-                it&apos;s <b>verified</b>. Ranking is by value — never by who pays us most.
+                HonestTotal is an AI buying agent that finds the genuinely best price across
+                authorized merchants, hands you off to check out directly, and counts a saving only
+                once it&apos;s <b>verified</b>. Ranking is by value — never by who pays us most.
               </p>
               <div className="hero-cta">
                 <Button href="#cta">Join the waitlist →</Button>
@@ -229,8 +245,8 @@ export default function NexusLanding() {
 
             <Receipt
               className="reveal"
-              ariaLabel="A verified savings receipt showing 47 dollars 12 cents saved"
-              title="NEXUS · VERIFIED SAVINGS"
+              ariaLabel="Illustrative example receipt, not a verified live offer: it shows 47 dollars 12 cents of savings on a sample purchase"
+              title="HonestTotal · SAMPLE SAVINGS RECEIPT"
               code="RCPT #0007"
               rows={[
                 { label: 'Item', value: 'Sony WH-1000XM5' },
@@ -238,14 +254,19 @@ export default function NexusLanding() {
                 { label: 'You paid at merchant', value: '$328.00', mono: true },
                 { label: 'List / typical price', value: '$375.12', mono: true },
               ]}
-              totalLabel="Verified money saved"
+              totalLabel="Money saved in this example"
               totalValue={
                 <>
                   $<span ref={countRef}>0.00</span>
                 </>
               }
-              stamp="VERIFIED ✓"
-              footer="Confirmed by the merchant network · past the return window · counts toward your VMS"
+              stamp="EXAMPLE"
+              footer={
+                <strong>
+                  Illustrative example — not a verified live offer. Figures are for illustration; no
+                  live merchant offer is shown.
+                </strong>
+              }
             />
           </div>
         </section>
@@ -254,7 +275,7 @@ export default function NexusLanding() {
           <div className="wrap">
             <Eyebrow>Our promise</Eyebrow>
             <p className="q reveal">
-              NEXUS works for the <em>buyer</em> — never for whoever pays us most.
+              HonestTotal works for the <em>buyer</em> — never for whoever pays us most.
             </p>
             <p className="sub reveal">
               Everything below is engineered, tested, and auditable, not marketing. Our
@@ -268,7 +289,7 @@ export default function NexusLanding() {
         <section id="how">
           <div className="wrap">
             <SectionHead eyebrow="The model" title="A referral layer, not a checkout.">
-              NEXUS never holds your money, your order, or your inventory. It does one thing
+              HonestTotal never holds your money, your order, or your inventory. It does one thing
               extremely well: find the best legitimate deal and get out of the way.
             </SectionHead>
             <div className="steps">
@@ -282,7 +303,7 @@ export default function NexusLanding() {
               </Step>
               <Step index="03" title="Signed hand-off" className="reveal">
                 You&apos;re handed to the merchant&apos;s own checkout via a signed, allow-listed
-                deep link. You pay them directly. NEXUS takes no custody.
+                deep link. You pay them directly. HonestTotal takes no custody.
               </Step>
               <Step index="04" title="Verify the saving" className="reveal">
                 The network confirms the purchase asynchronously. Only a confirmed, past-the-window
@@ -298,15 +319,28 @@ export default function NexusLanding() {
               eyebrow="Commission-blind by design"
               title="The result that's best for you sits on top."
             >
-              Most &quot;deal&quot; sites quietly sort by what pays them. NEXUS&apos;s ranking
+              Most &quot;deal&quot; sites quietly sort by what pays them. HonestTotal&apos;s ranking
               function cannot see commission at all — it&apos;s a fitness test enforced in CI, not a
               promise on a page.
             </SectionHead>
+            <p
+              style={{
+                margin: '0 0 1rem',
+                padding: '0.6rem 0.9rem',
+                borderLeft: '3px solid var(--amber)',
+                background: 'color-mix(in srgb, var(--amber) 8%, transparent)',
+                fontSize: '0.9rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <strong>Illustrative example — not a verified live offer.</strong> The merchants and
+              prices below are a sample used to show how ranking differs; they are not live prices.
+            </p>
             <div className="rank">
               <Card className="rank-card reveal">
                 <h3>
-                  <span className="dot" style={{ background: 'var(--accent)' }} /> NEXUS — ranked by
-                  your value
+                  <span className="dot" style={{ background: 'var(--accent)' }} /> HonestTotal —
+                  ranked by your value
                 </h3>
                 <div className="row">
                   <span>Merchant A</span>
@@ -398,8 +432,8 @@ export default function NexusLanding() {
               eyebrow="Agent-first · built for developers"
               title="Every capability is an API before it's a screen."
             >
-              The tools the NEXUS agent calls are a first-class public surface — the same ones a
-              partner&apos;s assistant can call, scope-gated. The web app is just one renderer.
+              The tools the HonestTotal agent calls are a first-class public surface — the same ones
+              a partner&apos;s assistant can call, scope-gated. The web app is just one renderer.
             </SectionHead>
             <div className="agent-grid">
               <div>
@@ -429,7 +463,7 @@ export default function NexusLanding() {
               <AgentTerminal
                 session="nexus-agent · session"
                 className="reveal"
-                ariaLabel="Example conversation with the NEXUS agent"
+                ariaLabel="Example conversation with the HonestTotal agent"
               >
                 <div>
                   <span className="u">you ›</span> find the best price on the Sony XM5 — authorized
@@ -477,8 +511,8 @@ export default function NexusLanding() {
                 raise a product&apos;s rank.
               </FeatureCard>
               <FeatureCard icon="↔" title="No custody" className="reveal">
-                NEXUS never becomes merchant of record. You pay the merchant directly through a
-                signed hand-off.
+                HonestTotal never becomes merchant of record. You pay the merchant directly through
+                a signed hand-off.
               </FeatureCard>
               <FeatureCard icon="◈" title="Your data stays yours" className="reveal">
                 Personalization is a feature, not surveillance — you can see and reset what drives
@@ -526,7 +560,7 @@ export default function NexusLanding() {
             <SectionHead eyebrow="Questions, answered plainly" title="The honest FAQ." />
             <div className="faq">
               <details className="reveal">
-                <summary>How does NEXUS actually make money?</summary>
+                <summary>How does HonestTotal actually make money?</summary>
                 <p>
                   Affiliate commissions the merchant pays when you buy through our hand-off link.
                   Crucially, commission is invisible to our ranking — we&apos;re paid the same
@@ -545,9 +579,9 @@ export default function NexusLanding() {
               <details className="reveal">
                 <summary>Is this just another cashback or coupon app?</summary>
                 <p>
-                  No. Cashback (where legal) is one feature, not the point. NEXUS is an AI agent
-                  that finds the best real price and proves the saving — coupons and cashback are
-                  inputs to &quot;best price&quot;, not the product.
+                  No. Cashback (where legal) is one feature, not the point. HonestTotal is an AI
+                  agent that finds the best real price and proves the saving — coupons and cashback
+                  are inputs to &quot;best price&quot;, not the product.
                 </p>
               </details>
               <details className="reveal">
@@ -559,7 +593,7 @@ export default function NexusLanding() {
                 </p>
               </details>
               <details className="reveal">
-                <summary>Where is NEXUS available?</summary>
+                <summary>Where is HonestTotal available?</summary>
                 <p>
                   Rolling out region-before-market: United States first, then Canada / UK /
                   Australia, then the EU, then Bangladesh / India / Pakistan / the Middle East —
@@ -601,10 +635,44 @@ export default function NexusLanding() {
                         setNoteErr(false);
                       }}
                     />
+                    {/*
+                     * Honeypot. Hidden from sight AND from assistive tech, never
+                     * autofilled, and left out of the request. A naive bot fills
+                     * every input it finds; a person cannot. Deliberately not a
+                     * CAPTCHA: no third party, no cookie, nothing to solve.
+                     */}
+                    <input
+                      type="text"
+                      name="company"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      value={trap}
+                      onChange={(e) => setTrap(e.target.value)}
+                      style={{
+                        position: 'absolute',
+                        left: '-9999px',
+                        width: '1px',
+                        height: '1px',
+                        opacity: 0,
+                      }}
+                    />
                     <Button type="submit" disabled={busy}>
                       {busy ? 'Joining…' : 'Join the waitlist →'}
                     </Button>
                   </form>
+                  <p
+                    style={{
+                      margin: '0.75rem 0 0',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.5,
+                      opacity: 0.8,
+                    }}
+                  >
+                    By joining you agree we may email you about the launch. We store your address
+                    with our email provider and nothing else — no tracking, no sale, no sharing. See
+                    our <a href="/privacy">Privacy Notice</a> and <a href="/terms">Terms</a>.
+                  </p>
                   <p className="wl-note" style={noteErr ? { color: 'var(--amber)' } : undefined}>
                     {note}
                   </p>
@@ -616,7 +684,7 @@ export default function NexusLanding() {
       </main>
 
       <Footer
-        note="A pure referral + affiliate intelligence layer. Codename NEXUS — consumer brand deferred. Illustrative figures shown."
+        note="HonestTotal is a referral and affiliate intelligence layer. It is not a shop: it never takes custody of your money, your order or your inventory. Every figure and receipt on this page is an illustrative example, not a verified live offer."
         columns={[
           {
             heading: 'Product',
@@ -644,7 +712,7 @@ export default function NexusLanding() {
             ],
           },
         ]}
-        bottomLeft="© 2026 NEXUS Commerce OS"
+        bottomLeft="© 2026 HonestTotal"
         bottomRight="Built buyer-first · disclosed · authorized-data-only"
       />
     </>

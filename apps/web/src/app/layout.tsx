@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 import '@nexus/ui/styles.css';
 
 export const metadata: Metadata = {
-  title: "NEXUS Commerce OS — the buyer's side of shopping",
+  title: "HonestTotal — the buyer's side of shopping",
   description:
     "An AI buying agent that finds the genuinely best price across authorized merchants, hands you off to check out directly, and counts a saving only once it's verified. Ranking is by value — never by who pays us most.",
-  applicationName: 'NEXUS Commerce OS',
+  applicationName: 'HonestTotal',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
