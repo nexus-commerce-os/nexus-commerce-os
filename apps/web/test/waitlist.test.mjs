@@ -225,10 +225,25 @@ test('the timeout is a real deadline, not just a passed-through option', async (
   );
 
   const original = globalThis.fetch;
-  // Honour the signal the way undici does: reject when it aborts.
+  /*
+   * Honour the signal the way undici does: reject when it aborts.
+   *
+   * The `keepAlive` timer is load-bearing, and its absence made this test fail
+   * on CI while passing locally. `AbortSignal.timeout` uses an UNREF'd timer, so
+   * it does not by itself keep the event loop alive. With a mock that creates no
+   * timer of its own, the loop can drain before the deadline fires and Node
+   * reports `Promise resolution is still pending but the event loop has already
+   * resolved` -- the test neither passes nor fails, it is cancelled. A real
+   * `fetch` always has a socket holding the loop open; the mock has to stand in
+   * for that.
+   */
   globalThis.fetch = (_url, init) =>
     new Promise((_resolve, reject) => {
+      const keepAlive = setTimeout(() => {
+        reject(new Error('the abort never fired — the deadline is not wired up'));
+      }, 30_000);
       init.signal.addEventListener('abort', () => {
+        clearTimeout(keepAlive);
         const error = new Error('aborted');
         error.name = 'TimeoutError';
         reject(error);
