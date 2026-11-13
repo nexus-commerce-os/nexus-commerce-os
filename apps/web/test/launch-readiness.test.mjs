@@ -215,13 +215,65 @@ test('the security headers that matter are all present', () => {
   assert.match(source, /poweredByHeader: false/, 'do not advertise the framework version');
 });
 
-test('the CSP does not allow inline or remote scripts', () => {
+test('the CSP is locked down everywhere it can be', () => {
   const source = read(CONFIG);
-  const scriptSrc = source.match(/"script-src ([^"]+)"/);
-  assert.ok(scriptSrc, 'script-src must be set explicitly');
-  assert.equal(scriptSrc[1].includes('unsafe-inline'), false, 'script-src must not allow inline');
-  assert.equal(scriptSrc[1].includes('unsafe-eval'), false, 'script-src must not allow eval');
-  assert.equal(scriptSrc[1].trim(), "'self'", `script-src is ${scriptSrc[1]}`);
+  const directive = (name) => source.match(new RegExp(`"${name} ([^"]+)"`))?.[1] ?? null;
+
+  /*
+   * script-src DOES carry 'unsafe-inline', and that is deliberate and measured:
+   * without it Next's inline RSC payloads are blocked, React never hydrates and
+   * the waitlist form is dead while the page still looks fine. A nonce was
+   * tried and cannot work on statically prerendered pages. next.config.mjs
+   * carries the full reasoning; this test holds the line on everything that is
+   * NOT conceded.
+   */
+  assert.equal(directive('script-src'), "'self' 'unsafe-inline'", 'script-src drifted');
+  assert.equal(source.includes('unsafe-eval'), false, 'unsafe-eval must never appear');
+  const script = directive('script-src') ?? '';
+  assert.equal(/https?:/.test(script), false, `no remote script origin: ${script}`);
+  assert.equal(script.includes('*'), false, `no wildcard in script-src: ${script}`);
+
+  // These are the directives doing work independently of script-src.
+  assert.equal(directive('default-src'), "'self'");
+  assert.equal(directive('object-src'), "'none'", 'blocks plugin execution');
+  assert.equal(directive('base-uri'), "'none'", 'blocks a <base> tag rewriting every URL');
+  assert.equal(directive('frame-ancestors'), "'none'", 'clickjacking');
+  assert.equal(directive('form-action'), "'self'", 'stops a form being repointed');
+  assert.equal(directive('connect-src'), "'self'", 'the ESP is server-side only');
+
+  // The concession must stay explained, so nobody later reads it as an oversight.
+  assert.match(source, /NOT HYDRATED/, 'the measured reason must stay recorded');
+  assert.match(source, /REVISIT THIS/, 'the condition for tightening it must stay recorded');
+});
+
+test('the honeypot is enforced on the SERVER, not only in the page', () => {
+  /*
+   * The client check alone was decorative: a direct POST to /api/waitlist with
+   * the trap filled returned 200 and the address reached the provider. Verified
+   * by doing it, which is why this test exists.
+   */
+  const route = read('src/app/api/waitlist/route.ts');
+  assert.match(route, /company\?: unknown/, 'the body type must declare the trap');
+  assert.match(route, /body\.company/, 'the route must inspect the trap');
+
+  const trapIndex = route.indexOf('body.company');
+  // NOT indexOf('getWaitlistStore') — that matches the import at the top of the
+  // file, which made this check vacuously pass whatever the order really was.
+  const storeIndex = route.indexOf('getWaitlistStore().add');
+  assert.ok(storeIndex !== -1, 'could not find the store call');
+  assert.ok(trapIndex !== -1 && trapIndex < storeIndex, 'the trap must be checked BEFORE storing');
+
+  // The trap value must never be stored, logged or forwarded.
+  assert.equal(
+    route.split('\n').some((l) => l.includes('company') && /console|log\(/.test(l)),
+    false,
+    'the trap must not be logged',
+  );
+  const addCall = route.slice(storeIndex, storeIndex + 400);
+  assert.equal(addCall.includes('company'), false, 'the trap must not reach the provider');
+
+  // The page must send the field so the server can judge it.
+  assert.match(read(PAGE), /company: trap/, 'the page must send the trap');
 });
 
 test('the internal component gallery is not indexable', () => {

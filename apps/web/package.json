@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint src",
     "test": "tsc -p tsconfig.lib-test.json && node --test test/email.test.mjs test/waitlist.test.mjs test/launch-readiness.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prebuild": "node scripts/release-gate.mjs",
+    "release-gate": "RELEASE_GATE=1 node scripts/release-gate.mjs"
   },
   "dependencies": {
     "@nexus/ui": "workspace:*",

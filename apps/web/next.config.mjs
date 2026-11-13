@@ -3,21 +3,52 @@
 /*
  * Security headers.
  *
- * The CSP is the only interesting one. This site has no analytics, no pixels,
- * no third-party scripts and no remote images — so `default-src 'self'` is
- * actually achievable rather than aspirational, and it is worth locking down
- * now, while it is true, instead of after something has been bolted on.
+ * ──── WHY script-src ALLOWS 'unsafe-inline', MEASURED NOT ASSUMED ──────────
  *
- * `'unsafe-inline'` IS present for styles, and that is a real concession: the
- * landing page sets inline `style={{...}}` on several elements and Next injects
- * its own style tags. Scripts carry no such exemption.
+ * It did not, and that broke the site. With `script-src 'self'`, tested in a
+ * real browser against a production build:
  *
- * `frame-ancestors 'none'` rather than X-Frame-Options alone, because CSP is
- * what modern browsers honour; the legacy header stays for older ones.
+ *     inline <script> tags in the page   5  (3,338 bytes)
+ *     self.__next_f.push payloads ran    NO
+ *     form.__reactProps$                 absent
+ *     verdict                            NOT HYDRATED — the form was dead
+ *
+ * Next's App Router streams its RSC payload through inline
+ * `<script>self.__next_f.push(...)</script>` tags. Block them and React never
+ * hydrates: the page still RENDERS, so it looks completely fine, and the
+ * waitlist button silently does nothing for every visitor. That is the worst
+ * kind of breakage and exactly why this was tested rather than reasoned about.
+ *
+ * A per-request nonce is the textbook fix and was implemented and tested next.
+ * It also failed, for a reason worth recording: a nonce cannot appear in
+ * statically prerendered HTML, because that HTML is generated once at build
+ * time. Next therefore stamped no nonce, and `'strict-dynamic'` — which makes
+ * the browser ignore `'self'` — then blocked the external bundles too, leaving
+ * the page worse off than before. Making the nonce work requires
+ * `force-dynamic` on every page, which throws away static delivery of a 7.6 kB
+ * marketing page to defend against an injection vector this site does not have.
+ *
+ * So: 'unsafe-inline' for scripts, deliberately, with the surface it exposes
+ * written down. This site renders no user-generated content, reflects no query
+ * parameter, and loads no third-party script. The only visitor input is an
+ * email address, which is returned as JSON and rendered by React as text, so it
+ * is escaped. There is no HTML sink for an attacker to reach.
+ *
+ * REVISIT THIS the moment any of those stops being true — user-generated
+ * content, a reflected parameter, a third-party tag, or an `innerHTML` call.
+ * At that point the nonce plus dynamic rendering becomes worth its cost, and
+ * this comment is the record of what it costs.
+ *
+ * Everything else stays locked down, and each of these is doing real work
+ * independently of script-src: object-src blocks plugin execution, base-uri
+ * blocks a <base> tag rewriting every relative URL, form-action stops a form
+ * being repointed at an attacker, and frame-ancestors is the clickjacking
+ * defence that modern browsers actually honour.
  */
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  // See the note above. Tested: without 'unsafe-inline' the page does not hydrate.
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",

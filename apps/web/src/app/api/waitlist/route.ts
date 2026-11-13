@@ -10,7 +10,14 @@ import { isValidEmail } from '@/lib/email';
 // logged here; durability is the store's concern, and in production the store
 // REFUSES to be non-durable (see lib/waitlist.ts).
 
-type WaitlistBody = { email?: unknown };
+/*
+ * `company` is the honeypot. The form renders it hidden from sight and from
+ * assistive tech, so a person never fills it; a bot that scrapes the form and
+ * submits every field it finds does. It is checked and DISCARDED here — never
+ * stored, never logged, never forwarded to the provider — so catching a bot
+ * collects no extra data about anyone.
+ */
+type WaitlistBody = { email?: unknown; company?: unknown };
 
 export async function POST(request: Request): Promise<NextResponse> {
   let body: WaitlistBody;
@@ -18,6 +25,26 @@ export async function POST(request: Request): Promise<NextResponse> {
     body = (await request.json()) as WaitlistBody;
   } catch {
     return NextResponse.json({ ok: false, error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  /*
+   * Checked FIRST, and answered with the ordinary success shape.
+   *
+   * A distinct error would tell whoever is probing exactly which field to stop
+   * sending; an indistinguishable 200 teaches them nothing and costs a real
+   * visitor nothing, because a real visitor cannot reach this branch. Nothing
+   * is stored and the provider is never called.
+   *
+   * The page performs the same check before it POSTs, which saves a request.
+   * THIS one is the defence: the client-side check is trivially bypassed by
+   * posting straight to this route, which was verified by doing exactly that
+   * and watching a bot's address reach the provider.
+   */
+  if (typeof body.company === 'string' && body.company.trim() !== '') {
+    return NextResponse.json(
+      { ok: true, status: 'added', message: "You're on the list." },
+      { status: 200 },
+    );
   }
 
   const email = typeof body.email === 'string' ? body.email.trim() : '';

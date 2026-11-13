@@ -63,7 +63,10 @@ export default function NexusLanding() {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: v }),
+        // `company` is the honeypot, sent even when empty so the server
+        // sees the field and can reject a filled one. The check below is
+        // a convenience; the server's is the defence.
+        body: JSON.stringify({ email: v, company: trap }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {

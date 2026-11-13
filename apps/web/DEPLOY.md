@@ -58,15 +58,17 @@ have. They render as visible `[PLACEHOLDERS]` until filled:
 - `espCountry` — where that provider hosts the data
 - `jurisdiction` — the governing law for the Terms
 
-Then confirm nothing was missed:
+**This is enforced, not just documented.** `scripts/release-gate.mjs` runs as
+`prebuild`, so it runs on every `next build` including Vercel's, and **fails the
+build when `VERCEL_ENV=production`** while leaving PR CI, preview deploys and
+local builds green with a notice listing what is outstanding. Check before
+deploying:
 
 ```bash
-cd apps/web && LAUNCH_STRICT=1 node --test test/launch-readiness.test.mjs
+cd apps/web && pnpm release-gate      # exits 1 while any placeholder remains
 ```
 
-This must pass before going live. Until the placeholders are filled it reports a
-skip naming each one, so a normal CI run stays green while still showing the
-outstanding list.
+A production deployment cannot serve the site until this passes.
 
 ### 1.4 Create the Vercel project
 
@@ -81,6 +83,29 @@ outstanding list.
 
 `@nexus/ui` ships raw TypeScript (`main: src/index.ts`) and is already listed in
 `transpilePackages`, so no build step is needed for it.
+
+**Verified locally against a production build** (`next build` + `next start`):
+
+| | |
+|---|---|
+| build | compiles, 9/9 static pages |
+| `/` | static, 7.6 kB, 94.9 kB First Load JS |
+| `/privacy` `/terms` `/ui` `/robots.txt` | static |
+| `/api/waitlist` | server-rendered on demand |
+| React hydration under the CSP | **confirmed in a browser** — `form.__reactProps$.onSubmit` is a function |
+| headers served | CSP, HSTS, nosniff, DENY, Referrer-Policy, Permissions-Policy; `x-powered-by` absent |
+| waitlist end to end | submitted in the browser, arrived at a local ESP stub as `POST` + `Bearer` + `{email,source,createdAt}` |
+| honeypot | a direct POST with the trap filled returns 200 and **does not reach the provider** |
+| build without `WAITLIST_ESP_URL` | still succeeds; the sign-up returns 502 at request time |
+
+> **A CSP note worth reading before tightening it.** `script-src` allows
+> `'unsafe-inline'` deliberately. With `script-src 'self'` the page renders but
+> **does not hydrate** — Next streams its RSC payload through inline `<script>`
+> tags — so the waitlist form silently does nothing while the page looks
+> perfect. A per-request nonce was implemented and also failed: a nonce cannot
+> exist in statically prerendered HTML, and `'strict-dynamic'` then blocked the
+> bundles too. Both were measured in a browser, not reasoned about. The full
+> reasoning and the conditions for revisiting it are in `next.config.mjs`.
 
 ### 1.5 Turn on rate limiting
 
