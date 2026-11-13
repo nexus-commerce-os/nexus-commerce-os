@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Brand } from "./Brand";
+import type { ReactNode } from 'react';
+import { Brand } from './Brand';
 
 export type FooterLink = { label: string; href: string };
 export type FooterColumn = { heading: string; links: FooterLink[] };
