@@ -246,6 +246,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # why: the last step uploads Trivy's SARIF to code scanning, which needs
+      #      this. Without it the SCAN PASSES and the UPLOAD fails with
+      #      "Resource not accessible by integration", taking the job — and
+      #      ci-gate — down with it. That is what happened on the first
+      #      push-to-main run this workflow ever completed (run 43784649988):
+      #      `Trivy image scan` success, `Upload Trivy SARIF` failure, 0 findings.
+      #      Job 4 already declares the same permission for the same reason;
+      #      this job uploads SARIF too and was simply missing it.
+      #      Scoped to this job, not the workflow: every other job keeps
+      #      contents-read only.
+      security-events: write
     strategy:
       fail-fast: true
       matrix:
