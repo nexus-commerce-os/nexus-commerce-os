@@ -105,8 +105,29 @@ class HttpEspWaitlistStore implements WaitlistStore {
           : 'Waitlist ESP request failed',
       );
     }
+    /*
+     * A CONFLICT IS NOT A FAILURE — it is the most ordinary thing a waitlist
+     * sees: somebody signing up twice.
+     *
+     * Checked against the providers' own documentation rather than assumed.
+     * Loops answers a repeat address with `409 Email or userId already exists`;
+     * Buttondown answers with 400 unless a collision header is sent. Treating
+     * either as an error would hand a returning visitor a 502 and
+     * "Could not save right now - please try again", which is both wrong and
+     * the thing they are most likely to do.
+     *
+     * 409 is the status HTTP defines for exactly this, so it is mapped on
+     * status alone, with no provider-specific parsing. `duplicate` is already a
+     * value the route understands: it answers "You're already on the list."
+     *
+     * A provider that signals duplicates some other way (Buttondown's 400) is
+     * NOT guessed at here — a 400 can equally mean a malformed address, and
+     * quietly swallowing that would hide a real bug. Such a provider needs its
+     * own adapter.
+     */
+    if (res.status === 409) return { status: 'duplicate' };
     if (!res.ok) throw new Error(`Waitlist ESP responded ${res.status}`);
-    // ESPs own their own dedup; treat any 2xx as accepted.
+    // Any 2xx is an accepted sign-up; the provider owns its own dedup.
     return { status: 'added' };
   }
 }
