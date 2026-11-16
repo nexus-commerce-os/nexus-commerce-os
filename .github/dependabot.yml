@@ -1,10 +1,31 @@
 version: 2
+
+# Cooldown, on every ecosystem below: do not propose a version until it has been
+# public for seven days.
+#
+# Dependabot already waits three days by default. Three is not enough. The npm and
+# GitHub Actions compromises of recent years were typically caught and yanked within
+# a few days of publication, so the whole value of waiting is in the tail — and a
+# week of other people's exposure is the cheapest security signal this project can
+# buy. The cost is that a legitimate fix arrives up to four days later than it
+# otherwise would, which for a repository with no production traffic is not a cost
+# worth protecting.
+#
+# This delays VERSION updates only. Dependabot never applies cooldown to security
+# updates, so a published advisory still reaches us immediately.
+#
+# `semver-major-days` and friends are deliberately not set: they are unsupported for
+# the github-actions and terraform ecosystems, and a setting that silently applies to
+# three of five entries is worse than one flat rule.
+
 updates:
   # GitHub Actions — keep pinned action SHAs current
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     commit-message:
       prefix: "ci"
@@ -15,6 +36,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     commit-message:
       prefix: "chore"
@@ -28,6 +51,8 @@ updates:
     directory: "/services/platform-hello"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore"
     labels: ["dependencies", "go"]
@@ -37,6 +62,8 @@ updates:
     directory: "/infrastructure/terraform"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore"
     labels: ["dependencies", "terraform"]
@@ -46,6 +73,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore"
     labels: ["dependencies", "python"]
