@@ -168,6 +168,45 @@ test('a non-2xx response is an error carrying the status and nothing else', asyn
   }
 });
 
+test('a 409 is a returning visitor, not a failure', async () => {
+  /*
+   * Loops answers a repeat address with 409. Before this was handled, a
+   * returning visitor got a 502 and "Could not save right now" -- wrong, and
+   * the single most likely repeat action on a waitlist page.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: false, message: 'Email already exists' }), {
+      status: 409,
+    });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'duplicate' }, 'a 409 must resolve, not reject');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a 400 is still an error — it can mean a malformed address', async () => {
+  // Deliberately NOT treated as a duplicate: swallowing 400 would hide a real
+  // bug. A provider that signals duplicates with 400 needs its own adapter.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('bad request', { status: 400 });
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), /400/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test('a timeout is reported as a timeout, with the deadline named', async () => {
   const mod = await load({
     NODE_ENV: 'production',
