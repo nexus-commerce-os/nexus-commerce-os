@@ -13,7 +13,7 @@ export type WaitlistEntry = {
   createdAt: string; // ISO-8601
 };
 
-export type AddResult = { status: "added" | "duplicate" };
+export type AddResult = { status: 'added' | 'duplicate' };
 
 export interface WaitlistStore {
   add(entry: WaitlistEntry): Promise<AddResult>;
@@ -25,9 +25,9 @@ class MemoryWaitlistStore implements WaitlistStore {
 
   add(entry: WaitlistEntry): Promise<AddResult> {
     const key = entry.email.toLowerCase();
-    if (this.seen.has(key)) return Promise.resolve({ status: "duplicate" });
+    if (this.seen.has(key)) return Promise.resolve({ status: 'duplicate' });
     this.seen.add(key);
-    return Promise.resolve({ status: "added" });
+    return Promise.resolve({ status: 'added' });
   }
 }
 
@@ -40,16 +40,16 @@ class HttpEspWaitlistStore implements WaitlistStore {
 
   async add(entry: WaitlistEntry): Promise<AddResult> {
     const res = await fetch(this.url, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "content-type": "application/json",
+        'content-type': 'application/json',
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
       },
       body: JSON.stringify(entry),
     });
     if (!res.ok) throw new Error(`Waitlist ESP responded ${res.status}`);
     // ESPs own their own dedup; treat any 2xx as accepted.
-    return { status: "added" };
+    return { status: 'added' };
   }
 }
 

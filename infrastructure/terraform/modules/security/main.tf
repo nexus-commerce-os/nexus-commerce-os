@@ -11,11 +11,27 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 # ------------------------------------------------------------------ KMS keys (per data domain)
+# Rotation is not a per-caller choice.
+#
+# `enable_key_rotation` was `each.value.enable_rotation`, defaulting to true, so
+# every key deployed today already rotates — but the module still ACCEPTED
+# `false`, and the header of this file promises "rotation on" without
+# qualification. A posture a caller can switch off is not a posture, so the knob
+# is gone from the variable type as well.
+#
+# Annual rotation of a symmetric CMK is free and transparent: AWS retains every
+# previous backing key, so ciphertext written before a rotation still decrypts.
+# There is no case in this platform where disabling it is the right answer.
+#
+# It also clears a Semgrep finding honestly rather than by suppression.
+# `terraform.aws.security.aws-kms-no-rotation` excludes a key only when it can
+# SEE the literal `true` in the block; it does not follow a variable into
+# another file, so the old expression fired on every scan.
 resource "aws_kms_key" "this" {
   for_each = var.kms_keys
 
   description             = each.value.description
-  enable_key_rotation     = each.value.enable_rotation
+  enable_key_rotation     = true
   deletion_window_in_days = each.value.deletion_window_in_days
   multi_region            = each.value.multi_region
 
