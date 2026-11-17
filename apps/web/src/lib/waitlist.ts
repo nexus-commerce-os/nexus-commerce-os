@@ -37,7 +37,7 @@ export type WaitlistEntry = {
  * create API today: a contact posted to /contacts/create comes back
  * `subscribed: true, optInStatus: null`. Their docs say that will change --
  * "API endpoints like Create contact and Update contact are not yet gated.
- * Coverage will expand to these endpoints soon.\" -- with no date and no
+ * Coverage will expand to these endpoints soon." -- with no date and no
  * promise of notice. So this is DETECTED per response, never assumed from a
  * dashboard setting, in either direction.
  */
@@ -178,6 +178,14 @@ class HttpEspWaitlistStore implements WaitlistStore {
  * "no signal", never "pending". Erring towards `added` is correct: today no
  * provider we talk to gates the create call, and inventing a confirmation step
  * that does not exist would be its own lie.
+ *
+ * `subscribed: false` is the weaker of the two signals, because it could also
+ * describe a contact who previously UNSUBSCRIBED rather than one who has yet
+ * to confirm. It is still read, because on a CREATE response the unconfirmed
+ * reading is far the likelier, and because the alternative -- "You're on the
+ * list" to someone who is not on it -- is the worse of the two errors. With
+ * Loops the ambiguity cannot arise: an address already in the audience comes
+ * back 409 and is handled above as a duplicate, long before this runs.
  */
 async function readOptInSignal(res: Response): Promise<'pending' | null> {
   let body: unknown;
