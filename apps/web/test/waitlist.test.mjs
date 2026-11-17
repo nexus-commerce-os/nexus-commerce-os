@@ -191,6 +191,142 @@ test('a 409 is a returning visitor, not a failure', async () => {
   }
 });
 
+/* --- double opt-in: accepted is not the same as subscribed ------------- */
+
+test('a 200 with no opt-in signal is a plain confirmed sign-up', async () => {
+  /*
+   * The behaviour MEASURED against live Loops on 17 Nov 2026, with double
+   * opt-in switched ON in the dashboard: create returns a bare `{success,id}`
+   * and the contact reads `subscribed: true, optInStatus: null`. So the
+   * dashboard setting alone must NOT make us claim a confirmation step exists.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, id: 'abc123' }), { status: 200 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'added' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a 202 means accepted but not yet confirmed', async () => {
+  // Mapped on status alone -- 202 is what HTTP already means by "taken, not
+  // yet complete" -- so no provider-specific parsing is involved.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('', { status: 202 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'pending' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('optInStatus "pending" in the body is honoured', async () => {
+  /*
+   * Loops' docs: "API endpoints like Create contact and Update contact are not
+   * yet gated. Coverage will expand to these endpoints soon." When it does, a
+   * visitor must not be told they are on the list while they are not.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, id: 'x', optInStatus: 'pending' }), {
+      status: 200,
+    });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'pending' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('subscribed:false in the body is also pending', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, subscribed: false }), { status: 200 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'pending' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('optInStatus "accepted" is confirmed, not pending', async () => {
+  // Only an explicit pending signal may downgrade the outcome; anything else
+  // is a confirmed sign-up. Inventing a confirmation step is its own lie.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, optInStatus: 'accepted', subscribed: true }), {
+      status: 200,
+    });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'added' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('an unreadable success body never breaks a sign-up that already stored', async () => {
+  /*
+   * By the time the body is parsed the address IS stored. Letting a malformed
+   * body turn that into a 502 would tell the visitor to try again when there
+   * is nothing to retry.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<html>not json</html>', { status: 200 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'added' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a provider error is still an error, whatever the body says', async () => {
+  // A 500 carrying a cheerful JSON body must not be mistaken for success.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, optInStatus: 'accepted' }), { status: 500 });
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), /500/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test('a 400 is still an error — it can mean a malformed address', async () => {
   // Deliberately NOT treated as a duplicate: swallowing 400 would hide a real
   // bug. A provider that signals duplicates with 400 needs its own adapter.

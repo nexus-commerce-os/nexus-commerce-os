@@ -34,6 +34,7 @@ export default function NexusLanding() {
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [who, setWho] = useState('you');
+  const [outcome, setOutcome] = useState<'added' | 'duplicate' | 'pending'>('added');
   const [note, setNote] = useState(DEFAULT_NOTE);
   const [noteErr, setNoteErr] = useState(false);
 
@@ -68,10 +69,19 @@ export default function NexusLanding() {
         // a convenience; the server's is the defence.
         body: JSON.stringify({ email: v, company: trap }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        status?: 'added' | 'duplicate' | 'pending';
+      };
       if (res.ok && data.ok) {
         const local = v.split('@')[0] ?? 'you';
         setWho(local.length > 18 ? 'you' : local);
+        // The server distinguishes a fresh sign-up from a repeat and from one
+        // still awaiting email confirmation. Before this, the page threw that
+        // away and always said "You're on the list" -- so the duplicate message
+        // the route computes was never once shown to anybody.
+        setOutcome(data.status ?? 'added');
         setSubmitted(true);
       } else {
         setNote(data.error ?? 'Something went wrong — please try again.');
@@ -614,8 +624,23 @@ export default function NexusLanding() {
               </p>
               {submitted ? (
                 <p className="wl-ok">
-                  <span className="chk">✓</span> You&apos;re on the list. We&apos;ll email{' '}
-                  <b>{who}</b> the moment your region opens.
+                  <span className="chk">✓</span>{' '}
+                  {outcome === 'pending' ? (
+                    <>
+                      Almost there — check your inbox and confirm your subscription. Until you do,
+                      you are not on the list yet.
+                    </>
+                  ) : outcome === 'duplicate' ? (
+                    <>
+                      You&apos;re already on the list. We&apos;ll email <b>{who}</b> the moment your
+                      region opens.
+                    </>
+                  ) : (
+                    <>
+                      You&apos;re on the list. We&apos;ll email <b>{who}</b> the moment your region
+                      opens.
+                    </>
+                  )}
                 </p>
               ) : (
                 <>
