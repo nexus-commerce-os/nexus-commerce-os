@@ -61,15 +61,20 @@ export async function POST(request: Request): Promise<NextResponse> {
       source: 'web',
       createdAt: new Date().toISOString(),
     });
-    return NextResponse.json(
-      {
-        ok: true,
-        status: result.status,
-        message:
-          result.status === 'duplicate' ? "You're already on the list." : "You're on the list.",
-      },
-      { status: 200 },
-    );
+    /*
+     * The message is derived from the status rather than assumed, because
+     * `pending` means the address is stored but NOT yet subscribed -- saying
+     * "You're on the list" to someone who still has to click a confirmation
+     * link is simply untrue, and they would miss the launch email believing
+     * they were signed up.
+     */
+    const message =
+      result.status === 'duplicate'
+        ? "You're already on the list."
+        : result.status === 'pending'
+          ? 'Almost there — check your inbox and confirm your subscription.'
+          : "You're on the list.";
+    return NextResponse.json({ ok: true, status: result.status, message }, { status: 200 });
   } catch {
     return NextResponse.json(
       { ok: false, error: 'Could not save right now — please try again.' },

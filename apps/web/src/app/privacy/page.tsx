@@ -49,8 +49,9 @@ export default function PrivacyNotice() {
       <p>
         To send you <strong>one email when HonestTotal opens in your region</strong>, plus the
         occasional message about the launch itself. We do not send marketing for anything else. We
-        never sell, rent or share your address, and we do not pass it to merchants or affiliate
-        networks.
+        never sell or rent your address, and we never pass it to merchants or affiliate networks.
+        The only parties who ever handle it are the service providers named below, who act on our
+        instructions and for no purpose of their own.
       </p>
 
       <h2>Where it is stored</h2>
@@ -58,6 +59,12 @@ export default function PrivacyNotice() {
         With our email provider, {P.esp}, on infrastructure in {P.espCountry}. They process it on
         our instructions only. The website itself is served by Vercel, which handles the request but
         does not retain your address.
+      </p>
+      <p>
+        Because that provider stores it in {P.espCountry}, an address submitted from the UK or the
+        EU leaves that area. The transfer relies on the provider&apos;s EU-U.S. Data Privacy
+        Framework certification and on Standard Contractual Clauses. Write to {P.contact} and we
+        will send you a copy of those safeguards.
       </p>
 
       <h2>How long we keep it</h2>
@@ -69,9 +76,14 @@ export default function PrivacyNotice() {
       <h2>Your rights</h2>
       <p>
         You can ask us to show you what we hold, correct it, delete it, or hand it back in a
-        portable form, and you can withdraw consent at any time. Every launch email carries a
-        one-click unsubscribe, which also deletes the address. Or write to {P.contact} and we will
-        act within 30 days.
+        portable form, and you can withdraw consent at any time. Write to {P.contact} and we will
+        act within 30 days — deletion included, and it is a real deletion, not a flag.
+      </p>
+      <p>
+        Every launch email also carries a one-click unsubscribe. To be precise about what that does:
+        it stops the emails immediately, and your address is kept and marked unsubscribed rather
+        than erased — that record is what guarantees we do not mail you again by mistake. If you
+        would rather it were gone altogether, ask us at {P.contact} and we will delete it.
       </p>
       <p>
         If you are in the UK or the EU and think we have handled your data badly, you may complain

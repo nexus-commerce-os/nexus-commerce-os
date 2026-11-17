@@ -27,7 +27,21 @@ export type WaitlistEntry = {
   createdAt: string; // ISO-8601
 };
 
-export type AddResult = { status: 'added' | 'duplicate' };
+/*
+ * `pending` exists because a provider may accept an address WITHOUT it being
+ * subscribed yet — double opt-in, where the person must still click a link in
+ * a confirmation email. Telling that person "You're on the list" is false, and
+ * if they never confirm they silently miss the launch email.
+ *
+ * Loops' double opt-in is ON for this account, and MEASURED not to gate the
+ * create API today: a contact posted to /contacts/create comes back
+ * `subscribed: true, optInStatus: null`. Their docs say that will change --
+ * "API endpoints like Create contact and Update contact are not yet gated.
+ * Coverage will expand to these endpoints soon." -- with no date and no
+ * promise of notice. So this is DETECTED per response, never assumed from a
+ * dashboard setting, in either direction.
+ */
+export type AddResult = { status: 'added' | 'duplicate' | 'pending' };
 
 export interface WaitlistStore {
   add(entry: WaitlistEntry): Promise<AddResult>;
@@ -127,9 +141,66 @@ class HttpEspWaitlistStore implements WaitlistStore {
      */
     if (res.status === 409) return { status: 'duplicate' };
     if (!res.ok) throw new Error(`Waitlist ESP responded ${res.status}`);
-    // Any 2xx is an accepted sign-up; the provider owns its own dedup.
+
+    /*
+     * 202 Accepted is what HTTP already means by "taken, not yet complete", so
+     * it is mapped on status alone -- no provider-specific parsing, same rule
+     * as the 409 above.
+     */
+    if (res.status === 202) return { status: 'pending' };
+
+    /*
+     * Otherwise look for an opt-in signal in the body, but only if one is
+     * actually there. This is deliberately a READ of fields that may or may
+     * not exist, not a requirement that they do: today Loops returns a bare
+     * `{success, id}` and this finds nothing, so behaviour is unchanged. If a
+     * provider starts reporting an unconfirmed contact, the visitor is told
+     * the truth without waiting for us to ship a fix.
+     *
+     * Parsing is best-effort: a non-JSON or unreadable body must never turn a
+     * successful sign-up into an error, because the address IS already stored
+     * by this point.
+     */
+    const signal = await readOptInSignal(res);
+    if (signal === 'pending') return { status: 'pending' };
+
+    // Any other 2xx is an accepted sign-up; the provider owns its own dedup.
     return { status: 'added' };
   }
+}
+
+/**
+ * Best-effort: does this response say the contact is accepted but NOT yet
+ * subscribed? Returns 'pending', or null when the body says nothing about it.
+ *
+ * `optInStatus` and `subscribed` are the two shapes an ESP realistically uses,
+ * and both are read defensively -- absent, null, or an unexpected type all mean
+ * "no signal", never "pending". Erring towards `added` is correct: today no
+ * provider we talk to gates the create call, and inventing a confirmation step
+ * that does not exist would be its own lie.
+ *
+ * `subscribed: false` is the weaker of the two signals, because it could also
+ * describe a contact who previously UNSUBSCRIBED rather than one who has yet
+ * to confirm. It is still read, because on a CREATE response the unconfirmed
+ * reading is far the likelier, and because the alternative -- "You're on the
+ * list" to someone who is not on it -- is the worse of the two errors. With
+ * Loops the ambiguity cannot arise: an address already in the audience comes
+ * back 409 and is handled above as a duplicate, long before this runs.
+ */
+async function readOptInSignal(res: Response): Promise<'pending' | null> {
+  let body: unknown;
+  try {
+    body = await res.clone().json();
+  } catch {
+    return null; // not JSON, or already consumed -- say nothing
+  }
+  if (typeof body !== 'object' || body === null) return null;
+  const record = body as { optInStatus?: unknown; subscribed?: unknown };
+  if (typeof record.optInStatus === 'string' && record.optInStatus.toLowerCase() === 'pending') {
+    return 'pending';
+  }
+  if (record.subscribed === false) return 'pending';
+  return null;
 }
 
 let store: WaitlistStore | null = null;
