@@ -307,6 +307,16 @@ header.nav {
   position: relative;
   z-index: 1;
 }
+/*
+ * A grid item defaults to `min-width: auto`, which means it REFUSES to shrink
+ * below its min-content width. One unbreakable phrase is then enough to push
+ * the whole column past the viewport, and `.hero`'s `overflow-x: hidden`
+ * silently clips the result -- no scrollbar, no warning, just missing words.
+ * `min-width: 0` lets the track size win instead.
+ */
+.hero-grid > * {
+  min-width: 0;
+}
 @media (max-width: 900px) {
   .hero-grid {
     grid-template-columns: 1fr;
@@ -320,6 +330,18 @@ header.nav {
   font-style: normal;
   color: var(--accent);
   white-space: nowrap;
+}
+/*
+ * The nowrap above keeps the emphasised phrase on one line, which reads well
+ * while there is room for it. Below this width there is not: the h1 clamp has
+ * bottomed out at 2.5rem, the phrase measures wider than the viewport, and
+ * being unbreakable it overflows instead of wrapping. Readability beats the
+ * line break.
+ */
+@media (max-width: 767px) {
+  .hero h1 em {
+    white-space: normal;
+  }
 }
 .lede {
   font-size: 1.16rem;
