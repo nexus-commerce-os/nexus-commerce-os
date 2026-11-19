@@ -46,6 +46,24 @@ export const PLACEHOLDERS = {
   esp: 'Loops (Astrodon Corporation)',
   espCountry: 'the United States',
   jurisdiction: '[GOVERNING JURISDICTION]',
+  /*
+   * MEASURED, and currently unanswerable, which is why it is a placeholder.
+   *
+   * This page used to state flatly that the site is "served by Vercel". That
+   * was false: honesttotal.com is served by a Cloudflare Worker, confirmed by
+   * `Server: cloudflare` with no `x-vercel-id` on any path. Naming the wrong
+   * company as the one handling every visitor's IP address is exactly the kind
+   * of error a privacy notice exists to avoid.
+   *
+   * The true answer depends on a hosting decision that has not been made:
+   *   Cloudflare Worker (today)    -> "Cloudflare"
+   *   Vercel, DNS-only             -> "Vercel"
+   *   Vercel behind Cloudflare     -> BOTH process the request, and both must
+   *                                   be named here.
+   *
+   * So it is gated rather than guessed. The gate now blocks on it.
+   */
+  host: '[HOSTING PROVIDER]',
 } as const;
 
 export function LegalPage({

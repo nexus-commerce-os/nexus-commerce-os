@@ -62,8 +62,8 @@ export default function PrivacyNotice() {
       <h2>Where it is stored</h2>
       <p>
         With our email provider, {P.esp}, on infrastructure in {P.espCountry}. They process it on
-        our instructions only. The website itself is served by Vercel, which handles the request but
-        does not retain your address.
+        our instructions only. The website itself is served by {P.host}, which handles the request
+        but does not retain your address.
       </p>
       <p>
         Because that provider stores it in {P.espCountry}, an address submitted from the UK or the
