@@ -27,11 +27,18 @@
 # =============================================================================
 name: ci
 
+# WHY `release/product-catalog` IS LISTED HERE
+# It is the branch that is actually deployed to honesttotal.com: it holds the
+# `wrangler.toml` and the `deploy:cf` script, and `main` holds neither. With
+# `branches: [main]` alone, every pull request into the branch that SHIPS ran no
+# formatting check, no lint, no typecheck and no unit tests -- only a Vercel
+# preview build. The one lineage that reaches the public site was the one lineage
+# nothing verified. Listing it costs a runner and closes that gap.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release/product-catalog]
   push:
-    branches: [main]
+    branches: [main, release/product-catalog]
 
 # why: deny-by-default token scope; jobs opt into the minimum they need (P3 least-privilege).
 permissions: {}
