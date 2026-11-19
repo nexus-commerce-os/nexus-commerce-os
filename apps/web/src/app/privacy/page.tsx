@@ -16,6 +16,13 @@ import { SiteFooter } from '@/components/SiteFooter';
  *     host: the only absolute URLs anywhere are honesttotal.com, w3.org (an SVG
  *     xmlns, not a request) and schema.org (a JSON-LD context, not a request).
  *   - localStorage holds one key, `nexus-theme`, written only by the toggle.
+ *   - The CONTROLLER is now named, with a postal address. Until today this
+ *     notice described in careful detail what happens to an address and never
+ *     once said WHO was answerable for it. That is the one thing a reader
+ *     cannot check for themselves and the first thing a data-protection notice
+ *     is supposed to state, so the omission mattered more than anything else
+ *     on the page. Both facts are the owner's, confirmed by the owner; neither
+ *     was inferred, and no identification number is recorded anywhere here.
  * No compliance certification is claimed. Rights are described and an actual
  * route to exercise them is given; claiming "GDPR compliant" would be a legal
  * assertion nobody here is in a position to make.
@@ -27,7 +34,17 @@ const BASE = 'https://honesttotal.com';
 // Cloudflare Email Routing and confirmed Active before this changed, so the
 // address published here is purpose-built rather than borrowed.
 const CONTACT = 'privacy@honesttotal.com';
-const EFFECTIVE = '5 August 2026';
+/*
+ * Who is answerable for the one address this site holds. Confirmed by the owner
+ * against official identification.
+ *
+ * ADDRESS is a MAILING address, not a registered office -- an individual has no
+ * registered office, and describing it as one would invent a company
+ * registration that does not exist.
+ */
+const OPERATOR = 'Md Samsuzzaman';
+const ADDRESS = 'Self Help Building, Rural Development Academy, Sherpur, Bogura, Bangladesh';
+const EFFECTIVE = '20 November 2026';
 
 export const metadata: Metadata = {
   title: 'Privacy — HonestTotal',
@@ -337,6 +354,21 @@ export default function PrivacyPage() {
                 Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. A person reads it. There is no
                 form to fill in and no account to create — creating an account to delete data you
                 never knowingly gave is the sort of thing this page exists to avoid.
+              </p>
+            </div>
+            <div className="card rule-card">
+              <p className="rule-quote">
+                The person answerable for your address is <b>{OPERATOR}</b>, who runs HonestTotal as
+                an individually operated business under the laws of Bangladesh. Post reaches us at{' '}
+                {ADDRESS}.
+              </p>
+              <p className="muted">
+                This notice described in detail what happens to your address long before it said who
+                was accountable for it — which is the one thing you cannot check by reading the
+                site. There is no company, so there is no registration number and no registered
+                office; the address above is a mailing address. Naming a law does not reduce your
+                rights: where you live gives you consumer and privacy rights that apply whatever any
+                page of ours says, and the <a href="/terms">Terms</a> say so in those words.
               </p>
             </div>
             <div className="comp-list">
