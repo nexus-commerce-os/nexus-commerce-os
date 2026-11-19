@@ -352,8 +352,8 @@ export default function FormFactorGuidePage() {
               <p className="eyebrow">Decision guide · headphone shapes</p>
             </span>
             <h1 className="hero-h1" style={{ maxWidth: '24ch' }}>
-              <span className="h1-underlined">Over-ear, on-ear</span> <em>or</em> in-ear:
-              which fits you?
+              <span className="h1-underlined">Over-ear, on-ear</span> <em>or</em> in-ear: which fits
+              you?
             </h1>
             <p className="lede" style={{ marginTop: 24 }}>
               There is no winner, and anyone who names one is describing their own ears. What the
@@ -383,9 +383,9 @@ export default function FormFactorGuidePage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                Choosing a category tells you <b>how big the thing will be</b>, <b>what part of you
-                carries it</b> and <b>how it will try to seal</b>. It does not tell you how good any
-                particular pair is going to be.
+                Choosing a category tells you <b>how big the thing will be</b>,{' '}
+                <b>what part of you carries it</b> and <b>how it will try to seal</b>. It does not
+                tell you how good any particular pair is going to be.
               </p>
               <p className="muted">
                 That is not a hedge, it is the finding. When 283 headphones from about four dollars
@@ -485,10 +485,10 @@ export default function FormFactorGuidePage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                <b>Passive isolation</b> is the physical seal keeping sound out. <b>Active noise
-                cancellation</b> is electronics removing what gets through. What you experience is
-                the total, and the measurement standards treat the two as separate quantities that
-                have to be combined.
+                <b>Passive isolation</b> is the physical seal keeping sound out.{' '}
+                <b>Active noise cancellation</b> is electronics removing what gets through. What you
+                experience is the total, and the measurement standards treat the two as separate
+                quantities that have to be combined.
               </p>
               <p className="muted">
                 Two consequences worth carrying into a shop. Over-ear does not imply ANC, and in-ear
@@ -586,7 +586,11 @@ export default function FormFactorGuidePage() {
                 honest answer is &ldquo;it depends on the pair&rdquo;, the table says so.
               </p>
             </div>
-            <div className="fresh-table" role="table" aria-label="Which shape tends to suit which situation">
+            <div
+              className="fresh-table"
+              role="table"
+              aria-label="Which shape tends to suit which situation"
+            >
               <div className="fresh-head" role="row">
                 <span role="columnheader">Situation</span>
                 <span role="columnheader">What tends to suit it</span>

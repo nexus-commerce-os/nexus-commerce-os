@@ -315,9 +315,9 @@ export default function SsdGuidePage() {
               than an upgrade.
             </p>
             <p className="note">
-              One decision this list deliberately leaves out is capacity, because it depends on
-              your files rather than on the drive. If you are still working out what size to buy,
-              that has its own method in{' '}
+              One decision this list deliberately leaves out is capacity, because it depends on your
+              files rather than on the drive. If you are still working out what size to buy, that
+              has its own method in{' '}
               <a href="/guides/how-much-ssd-storage-do-you-need">
                 how much SSD storage you actually need
               </a>

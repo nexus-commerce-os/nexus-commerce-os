@@ -27,11 +27,18 @@
 # =============================================================================
 name: ci
 
+# WHY `release/product-catalog` IS LISTED HERE
+# It is the branch that is actually deployed to honesttotal.com: it holds the
+# `wrangler.toml` and the `deploy:cf` script, and `main` holds neither. With
+# `branches: [main]` alone, every pull request into the branch that SHIPS ran no
+# formatting check, no lint, no typecheck and no unit tests -- only a Vercel
+# preview build. The one lineage that reaches the public site was the one lineage
+# nothing verified. Listing it costs a runner and closes that gap.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, release/product-catalog]
   push:
-    branches: [main]
+    branches: [main, release/product-catalog]
 
 # why: deny-by-default token scope; jobs opt into the minimum they need (P3 least-privilege).
 permissions: {}
@@ -172,10 +179,35 @@ jobs:
       - name: CodeQL analyze
         # why: docs/10 §2 — a high/critical CodeQL alert blocks merge (fail-closed).
         uses: github/codeql-action/analyze@c373aa2d5d4940ac074c7d8b97c1ff0771eadf8d # v3.26.13
+      # PORTED FROM `main`, WHICH ALREADY FIXED THIS TWICE. Both fixes are needed,
+      # and this branch had neither because no run on it had ever reached stage 4.
+      #
+      # why pin the interpreter: Semgrep is a Python package, and the runner's
+      #      default interpreter moved to 3.14, where protobuf's generated
+      #      descriptors raise `TypeError: Metaclasses with custom tp_new are not
+      #      supported` at import time -- so `semgrep` died on its first import
+      #      and ran ZERO rules. That is the exact failure this branch produced on
+      #      the first run it ever got (run 44637972157). Jobs 12 and 13 already
+      #      pin the interpreter with this same action SHA; this is the same thing.
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Semgrep scan
         # why: fast rule-based SAST (OWASP + custom rules in .semgrep/); complements CodeQL, blocks on findings.
+        # why 1.182.0 and not 1.85.0: 1.85.0 pins
+        #      opentelemetry-instrumentation-requests~=0.46b0, whose
+        #      opentelemetry-instrumentation 0.46b0 imports `pkg_resources` and
+        #      declares `setuptools>=16.0` for it. setuptools REMOVED pkg_resources
+        #      in 82.0.0, so pip satisfies the pin with 84.x and the module the pin
+        #      exists for is absent -- another import-time death before a single
+        #      rule is evaluated. The `~=0.46b0` pin can never reach the 0.50b0
+        #      that dropped pkg_resources, so the engine has to move: 1.182.0 pins
+        #      ~=0.58b0, which needs no setuptools at all. Rules are untouched --
+        #      .semgrep/ is ours and p/owasp-top-ten is fetched from the registry
+        #      at scan time, not carried by the engine -- and a newer engine
+        #      reports more, never less.
         run: |
-          pip install --quiet semgrep==1.85.0
+          pip install --quiet semgrep==1.182.0
           semgrep --config .semgrep --config p/owasp-top-ten --error --skip-unknown-extensions .
 
   # ---------------------------------------------------------------------------

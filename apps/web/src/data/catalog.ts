@@ -466,8 +466,13 @@ export function searchProducts(
   if (needles.length === 0) return products;
   return products.filter((p) => {
     const haystack = tokens(
-      [p.brand, p.name, p.model ?? '', p.summary, ...p.specs.map((s) => `${s.label} ${s.value}`)]
-        .join(' '),
+      [
+        p.brand,
+        p.name,
+        p.model ?? '',
+        p.summary,
+        ...p.specs.map((s) => `${s.label} ${s.value}`),
+      ].join(' '),
     );
     // Every typed token must match the start of some word: "open ear" should
     // not match a product that merely has an "open" somewhere and no "ear".
