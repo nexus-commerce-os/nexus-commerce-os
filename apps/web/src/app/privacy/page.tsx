@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyNotice() {
   return (
-    <LegalPage title="Privacy Notice" updated="13 November 2026">
+    <LegalPage title="Privacy Notice" updated="19 November 2026">
       <p>
         This notice covers the HonestTotal website as it exists today: a single page describing the
         product, and a waitlist form. There is nothing else here yet — no accounts, no shopping, no
@@ -21,6 +21,11 @@ export default function PrivacyNotice() {
       <p>
         The controller of your data is {P.operator}, {P.address}. For any question about this
         notice, or to exercise any right below, write to {P.contact}.
+      </p>
+      <p>
+        HonestTotal is run by one person, not a company. There is no registered company behind it,
+        and the name above is the individual who is accountable for your data — which is who you are
+        dealing with, and who answers if something goes wrong.
       </p>
 
       <h2>What we collect, and nothing more</h2>

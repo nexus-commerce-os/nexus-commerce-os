@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 
 export default function Terms() {
   return (
-    <LegalPage title="Terms" updated="13 November 2026">
+    <LegalPage title="Terms" updated="19 November 2026">
       <p>
         These terms cover <strong>this website and its waitlist</strong>, operated by {P.operator},{' '}
-        {P.address}. They are short because the site does very little: it describes a product that
-        is not open yet, and it lets you ask to be told when it is.
+        {P.address} — one person, not a company. They are short because the site does very little:
+        it describes a product that is not open yet, and it lets you ask to be told when it is.
       </p>
 
       <h2>No product is being offered yet</h2>
