@@ -5,7 +5,7 @@
   "description": "NEXUS shopper-facing Next.js PWA â€” P0.1 scaffold (no features; implemented from P0.2).",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/release-gate.mjs && next build && node scripts/verify-footer.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-merchants.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-catalog.mjs",
+    "build": "node scripts/release-gate.mjs && next build && node scripts/verify-headers.mjs && node scripts/verify-footer.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-merchants.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-catalog.mjs",
     "start": "next start",
     "lint": "eslint src worker",
     "typecheck": "tsc --noEmit && tsc -p worker --noEmit",
