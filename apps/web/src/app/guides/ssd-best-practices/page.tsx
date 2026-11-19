@@ -132,7 +132,7 @@ const FAQ = [
   {
     q: 'How much free space should I leave?',
     a: 'There is no universal hardware requirement, and any exact percentage you see quoted is a rule of thumb rather than a specification. The reason it helps is concrete: the fast write cache and the controller’s housekeeping both come out of unused space, so a drive running close to full has less room to work with. Leaving a comfortable margin is sensible; treating a specific number as a hard limit is not.',
-    },
+  },
   {
     q: 'Does writing to an SSD wear it out?',
     a: 'Flash cells have a finite number of write and erase cycles, so in the strict sense yes — but the framing misleads. Manufacturers publish a TBW figure, the total terabytes the drive is rated to have written, and the warranty typically runs for the stated period or that TBW, whichever comes first. The useful response is not to avoid using the drive; it is to look up your own drive’s rating and its actual written total in the manufacturer’s utility if you are curious, rather than rationing ordinary use.',
@@ -225,8 +225,8 @@ export default function SsdBestPracticesPage() {
               <p className="eyebrow">Explainer · living with an SSD</p>
             </span>
             <h1 className="hero-h1" style={{ maxWidth: '24ch' }}>
-              <span className="h1-underlined">SSD best practices:</span>{' '}
-              <em>keeping a drive</em> healthy and fast.
+              <span className="h1-underlined">SSD best practices:</span> <em>keeping a drive</em>{' '}
+              healthy and fast.
             </h1>
             <p className="lede" style={{ marginTop: 24 }}>
               The short version: leave some free space, let the operating system run its own
@@ -378,9 +378,9 @@ export default function SsdBestPracticesPage() {
             <div className="card rule-card">
               <p className="rule-quote">
                 Flash cells tolerate a finite number of write and erase cycles. Manufacturers
-                publish that budget as <b>TBW</b> — the total terabytes the drive is rated to
-                have written — and the warranty typically runs for the stated number of years{' '}
-                <b>or</b> that TBW, whichever comes first.
+                publish that budget as <b>TBW</b> — the total terabytes the drive is rated to have
+                written — and the warranty typically runs for the stated number of years <b>or</b>{' '}
+                that TBW, whichever comes first.
               </p>
               <p className="muted">
                 What follows from this is not rationing. It is that endurance is a specification you
@@ -441,12 +441,8 @@ export default function SsdBestPracticesPage() {
             <div className="card blind" style={{ maxWidth: 760 }}>
               <h3>A reasonable position</h3>
               <ul className="tick-list">
-                <li>
-                  Firmware updates exist to fix real faults, and some have fixed serious ones
-                </li>
-                <li>
-                  Applying one with no reason to is a small risk taken for no return
-                </li>
+                <li>Firmware updates exist to fix real faults, and some have fixed serious ones</li>
+                <li>Applying one with no reason to is a small risk taken for no return</li>
                 <li>
                   If the manufacturer has published a fix relevant to your drive, use their tool and
                   their instructions — not a third-party utility
@@ -484,8 +480,8 @@ export default function SsdBestPracticesPage() {
               </p>
             </div>
             <p className="note">
-              If you take one thing from this page, take this one. It is worth more than every
-              tweak above combined, and it is the only item on the list that is still true when the
+              If you take one thing from this page, take this one. It is worth more than every tweak
+              above combined, and it is the only item on the list that is still true when the
               hardware is not.
             </p>
           </div>

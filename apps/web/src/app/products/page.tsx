@@ -44,7 +44,8 @@ export const metadata: Metadata = {
     type: 'website',
     url: `${BASE}/products`,
     title: 'Product specifications, without the price theatre',
-    description: 'What a product is, with the maker’s own page cited. Not what somebody wants you to pay for it.',
+    description:
+      'What a product is, with the maker’s own page cited. Not what somebody wants you to pay for it.',
   },
 };
 

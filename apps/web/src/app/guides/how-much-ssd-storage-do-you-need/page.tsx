@@ -94,7 +94,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'How much SSD storage do you actually need?',
-    description: 'A method, not a number — because nobody can size your drive without your numbers.',
+    description:
+      'A method, not a number — because nobody can size your drive without your numbers.',
   },
 };
 
@@ -276,8 +277,8 @@ export default function SsdCapacityGuidePage() {
               <p className="eyebrow">Buying decision · storage</p>
             </span>
             <h1 className="hero-h1" style={{ maxWidth: '24ch' }}>
-              <span className="h1-underlined">How much SSD storage</span> do you{' '}
-              <em>actually</em> need?
+              <span className="h1-underlined">How much SSD storage</span> do you <em>actually</em>{' '}
+              need?
             </h1>
             <p className="lede" style={{ marginTop: 24 }}>
               Nobody can answer that without your numbers, so this page gives you a method instead
@@ -291,8 +292,7 @@ export default function SsdCapacityGuidePage() {
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
               <b>This page is about size, not about which drive.</b> Interfaces, caches and the
-              specifications worth reading are in the{' '}
-              <a href="/guides/ssd">SSD buying guide</a>.
+              specifications worth reading are in the <a href="/guides/ssd">SSD buying guide</a>.
             </p>
           </div>
         </section>
@@ -474,9 +474,8 @@ export default function SsdCapacityGuidePage() {
             <div className="card rule-card">
               <p className="rule-quote">
                 Two publisher-stated figures, to show the range rather than the norm: CD PROJEKT RED
-                lists <b>70 GB</b> for Cyberpunk 2077. Activision lists{' '}
-                <b>102 GB at launch</b> for Call of Duty: Black Ops 6 — for both the minimum and the
-                recommended configuration.
+                lists <b>70 GB</b> for Cyberpunk 2077. Activision lists <b>102 GB at launch</b> for
+                Call of Duty: Black Ops 6 — for both the minimum and the recommended configuration.
               </p>
               <p className="muted">
                 Two things in that Activision listing are worth more than the number itself. The
@@ -585,10 +584,10 @@ export default function SsdCapacityGuidePage() {
               <div className="comp card">
                 <h3>When you cannot</h3>
                 <p>
-                  Some machines have storage soldered to the board or otherwise not user-replaceable;
-                  others take a standard drive you can swap in an afternoon. Where it cannot be
-                  changed, the capacity you buy is the capacity for the machine&rsquo;s life, and
-                  buying one tier ahead stops being wasteful.
+                  Some machines have storage soldered to the board or otherwise not
+                  user-replaceable; others take a standard drive you can swap in an afternoon. Where
+                  it cannot be changed, the capacity you buy is the capacity for the machine&rsquo;s
+                  life, and buying one tier ahead stops being wasteful.
                 </p>
               </div>
               <div className="comp card">
@@ -643,9 +642,8 @@ export default function SsdCapacityGuidePage() {
             <p className="note">
               Two more that belong to the drive rather than the size: whether a bigger model is
               faster, and whether it lasts longer, are both per-model questions to check on the
-              specific product — the{' '}
-              <a href="/guides/ssd">buying guide</a> covers which of those figures are worth
-              reading.
+              specific product — the <a href="/guides/ssd">buying guide</a> covers which of those
+              figures are worth reading.
             </p>
           </div>
         </section>
@@ -659,16 +657,17 @@ export default function SsdCapacityGuidePage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                Microsoft states the Windows 11 minimum as <b>64 GB or greater available disk
-                space</b>, and adds in the same document that there might be more storage required
-                over time for updates and to enable specific features.
+                Microsoft states the Windows 11 minimum as{' '}
+                <b>64 GB or greater available disk space</b>, and adds in the same document that
+                there might be more storage required over time for updates and to enable specific
+                features.
               </p>
               <p className="muted">
-                A minimum install requirement says the system will fit. It says nothing about
-                living on the machine afterwards with applications, updates and your own files. And
-                a published figure is not always available at all: Apple&rsquo;s own page on
-                upgrading to the current macOS does not state a free-space number, which is a useful
-                reminder that measuring your own usage beats looking up somebody else&rsquo;s.
+                A minimum install requirement says the system will fit. It says nothing about living
+                on the machine afterwards with applications, updates and your own files. And a
+                published figure is not always available at all: Apple&rsquo;s own page on upgrading
+                to the current macOS does not state a free-space number, which is a useful reminder
+                that measuring your own usage beats looking up somebody else&rsquo;s.
               </p>
             </div>
           </div>
