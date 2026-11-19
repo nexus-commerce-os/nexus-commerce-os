@@ -64,8 +64,8 @@ export default function Terms() {
 
       <h2>Governing law</h2>
       <p>
-        These terms are governed by the laws of {P.jurisdiction}, and its courts have jurisdiction.
-        Questions: {P.contact}.
+        These terms are governed by the laws of {P.jurisdiction}, without prejudice to any mandatory
+        consumer protection or privacy rights applicable under relevant law. Questions: {P.contact}.
       </p>
     </LegalPage>
   );

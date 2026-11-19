@@ -1,14 +1,20 @@
 /*
  * Shared shell for the legal pages.
  *
- * PLACEHOLDERS ARE DELIBERATE AND LOUD. Operator legal name, address, contact
- * address and the email provider are facts only the owner has. Inventing them
+ * PLACEHOLDERS ARE DELIBERATE AND LOUD. Operator legal name, mailing address,
+ * contact address, email provider, governing law and hosting provider are facts
+ * only the owner has. Inventing them
  * would be worse than leaving them blank: a privacy notice naming the wrong
  * controller is not a smaller problem than one naming none, and a plausible
  * fake address is the kind of thing nobody notices before launch. So every
  * unknown is a bracketed upper-case token that renders visibly, and
- * `test/legal.test.mjs` fails the build if one of them is still present — the
- * page cannot ship half-filled by accident.
+ * `scripts/release-gate.mjs` refuses a release while one is still present — the
+ * pages cannot ship half-filled by accident.
+ *
+ * All of them are now confirmed EXCEPT `contact`, which stays blank until mail
+ * to the address has actually been received. Publishing a contact address that
+ * silently bounces is worse than publishing none: the privacy notice promises a
+ * reply within 30 days on it.
  */
 import React from 'react';
 import type { ReactNode } from 'react';
@@ -57,25 +63,38 @@ export const PLACEHOLDERS = {
    */
   esp: 'Loops (Astrodon Corporation)',
   espCountry: 'the United States',
-  jurisdiction: '[GOVERNING JURISDICTION]',
   /*
-   * MEASURED, and currently unanswerable, which is why it is a placeholder.
+   * CONFIRMED by the owner, not inferred. This was deliberately left blank
+   * while unknown: governing law cannot be deduced from where the visitors are
+   * or from the operator's mailing address, and guessing it would have made the
+   * one sentence in the Terms that decides which law applies a fabrication.
+   *
+   * The clause in `terms/page.tsx` is the owner's own wording and is expressly
+   * WITHOUT PREJUDICE to mandatory consumer-protection and privacy rights
+   * elsewhere. Choosing Bangladesh law does not, and must not be written to,
+   * strip a reader in the UK or the EU of rights they cannot contract away --
+   * which is why the old "and its courts have jurisdiction" was removed rather
+   * than kept alongside it.
+   */
+  jurisdiction: 'Bangladesh',
+  /*
+   * MEASURED and now CONFIRMED by an owner decision: the site stays on the
+   * Cloudflare Worker and the Vercel migration is postponed.
    *
    * This page used to state flatly that the site is "served by Vercel". That
    * was false: honesttotal.com is served by a Cloudflare Worker, confirmed by
    * `Server: cloudflare` with no `x-vercel-id` on any path. Naming the wrong
    * company as the one handling every visitor's IP address is exactly the kind
-   * of error a privacy notice exists to avoid.
+   * of error a privacy notice exists to avoid, so it was gated rather than
+   * guessed until the hosting decision was actually made.
    *
-   * The true answer depends on a hosting decision that has not been made:
-   *   Cloudflare Worker (today)    -> "Cloudflare"
-   *   Vercel, DNS-only             -> "Vercel"
-   *   Vercel behind Cloudflare     -> BOTH process the request, and both must
-   *                                   be named here.
-   *
-   * So it is gated rather than guessed. The gate now blocks on it.
+   * IF THE HOSTING EVER CHANGES, THIS SENTENCE BECOMES FALSE THE SAME DAY:
+   *   Vercel, DNS-only           -> "Vercel"
+   *   Vercel behind Cloudflare   -> BOTH process every request, and BOTH must
+   *                                 be named here. A proxy does not replace a
+   *                                 processor, it adds one.
    */
-  host: '[HOSTING PROVIDER]',
+  host: 'Cloudflare',
 } as const;
 
 export function LegalPage({
