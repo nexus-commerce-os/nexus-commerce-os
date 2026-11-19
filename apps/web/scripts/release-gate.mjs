@@ -26,6 +26,15 @@
  *     --enforce            the Cloudflare deploy path (deploy:cf)
  *     RELEASE_GATE=1       manual, for checking locally
  *     VERCEL_ENV=production  if this branch is ever built on Vercel
+ *     WRANGLER_COMMAND=deploy | versions upload
+ *                          a bare `npx wrangler deploy`, via the [build]
+ *                          command in wrangler.toml -- the path that skips
+ *                          `deploy:cf` and therefore skips --enforce
+ *
+ * WRANGLER_COMMAND is deliberately matched on `deploy` and `versions upload`
+ * only. Wrangler sets it to `dev` as well, and blocking `wrangler dev` would
+ * mean an unfilled legal fact stops anyone previewing the site locally -- which
+ * punishes the person trying to finish the work.
  *
  * Everything else — ordinary `pnpm build`, CI, a laptop — passes with a notice
  * that lists what is still outstanding. The information is never hidden; only
@@ -54,10 +63,14 @@ const FILES = [
   'src/app/disclosure/page.tsx',
 ];
 
+const WRANGLER_COMMAND = process.env.WRANGLER_COMMAND ?? '';
+
 const isRelease =
   process.argv.includes('--enforce') ||
   process.env.RELEASE_GATE === '1' ||
-  process.env.VERCEL_ENV === 'production';
+  process.env.VERCEL_ENV === 'production' ||
+  WRANGLER_COMMAND === 'deploy' ||
+  WRANGLER_COMMAND === 'versions upload';
 
 /** Bracketed upper-case tokens still awaiting a real value. */
 function outstanding() {

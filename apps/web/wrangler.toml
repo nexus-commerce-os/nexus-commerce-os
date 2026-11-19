@@ -26,6 +26,30 @@ routes = [
 [observability]
 enabled = true
 
+# The release gate, attached to wrangler itself rather than only to an npm
+# script. `deploy:cf` runs the gate first, but that is a convention: anyone in
+# this directory can type `npx wrangler deploy` and skip it entirely. Cloudflare
+# documents that a `[build] command` "will be run as part of `wrangler dev` and
+# `npx wrangler deploy`", so putting the gate here puts it on the CLI path too.
+#
+# HONEST LIMITS OF THIS, because it would be easy to overstate:
+#   * Cloudflare does NOT document what happens when the build command exits
+#     non-zero. It is very likely to abort the deploy, and that is the whole
+#     point of putting it here, but it is not a documented guarantee and has not
+#     been proven against a real deploy. Treat it as defence in depth, not as
+#     the enforcement boundary.
+#   * It cannot stop an upload from the Cloudflare dashboard, or anything else
+#     that does not go through wrangler.
+#   * The ONLY real enforcement is custody of the Cloudflare API token plus
+#     branch protection on the branch that ships. Neither is a file in this
+#     repository.
+#
+# The script decides for itself whether to block, from WRANGLER_COMMAND: it
+# enforces on `deploy` and `versions upload` and merely reports on `dev`, so
+# previewing the site locally is never blocked by an unfilled legal fact.
+[build]
+command = "node scripts/release-gate.mjs"
+
 [assets]
 directory = "./out"
 binding = "ASSETS"
