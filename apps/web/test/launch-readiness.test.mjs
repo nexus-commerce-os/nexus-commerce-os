@@ -170,8 +170,9 @@ test(
       OUTSTANDING,
       [],
       'the legal pages still contain placeholders. The owner must supply the ' +
-        'operator legal name, registered address, contact email, email service ' +
-        'provider, its hosting region, and the governing jurisdiction: ' +
+        'operator legal name, mailing address, contact email, email service ' +
+        'provider, its hosting region, the hosting provider, and the governing ' +
+        'jurisdiction: ' +
         OUTSTANDING.join('; '),
     );
   },
@@ -181,10 +182,22 @@ test('the placeholder map and the pages agree', () => {
   // If a placeholder is renamed in legal.tsx but a page still interpolates the
   // old key, React renders nothing and the sentence silently loses a fact.
   const shell = read('src/app/legal/legal.tsx');
-  for (const key of ['operator', 'address', 'contact', 'esp', 'espCountry', 'jurisdiction']) {
+  for (const key of [
+    'operator',
+    'address',
+    'contact',
+    'esp',
+    'espCountry',
+    'jurisdiction',
+    'host',
+  ]) {
+    // Deliberately only asserts the key EXISTS, not that it is still an unfilled
+    // bracketed token. Filling these in is the whole point of the launch, and
+    // `release-gate.mjs` is what refuses to ship while any remain unfilled --
+    // duplicating that here would make this test fail on the day it succeeds.
     assert.ok(
-      shell.includes(key + ": '["),
-      `PLACEHOLDERS.${key} is missing, or is no longer a bracketed placeholder`,
+      shell.includes(key + ": '"),
+      `PLACEHOLDERS.${key} is missing — a page interpolating it would render nothing`,
     );
   }
   for (const rel of [PRIVACY, TERMS]) {
