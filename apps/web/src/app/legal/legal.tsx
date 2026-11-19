@@ -24,14 +24,16 @@ import type { ReactNode } from 'react';
  */
 export const PLACEHOLDERS = {
   /*
-   * PROVISIONAL. Supplied by the owner as the name to use, and still to be
-   * checked character-for-character against official identification -- note
-   * that the Loops account renders it 'Md Samsuzzaman' and the contact address
-   * is samsuzzaman@, neither of which matches this spelling. A privacy notice
-   * naming the controller inexactly is worth no more than one naming nobody,
-   * so this must be confirmed before the pages publish.
+   * CONFIRMED by the owner against official identification: no full stop after
+   * Md, and Sam rather than Sham. This is also the spelling the Loops account
+   * and the contact address already use, so all three now agree.
+   *
+   * The identification itself is not recorded anywhere in this repository, and
+   * must not be -- the pages need the name, nothing else.
+   *
+   * HonestTotal is the public brand. This is the individual behind it.
    */
-  operator: 'Md. Shamsuzzaman',
+  operator: 'Md Samsuzzaman',
   address: '[OPERATOR ADDRESS]',
   contact: '[CONTACT EMAIL ADDRESS]',
   /*
