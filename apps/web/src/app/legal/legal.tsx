@@ -34,7 +34,19 @@ export const PLACEHOLDERS = {
    * HonestTotal is the public brand. This is the individual behind it.
    */
   operator: 'Md Samsuzzaman',
-  address: '[OPERATOR ADDRESS]',
+  /*
+   * Supplied by the owner. Rendered in postal order, smallest unit first.
+   *
+   * This is a building at a public institution, not a registered office --
+   * there is no registered office, because there is no company. The owner has
+   * now given it twice, including the building, having been asked to confirm
+   * they can receive post addressed to HonestTotal here.
+   *
+   * It must match the physical address in the Loops email footer, which is a
+   * separate anti-spam requirement on every message sent. If one is corrected,
+   * correct the other.
+   */
+  address: 'Self Help Building, Rural Development Academy, Sherpur, Bogura, Bangladesh',
   contact: '[CONTACT EMAIL ADDRESS]',
   /*
    * Resolved from the provider's own documentation, not inferred: the
