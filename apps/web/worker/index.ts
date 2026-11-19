@@ -52,6 +52,62 @@ class KvWaitlistStore implements WaitlistStore {
   }
 }
 
+/*
+ * Per-IP throttle on the one route that writes.
+ *
+ * WHY THIS IS HERE AT ALL
+ * Workers KV on the free plan allows 1,000 writes per day, and every signup is
+ * a write. Until now nothing stood between a script and that quota: a thousand
+ * POSTs with distinct addresses would exhaust the day's budget, and every real
+ * visitor afterwards would get "Could not save right now" until midnight UTC.
+ * The failure would at least be honest -- the 502 path below is careful about
+ * that -- but it would still be a day of lost signups bought for the price of
+ * a loop.
+ *
+ * WHAT THIS IS NOT
+ * State lives in the isolate, so this is per-isolate, not global. A spread-out
+ * attacker gets a multiple of MAX_PER_WINDOW, not MAX_PER_WINDOW. It is a
+ * speed bump that makes naive abuse uneconomic; it is NOT the real control.
+ * The real control is a Cloudflare rate-limiting rule on /api/waitlist, which
+ * the free plan includes one of. This exists because it is free, verifiable
+ * without a deploy, and cannot break anything if the dashboard rule is never
+ * added.
+ *
+ * The IP is personal data, so it is held in memory for one minute, keyed and
+ * counted and nothing else. It is never written to KV, never logged, and never
+ * put in a response.
+ */
+const WINDOW_MS = 60_000;
+const MAX_PER_WINDOW = 5;
+const MAX_TRACKED_IPS = 10_000;
+const hits = new Map<string, number[]>();
+
+function overRateLimit(ip: string, now: number): boolean {
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+
+  if (recent.length >= MAX_PER_WINDOW) {
+    hits.set(ip, recent);
+    return true;
+  }
+
+  recent.push(now);
+  hits.set(ip, recent);
+
+  /*
+   * Bound the map so a wide spread of addresses cannot grow it without limit.
+   * Dropping the oldest-inserted keys is safe: losing a counter only forgives
+   * a client, it never penalises one.
+   */
+  if (hits.size > MAX_TRACKED_IPS) {
+    for (const key of hits.keys()) {
+      hits.delete(key);
+      if (hits.size <= MAX_TRACKED_IPS) break;
+    }
+  }
+
+  return false;
+}
+
 const json = (body: unknown, status: number): Response =>
   new Response(JSON.stringify(body), {
     status,
@@ -61,6 +117,26 @@ const json = (body: unknown, status: number): Response =>
 async function handleWaitlist(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return json({ ok: false, error: 'Method not allowed — use POST.' }, 405);
+  }
+
+  /*
+   * Checked before the body is even read, so an abusive client costs us as
+   * little as possible. CF-Connecting-IP is set by Cloudflare itself and
+   * cannot be spoofed by the client; the fallback only applies off-platform
+   * (wrangler dev), where one shared bucket is fine.
+   */
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
+  if (overRateLimit(ip, Date.now())) {
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Too many attempts — please wait a minute.' }),
+      {
+        status: 429,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'retry-after': String(WINDOW_MS / 1000),
+        },
+      },
+    );
   }
 
   let body: { email?: unknown };
