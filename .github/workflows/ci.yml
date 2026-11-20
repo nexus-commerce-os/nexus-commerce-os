@@ -323,6 +323,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # why: the last step uploads Trivy's SARIF to code scanning, which needs
+      #      this. Without it the SCAN PASSES and the UPLOAD fails with
+      #      "Resource not accessible by integration", taking the job -- and
+      #      ci-gate -- down with it.
+      #
+      #      This was left out on purpose and the reasoning was wrong. The
+      #      upload had succeeded on every pull_request run, so granting a
+      #      wider scope looked like the wrong direction. It is not the same on
+      #      a push: measured on runs 44653499703 and 44651886545, the first
+      #      two pushes this branch ever received, `Trivy image scan` succeeded
+      #      and `Upload Trivy SARIF` failed. `main` already carries this
+      #      permission for exactly this reason; this lineage never found out
+      #      because until today nothing ran here.
+      #
+      #      Job 4 declares the same permission for the same reason. Scoped to
+      #      this job, not the workflow: every other job keeps contents-read.
+      security-events: write
     strategy:
       fail-fast: true
       matrix:
