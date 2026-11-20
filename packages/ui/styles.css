@@ -416,8 +416,22 @@ header.nav {
   padding: 8px 16px;
 }
 @media (max-width: 520px) {
+  /* Compact, NOT hidden.
+     This rule used to be `display: none`, which removed the only call to
+     action above the fold from every phone. `.nav-links` already disappears
+     below 820px and there is no menu button to replace it, so under 520px the
+     header was a logo and a theme toggle: on the narrowest screens the site
+     offered no way to join the waitlist without scrolling, and the waitlist is
+     the one thing this site currently does.
+     Measured on the live page with this rule applied, at 375px and at 344px
+     (the narrowest the test viewport would go): the brand ends well clear of
+     the button, `scrollWidth` never exceeds `innerWidth`, and nothing wraps.
+     `white-space: nowrap` because "Join the waitlist" breaking across two
+     lines inside a 36px-tall button is worse than either alternative. */
   .nav .btn-primary {
-    display: none;
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    white-space: nowrap;
   }
 }
 
