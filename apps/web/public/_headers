@@ -1,0 +1,46 @@
+# Security headers for honesttotal.com.
+#
+# Cloudflare Workers Static Assets reads this file from the assets directory.
+# `next build` with output: 'export' copies everything in public/ into out/,
+# which is what wrangler.toml serves, so this lands where it is read.
+#
+# Before this file existed the live site sent NONE of these headers — measured
+# on 20 November 2026: no HSTS, no CSP, no nosniff, no frame protection, no
+# referrer policy. For a site whose entire claim is honesty, and which collects
+# email addresses, that was a gap worth closing properly rather than partially.
+#
+# Free plan allows 100 rules here; this uses one.
+
+/*
+  # Force HTTPS for a year, including subdomains. No preload directive: that
+  # submits the domain to a browser-vendor list which is slow and awkward to
+  # undo, and should be a deliberate decision rather than a side effect.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+  # The site embeds no third-party anything — no analytics, no external fonts,
+  # no CDN, no tracking pixels. The privacy notice says so in those words and
+  # invites the reader to check, so the CSP is written to MATCH that claim
+  # rather than to be comfortably permissive. If someone later adds a script
+  # from somewhere else, this breaks loudly instead of quietly making the
+  # privacy page untrue.
+  #
+  # 'unsafe-inline' for styles only: Next's static export inlines critical CSS.
+  # Scripts get no such exemption.
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; upgrade-insecure-requests
+
+  # Stop browsers guessing a type we did not send.
+  X-Content-Type-Options: nosniff
+
+  # frame-ancestors above is the modern control; this is for older browsers.
+  X-Frame-Options: DENY
+
+  # Send the origin to other sites, the full path only to ourselves. A referral
+  # site should not leak which product page a visitor came from.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # The site asks for none of these, so deny them all.
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
+
+  # Isolate the browsing context.
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
