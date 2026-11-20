@@ -1,0 +1,108 @@
+# Releasing honesttotal.com
+
+The website is not the services. It ships from `release/product-catalog` as a
+Cloudflare Worker, by a path that has nothing to do with `cd-prod.yml`, AWS or
+the image pipeline. This is that path, written down because until recently it
+existed only as a command somebody remembered.
+
+Everything here was measured on 20 November 2026 unless it says otherwise.
+
+---
+
+## 1. What is actually deployed, and from where
+
+| | |
+|---|---|
+| branch | `release/product-catalog` — **not `main`** |
+| Worker | `honesttotal`, custom domains for apex and `www` |
+| assets | `apps/web/out`, from `next build` with `output: 'export'` |
+| state | Workers KV namespace bound as `WAITLIST` |
+| server routes | exactly one: `POST /api/waitlist` |
+
+`main` has no `wrangler.toml`. Merging anything into `main` changes nothing on
+the public site. This surprises people, so it is the first line of this file.
+
+## 2. Before a release
+
+- [ ] **Every legal fact filled.** `pnpm --filter @nexus/web release-gate`
+      prints what is outstanding and exits non-zero if anything is. It runs
+      automatically on `deploy:cf` and on a bare `wrangler deploy`.
+- [ ] **Contact address proven to receive mail.** Cloudflare Email Routing
+      showing a rule as Active proves the routing exists, not that a message
+      arrives. Send one to each published address and confirm it lands.
+- [ ] **CI green on the branch being deployed**, not on a rebase of it.
+- [ ] **Two repository secrets exist**: `CLOUDFLARE_API_TOKEN` scoped to *Edit
+      Cloudflare Workers* and nothing wider, and `CLOUDFLARE_ACCOUNT_ID`.
+- [ ] **Record what is live now.** `npx wrangler deployments list` in
+      `apps/web`. That version id is the rollback and nothing else records it.
+
+## 3. Deploying
+
+Preferred, because it leaves a record:
+
+> Actions → **deploy-web** → Run workflow → type `DEPLOY`.
+
+It runs the gate, lints, typechecks, builds, deploys, then checks that `/`,
+`/privacy`, `/terms` and `/faq` answer 200 and that `GET /api/waitlist` still
+answers 405. A deploy that reports success over a broken site is the failure
+worth catching.
+
+From a machine, if the workflow is unavailable:
+
+```
+pnpm --filter @nexus/web deploy:cf
+```
+
+Never `npx wrangler deploy` on its own. It works, and the `[build]` hook in
+`wrangler.toml` makes the gate run, but nothing records what was deployed or by
+whom.
+
+## 4. After deploying
+
+- [ ] `/`, `/privacy`, `/terms`, `/faq`, `/cookies`, `/disclosure` → 200
+- [ ] `GET /api/waitlist` → 405, `Content-Type: application/json`
+- [ ] A real `POST` round trip, then the same address again → `duplicate`
+- [ ] Security headers present on a page **and** on `/api/waitlist` — they come
+      from two different mechanisms and either can regress alone
+- [ ] No `Set-Cookie` on any path. The privacy notice states this as a fact a
+      reader can check, so it is a release criterion and not a nicety.
+
+## 5. Rolling back
+
+```
+cd apps/web
+npx wrangler deployments list     # find the previous version id
+npx wrangler rollback <version-id>
+```
+
+Then re-run the checks in §4 against the rolled-back site. Rollback restores
+the Worker and its assets. It does **not** restore KV contents, because
+deployments do not touch KV — a signup recorded under the bad version is still
+there afterwards, which is the behaviour you want.
+
+**Never touch during a release:** apex MX, SPF, the Email Routing DKIM records,
+or the apex/`www` custom domain bindings. None of them is part of a deploy, and
+all of them are easy to break while nearby.
+
+## 6. Things that are true today and would quietly stop being true
+
+- **Bot Fight Mode is off.** Turning it on makes Cloudflare set `__cf_bm`,
+  which makes the cookie notice false the same hour. If it is ever enabled, the
+  cookie notice and the privacy notice must change first.
+- **One rate-limiting rule exists**, on `POST /api/waitlist` only: 5 requests
+  per 10 seconds per IP, block for 10 seconds. The free plan allows exactly one
+  rule, so a second protection elsewhere means choosing between them.
+- **KV on the free plan allows 1,000 writes a day** and every signup is a
+  write. The in-Worker throttle is per-isolate and is a speed bump; the
+  Cloudflare rule is the real edge control.
+- **`_headers` does not apply to responses the Worker generates.** Anything
+  added to `/api/*` needs its headers set in `worker/index.ts`.
+
+## 7. What is still unproven
+
+Header behaviour has been verified as *present in the artifact that ships* —
+`verify-headers.mjs` fails the build otherwise — and not yet as *applied by
+Cloudflare on a live response*. `staging-verify.yml` measures exactly that
+against an isolated Worker on `workers.dev`, and needs the two secrets in §2
+before it can run. Until it has run, treat the headers as configured rather
+than confirmed.
