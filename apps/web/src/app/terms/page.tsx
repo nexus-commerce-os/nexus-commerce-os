@@ -14,16 +14,35 @@ import { SiteFooter } from '@/components/SiteFooter';
  *     usual clauses about suspending accounts or refunding orders are omitted
  *     rather than copied in. A term describing a service we do not run would be
  *     fiction with a legal veneer.
- *   - Governing law is NOT asserted. Naming a jurisdiction is a legal decision
- *     tied to an entity that does not exist yet; §08 says so plainly instead of
- *     guessing, and says local consumer law wins where it applies.
+ *   - Governing law IS now asserted, and only because the owner confirmed it.
+ *     This file used to say "not asserted", reasoning that a jurisdiction
+ *     clause is tied to an entity that does not exist yet. That reasoning was
+ *     wrong in one respect: a natural person running a business is an
+ *     accountable party too, so the absence of a COMPANY was never a reason to
+ *     leave a reader unable to tell which law applies. What was genuinely
+ *     missing was the owner's decision, which cannot be deduced from where the
+ *     visitors are or from a mailing address. It is now given: the laws of
+ *     Bangladesh. §08 states it WITHOUT PREJUDICE to mandatory consumer and
+ *     privacy rights, so that naming a law does not purport to remove rights
+ *     that nobody can waive.
  * These terms are written in plain language by a non-lawyer, and the page says
  * that rather than implying counsel it has not had.
  */
 
 const BASE = 'https://honesttotal.com';
 const CONTACT = 'hello@honesttotal.com';
-const EFFECTIVE = '5 August 2026';
+/*
+ * Confirmed by the owner against official identification. HonestTotal is the
+ * brand; this is the individual accountable for it. No identification number is
+ * recorded here and none should be -- the page needs the name and an address at
+ * which post reaches them, nothing else.
+ *
+ * ADDRESS is a MAILING address, never a registered office: an individual has no
+ * registered office, and calling it one would invent a company registration.
+ */
+const OPERATOR = 'Md Samsuzzaman';
+const ADDRESS = 'Self Help Building, Rural Development Academy, Sherpur, Bogura, Bangladesh';
+const EFFECTIVE = '20 November 2026';
 
 export const metadata: Metadata = {
   title: 'Terms — HonestTotal',
@@ -99,11 +118,11 @@ const FAQ = [
   },
   {
     q: 'Who exactly am I agreeing with?',
-    a: 'An individual. There is no incorporated company behind this site yet — it is founder-built and self-funded, as /about says. When a company exists, this page will name it, and the date at the top will change so you can see when that happened.',
+    a: 'Md Samsuzzaman, an individual, operating HonestTotal as an individually operated business. Post reaches us at Self Help Building, Rural Development Academy, Sherpur, Bogura, Bangladesh. There is no incorporated company behind this site — it is founder-built and self-funded, as /about says. If a company is ever formed, this page will name it, and the date at the top will change so you can see when that happened.',
   },
   {
     q: 'Which country’s law applies?',
-    a: 'We are not asserting one. A governing-law clause is tied to a legal entity, and there is not one yet; picking a jurisdiction now would be a guess dressed up as a term. Where you live gives you consumer rights, those rights apply regardless of what any clause on this page says.',
+    a: 'The laws of Bangladesh, where the operator is based. This page used to assert no law at all, reasoning that a governing-law clause belongs to a company that does not exist. That was the wrong reason: an individual is accountable too, and leaving you unable to tell which law applies helped nobody. The clause is expressly without prejudice to mandatory consumer-protection and privacy rights under the law that applies to you — naming Bangladeshi law does not, and is not meant to, take away rights you cannot waive. If you are in the UK or the EU, your own consumer law and your own authorities remain available to you.',
   },
   {
     q: 'Can I rely on the buying guides?',
@@ -199,8 +218,9 @@ export default function TermsPage() {
             </p>
             <p className="prelaunch" style={{ maxWidth: '58ch' }}>
               <b>Effective {EFFECTIVE}.</b> Written in plain language by the founder, not by a
-              lawyer — which is why it does not claim a jurisdiction, a company, or a service that
-              does not exist. Where your local consumer law gives you more, that law wins.
+              lawyer — which is why it does not claim a company or a service that does not exist. It
+              does name a governing law, because you are entitled to know which one applies. Where
+              your local consumer law gives you more, that law wins.
             </p>
           </div>
         </section>
@@ -243,14 +263,17 @@ export default function TermsPage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                This site is operated by <b>an individual</b>. There is no incorporated company
-                behind it yet — it is founder-built and self-funded.
+                This site is operated by <b>{OPERATOR}</b> as an individually operated business.
+                There is no incorporated company behind it — it is founder-built and self-funded.
+                Post reaches us at {ADDRESS}.
               </p>
               <p className="muted">
                 Most terms open by naming a company, a registration number and a registered office.
                 Writing one here would be the easiest sentence on the page to fabricate and the
-                least excusable. When an entity exists it will be named here and the date at the top
-                will change — see <a href="/about">About</a> for the current position.
+                least excusable, so there is none: the address above is a mailing address, not a
+                registered office, because an individual has no registered office. If a company is
+                ever formed it will be named here and the date at the top will change — see{' '}
+                <a href="/about">About</a> for the current position.
               </p>
             </div>
           </div>
@@ -418,25 +441,27 @@ export default function TermsPage() {
                   </li>
                 </ul>
               </div>
-              <div className="card blind blind-out">
+              <div className="card blind">
                 <h3>Governing law</h3>
-                <ul className="cross-list">
+                <ul className="tick-list">
                   <li>
-                    Not asserted — a jurisdiction clause belongs to an entity, and there is none
+                    These terms are governed by the laws of Bangladesh, where the operator is based
                   </li>
-                  <li>Your local consumer-protection law applies regardless of anything here</li>
                   <li>
-                    A clause naming a convenient jurisdiction would be a guess with a legal
-                    appearance
+                    Without prejudice to any mandatory consumer-protection or privacy rights that
+                    apply to you under your own law
+                  </li>
+                  <li>
+                    Those rights are not waived, limited or displaced by anything on this page
                   </li>
                 </ul>
               </div>
             </div>
             <p className="note">
-              This is the section most sites get wrong in the opposite direction — asserting a
-              forum, a waiver and an arbitration clause copied from a template, none of which was
-              considered for the actual business. We would rather have a gap we can name than a
-              clause we cannot defend.
+              This is still not the clause most sites write. There is no exclusive forum, no jury
+              waiver and no arbitration term, because none of those was considered for this business
+              and a template is not consideration. A governing law you can read is useful to you; a
+              forum clause that quietly makes a complaint impractical is useful only to us.
             </p>
           </div>
         </section>

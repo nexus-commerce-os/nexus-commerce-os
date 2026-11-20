@@ -134,7 +134,7 @@ export default function DisclosurePage() {
             </div>
             <div className="card rule-card">
               <p className="rule-quote">
-                As of August 2026, HonestTotal has <b>no active affiliate partnership</b> and{' '}
+                As of November 2026, HonestTotal has <b>no active affiliate partnership</b> and{' '}
                 <b>no live data source</b>. No link on this site currently earns us anything.
               </p>
               <p className="muted">
