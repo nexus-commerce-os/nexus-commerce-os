@@ -449,9 +449,10 @@ export default function FaqPage() {
                 usually means <b>a page needs rewriting</b>.
               </p>
               <p className="muted">
-                Write to <a href="mailto:hello@honesttotal.com">hello@honesttotal.com</a>. Questions
-                that expose a gap get added here, and if the honest answer is uncomfortable it goes
-                in with the other uncomfortable ones rather than being smoothed over.
+                Write to <a href="mailto:support@honesttotal.com">support@honesttotal.com</a>.
+                Questions that expose a gap get added here, and if the honest answer is
+                uncomfortable it goes in with the other uncomfortable ones rather than being
+                smoothed over.
               </p>
             </div>
           </div>

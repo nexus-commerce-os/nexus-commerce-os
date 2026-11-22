@@ -30,7 +30,7 @@ import { SiteFooter } from '@/components/SiteFooter';
  */
 
 const BASE = 'https://honesttotal.com';
-const CONTACT = 'hello@honesttotal.com';
+const CONTACT = 'support@honesttotal.com';
 /*
  * Confirmed by the owner against official identification. HonestTotal is the
  * brand; this is the individual accountable for it. No identification number is

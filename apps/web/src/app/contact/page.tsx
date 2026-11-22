@@ -23,13 +23,20 @@ import { SiteFooter } from '@/components/SiteFooter';
  */
 
 const BASE = 'https://honesttotal.com';
-const HELLO = 'hello@honesttotal.com';
+/*
+ * support@, not hello@. The owner named support@ as the general contact, and
+ * delivery to it has now been confirmed by a real message rather than by a
+ * routing rule showing "Active" -- which proves a rule exists, not that mail
+ * arrives. hello@ stays an active route, so anything already sent there still
+ * lands; it simply is not the address this site asks people to use.
+ */
+const SUPPORT = 'support@honesttotal.com';
 const PRIVACY = 'privacy@honesttotal.com';
 
 export const metadata: Metadata = {
   title: 'Contact — HonestTotal',
   description:
-    'Two real addresses, both read by a person: hello@honesttotal.com for anything, privacy@honesttotal.com for data requests. What we can and cannot help with.',
+    'Two real addresses, both read by a person: support@honesttotal.com for anything, privacy@honesttotal.com for data requests. What we can and cannot help with.',
   alternates: { canonical: '/contact' },
   openGraph: {
     type: 'article',
@@ -49,7 +56,7 @@ export const metadata: Metadata = {
 const ADDRESSES = [
   {
     n: 'General',
-    addr: HELLO,
+    addr: SUPPORT,
     d: 'Anything at all — a question about the method, a mistake you spotted, a merchant who wants to be listed, or a journalist with a deadline.',
     tone: 'ok',
   },
@@ -95,7 +102,7 @@ const FAQ = [
   },
   {
     q: 'What if I found a security problem?',
-    a: 'Write to hello@honesttotal.com and say so in the subject line. The site is a static export plus one Worker endpoint, so the surface is small, but reports are welcome and we will not be difficult about them. Please do not test destructively against the live site.',
+    a: 'Write to support@honesttotal.com and say so in the subject line. The site is a static export plus one Worker endpoint, so the surface is small, but reports are welcome and we will not be difficult about them. Please do not test destructively against the live site.',
   },
   {
     q: 'Can I write in a language other than English?',
@@ -334,8 +341,8 @@ export default function ContactPage() {
                 Especially if it is that we got something wrong. This site is built to be corrected.
               </p>
               <div className="hero-cta" style={{ justifyContent: 'center', marginTop: 28 }}>
-                <a className="btn btn-primary" href={`mailto:${HELLO}`}>
-                  Email {HELLO} →
+                <a className="btn btn-primary" href={`mailto:${SUPPORT}`}>
+                  Email {SUPPORT} →
                 </a>
                 <a className="btn btn-ghost" href="/about">
                   Read about the project
