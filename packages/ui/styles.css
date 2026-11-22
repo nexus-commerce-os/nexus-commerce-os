@@ -1733,6 +1733,55 @@ summary:hover {
   }
 }
 
+/* Skip link.
+ *
+ * Measured on the live site: there was none. The header is the first thing in
+ * the tab order on all 27 pages, so a keyboard or screen-reader visitor passed
+ * the brand, five nav links, the theme toggle and the waitlist button before
+ * reaching a word of content -- on every single page, every single time. WCAG
+ * 2.4.1 exists for exactly that.
+ *
+ * Hidden the same way `.sr-only` hides things, and brought back on focus, so
+ * it costs sighted visitors nothing and is the first stop for everyone else.
+ * It sits above the sticky header's stacking context on purpose: a skip link
+ * that appears underneath the thing it skips is not a skip link.
+ */
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.skip-link:focus-visible,
+.skip-link:focus {
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  z-index: 1000;
+  margin: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  /* --btn-primary-bg and #04140d, the pair the primary button already uses,
+     because they are the pair this project measured and kept.
+     The obvious-looking --accent / --accent-ink was tried first and measured
+     2.37:1 in the browser -- --accent-ink is a text colour for LIGHT surfaces,
+     not a label for the brand green. This pair measures 7.7:1, which is the
+     AAA bar the rest of the stylesheet holds itself to rather than the 4.5:1
+     AA floor. A control that only appears to people who need it is the last
+     place to accept the lower number. */
+  background: var(--btn-primary-bg);
+  color: #04140d;
+  font-weight: 600;
+  text-decoration: none;
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 /* Visually hidden but available to assistive tech. */
 .sr-only {
   position: absolute;
@@ -1911,9 +1960,17 @@ summary:hover {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid #223029;
 }
-.dp-facts h3 {
+/* Was `.dp-facts h3`. The element is now a <p>, because the demo panel is an
+ * illustration -- the page says so on its face -- and an illustration must not
+ * contribute to the document outline. It did: the heading order on the home
+ * page ran h1 -> h3, and the h3 a screen-reader user met first, immediately
+ * after "Save first. We earn later.", was "Over-ear headphones" -- a product
+ * that is not for sale, in a panel captioned "Illustrative example - not live
+ * data". The styling is unchanged. */
+.dp-facts .dp-title {
   font-size: var(--fs-lg);
   color: #f2f7f3;
+  margin: 0;
 }
 .dp-price-row {
   display: flex;

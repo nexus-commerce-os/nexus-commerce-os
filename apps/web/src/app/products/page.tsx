@@ -52,7 +52,7 @@ export const metadata: Metadata = {
 export default function ProductsPage() {
   return (
     <>
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section>
           <div className="wrap" style={{ paddingTop: 24, paddingBottom: 4 }}>
             <p className="eyebrow">Catalog · {PRODUCTS.length} products</p>

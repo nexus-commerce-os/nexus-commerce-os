@@ -100,7 +100,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {/*
+         * First focusable thing on every page, so the header is skippable.
+         * It lives here rather than in 27 headers because there is exactly one
+         * <body> and adding it per page is how it ends up on 26 of them.
+         */}
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

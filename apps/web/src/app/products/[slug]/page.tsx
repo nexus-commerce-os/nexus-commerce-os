@@ -79,7 +79,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section>
           <div className="wrap" style={{ paddingTop: 40, paddingBottom: 8 }}>
             <nav className="crumbs" aria-label="Breadcrumb">

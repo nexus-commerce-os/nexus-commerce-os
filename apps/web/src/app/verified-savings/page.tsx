@@ -182,7 +182,7 @@ export default function VerifiedSavingsPage() {
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <div className="wrap">
           <nav className="crumbs" aria-label="Breadcrumb">
             <ol>

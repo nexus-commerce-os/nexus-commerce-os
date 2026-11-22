@@ -155,7 +155,7 @@ export default function HowWeRankPage() {
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         {/* 1 — hero */}
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap">

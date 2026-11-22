@@ -94,7 +94,7 @@ export default function NotFound() {
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap">
             <span className="pill-eyebrow">
