@@ -170,7 +170,7 @@ test(
       OUTSTANDING,
       [],
       'the legal pages still contain placeholders. The owner must supply the ' +
-        'operator legal name, mailing address, contact email, email service ' +
+        'operator legal name, mailing address, contact addresses, email service ' +
         'provider, its hosting region, the hosting provider, and the governing ' +
         'jurisdiction: ' +
         OUTSTANDING.join('; '),
@@ -185,7 +185,8 @@ test('the placeholder map and the pages agree', () => {
   for (const key of [
     'operator',
     'address',
-    'contact',
+    'privacyContact',
+    'generalContact',
     'esp',
     'espCountry',
     'jurisdiction',

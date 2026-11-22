@@ -11,10 +11,14 @@
  * `scripts/release-gate.mjs` refuses a release while one is still present — the
  * pages cannot ship half-filled by accident.
  *
- * All of them are now confirmed EXCEPT `contact`, which stays blank until mail
- * to the address has actually been received. Publishing a contact address that
- * silently bounces is worse than publishing none: the privacy notice promises a
- * reply within 30 days on it.
+ * ALL OF THEM ARE NOW CONFIRMED. The last to arrive were the two contact
+ * addresses, which stayed blank until mail sent to them had actually been
+ * received -- publishing an address that silently bounces is worse than
+ * publishing none, because the notice promises a reply within 30 days on it.
+ *
+ * The gate is no longer holding anything back. If a new fact is ever needed,
+ * add it here as a bracketed token and the gate starts blocking again on its
+ * own; that is the whole mechanism and it needs no maintenance.
  */
 import React from 'react';
 import type { ReactNode } from 'react';
@@ -53,7 +57,21 @@ export const PLACEHOLDERS = {
    * correct the other.
    */
   address: 'Self Help Building, Rural Development Academy, Sherpur, Bogura, Bangladesh',
-  contact: '[CONTACT EMAIL ADDRESS]',
+  /*
+   * CONFIRMED: the owner sent real messages to both addresses and both
+   * arrived. That is what this placeholder was waiting for, and it is a
+   * different claim from "the routing rule is Active" -- a rule proves a rule
+   * exists, not that mail lands. This page promises a reply within 30 days on
+   * whichever address it prints, so it could not print one on weaker evidence.
+   *
+   * TWO tokens, not one, because the owner designated two addresses for two
+   * purposes and the privacy notice and the terms were sharing a single
+   * `contact`. A data-rights request and "something on this page is wrong"
+   * are not the same errand, and sending both to one inbox because the code
+   * had one constant is the code deciding the product.
+   */
+  privacyContact: 'privacy@honesttotal.com',
+  generalContact: 'support@honesttotal.com',
   /*
    * Resolved from the provider's own documentation, not inferred: the
    * subprocessor page states "All subprocessors below process data in the

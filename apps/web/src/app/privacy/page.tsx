@@ -20,7 +20,7 @@ export default function PrivacyNotice() {
       <h2>Who is responsible</h2>
       <p>
         The controller of your data is {P.operator}, {P.address}. For any question about this
-        notice, or to exercise any right below, write to {P.contact}.
+        notice, or to exercise any right below, write to {P.privacyContact}.
       </p>
       <p>
         HonestTotal is run by one person, not a company. There is no registered company behind it,
@@ -68,8 +68,8 @@ export default function PrivacyNotice() {
       <p>
         Because that provider stores it in {P.espCountry}, an address submitted from the UK or the
         EU leaves that area. The transfer relies on the provider&apos;s EU-U.S. Data Privacy
-        Framework certification and on Standard Contractual Clauses. Write to {P.contact} and we
-        will send you a copy of those safeguards.
+        Framework certification and on Standard Contractual Clauses. Write to {P.privacyContact} and
+        we will send you a copy of those safeguards.
       </p>
 
       <h2>How long we keep it</h2>
@@ -81,25 +81,25 @@ export default function PrivacyNotice() {
       <h2>Your rights</h2>
       <p>
         You can ask us to show you what we hold, correct it, delete it, or hand it back in a
-        portable form, and you can withdraw consent at any time. Write to {P.contact} and we will
-        act within 30 days — deletion included, and it is a real deletion, not a flag.
+        portable form, and you can withdraw consent at any time. Write to {P.privacyContact} and we
+        will act within 30 days — deletion included, and it is a real deletion, not a flag.
       </p>
       <p>
         Every launch email also carries a one-click unsubscribe. To be precise about what that does:
         it stops the emails immediately, and your address is kept and marked unsubscribed rather
         than erased — that record is what guarantees we do not mail you again by mistake. If you
-        would rather it were gone altogether, ask us at {P.contact} and we will delete it.
+        would rather it were gone altogether, ask us at {P.privacyContact} and we will delete it.
       </p>
       <p>
         If you are in the UK or the EU and think we have handled your data badly, you may complain
-        to your national data protection authority. We would rather you told us first at {P.contact}
-        .
+        to your national data protection authority. We would rather you told us first at{' '}
+        {P.privacyContact}.
       </p>
 
       <h2>Children</h2>
       <p>
         HonestTotal is not for under-16s and we do not knowingly collect their data. If you believe
-        we hold a child&apos;s address, tell us at {P.contact} and we will delete it.
+        we hold a child&apos;s address, tell us at {P.privacyContact} and we will delete it.
       </p>
 
       <h2>Changes</h2>
