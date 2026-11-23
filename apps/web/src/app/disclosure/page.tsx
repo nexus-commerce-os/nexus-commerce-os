@@ -104,7 +104,7 @@ export default function DisclosurePage() {
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         {/* hero */}
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap">

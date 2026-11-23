@@ -55,7 +55,7 @@ const galleryGrid = {
 export default function Gallery() {
   return (
     <>
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section style={{ borderTop: 0 }}>
           <div className="wrap">
             {/* the gallery is a page in its own right, so it needs a top-level

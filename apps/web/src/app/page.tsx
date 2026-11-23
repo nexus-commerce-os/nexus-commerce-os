@@ -215,7 +215,7 @@ export default function NexusLanding() {
 
       <header className="nav">
         <div className="wrap nav-in">
-          <Brand href="#top" />
+          <Brand href="#main-content" />
           <nav className="nav-links" id="navlinks">
             <a href="#how">How it works</a>
             <a href="#ranking">Commission-blind</a>
@@ -235,7 +235,7 @@ export default function NexusLanding() {
         </div>
       </header>
 
-      <main id="top">
+      <main id="main-content" tabIndex={-1}>
         <section className="hero" style={{ borderTop: 0 }}>
           <div className="wrap hero-grid">
             <div>
@@ -328,7 +328,7 @@ export default function NexusLanding() {
                   </svg>
                 </div>
                 <div className="dp-facts">
-                  <h3>Over-ear headphones</h3>
+                  <p className="dp-title">Over-ear headphones</p>
                   <p className="dp-sub">One product, five merchants, one honest total</p>
                   <div className="dp-price-row">
                     <div>
