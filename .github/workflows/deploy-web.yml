@@ -1,0 +1,120 @@
+# Deploy honesttotal.com (the Cloudflare Worker).
+#
+# WHY THIS EXISTS
+# Until now there was no CI/CD for the website at all. No workflow mentioned
+# wrangler or cloudflare; `cd-prod.yml` is the AWS/ECR/cosign pipeline for the
+# services, not the public site. The site was deployed by running
+# `pnpm deploy:cf` on a laptop, which meant no record of which commit was live,
+# no required review, and no rollback path but another laptop run.
+#
+# WHY IT IS MANUAL (workflow_dispatch) AND NOT ON PUSH
+# Deploying production on every push is a bigger change than fixing the gap,
+# and it is not mine to make. This runs only when someone starts it, and the
+# `production` environment below is where an approval requirement belongs if
+# the owner wants one. Turning it into push-to-deploy later is a one-line edit.
+#
+# BEFORE THE FIRST RUN the owner must add one repository secret:
+#   CLOUDFLARE_API_TOKEN   — a token scoped to "Edit Cloudflare Workers" for
+#                            this account, nothing wider.
+#   CLOUDFLARE_ACCOUNT_ID  — the account the Worker lives in.
+# Without them the job fails at the deploy step having changed nothing.
+
+name: deploy-web
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm publishing to honesttotal.com'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never let two deploys of the live site overlap.
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, gate, and publish
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Refuse unless explicitly confirmed
+        # Checked before checkout so a mistyped dispatch costs nothing.
+        run: |
+          if [ "${CONFIRM}" != "DEPLOY" ]; then
+            echo "::error::Type DEPLOY to confirm. Nothing was published."
+            exit 1
+          fi
+        env:
+          # Bound as an env var, never interpolated into the script body.
+          CONFIRM: ${{ inputs.confirm }}
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Refuse to run from a branch that cannot deploy
+        # WHY THIS EXISTS. These two workflows live on `main` only so GitHub
+        # will list them: a `workflow_dispatch` workflow is not dispatchable
+        # unless it exists on the DEFAULT branch, and until this file landed
+        # here the Actions API answered "workflow deploy-web.yml not found on
+        # the default branch" and neither could be started at all.
+        #
+        # But `main` cannot deploy. It has no `apps/web/wrangler.toml`, no
+        # Worker and no Cloudflare anywhere; the branch that ships is
+        # `release/product-catalog`, and the Run workflow dialog's ref picker
+        # is what selects it. Without this check, dispatching from the default
+        # ref would install dependencies, lint, typecheck and only then fail
+        # inside wrangler with something unhelpful.
+        run: |
+          if [ ! -f apps/web/wrangler.toml ]; then
+            echo "::error::No apps/web/wrangler.toml on ref '${GITHUB_REF_NAME}'. This workflow must be run against release/product-catalog — pick that branch in the Run workflow dialog."
+            exit 1
+          fi
+          echo "wrangler.toml present on ${GITHUB_REF_NAME} — this ref can deploy."
+
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Release gate (blocks on legal placeholders)
+        # Redundant: deploy:cf runs this too. Kept separate so the log shows
+        # which step refused, rather than a build failing for unclear reasons.
+        run: pnpm --filter @nexus/web release-gate
+
+      - run: pnpm --filter @nexus/web lint
+      - run: pnpm --filter @nexus/web typecheck
+
+      - name: Build and publish
+        run: pnpm --filter @nexus/web deploy:cf
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify the live site answers
+        # A deploy that reports success while the site is broken is the failure
+        # mode worth catching here, so check the pages and the one API route.
+        run: |
+          set -euo pipefail
+          for path in / /privacy /terms /faq; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://honesttotal.com${path}")
+            echo "  ${path} -> ${code}"
+            [ "$code" = "200" ] || { echo "::error::${path} returned ${code}"; exit 1; }
+          done
+          api=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://honesttotal.com/api/waitlist)
+          echo "  /api/waitlist (GET) -> ${api}"
+          [ "$api" = "405" ] || { echo "::error::waitlist route returned ${api}, expected 405"; exit 1; }
+
+      - name: How to roll back
+        if: failure()
+        run: |
+          echo "Roll back with:  npx wrangler rollback"
+          echo "List versions:   npx wrangler deployments list"
