@@ -106,13 +106,28 @@ export const PLACEHOLDERS = {
    * of error a privacy notice exists to avoid, so it was gated rather than
    * guessed until the hosting decision was actually made.
    *
+   * CORRECTED, and the correction matters more than the original error.
+   *
+   * This said "Cloudflare" because the LIVE site is a Cloudflare Worker. It is
+   * -- but the live site is built from `release/product-catalog`, and THIS is
+   * the `main` lineage, which has no `wrangler.toml`, no Worker, and no
+   * mention of wrangler or Cloudflare in any of its workflows. Measured, not
+   * assumed: `git grep -il "wrangler|cloudflare" origin/main -- .github` finds
+   * nothing, and neither does its source tree.
+   *
+   * The only integration that has ever built this branch is Vercel. So if this
+   * page is ever served, Vercel serves it, and "served by Cloudflare" would
+   * name a company that never saw the request -- the exact error the token was
+   * created to prevent, reintroduced by copying a true fact from the branch
+   * next door.
+   *
    * IF THE HOSTING EVER CHANGES, THIS SENTENCE BECOMES FALSE THE SAME DAY:
-   *   Vercel, DNS-only           -> "Vercel"
+   *   Cloudflare Worker          -> "Cloudflare" (true of the LIVE lineage)
    *   Vercel behind Cloudflare   -> BOTH process every request, and BOTH must
    *                                 be named here. A proxy does not replace a
    *                                 processor, it adds one.
    */
-  host: 'Cloudflare',
+  host: 'Vercel',
 } as const;
 
 export function LegalPage({
