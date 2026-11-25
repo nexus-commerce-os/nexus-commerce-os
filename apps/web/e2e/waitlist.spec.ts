@@ -25,9 +25,18 @@ import { expect, test, type Page } from '@playwright/test';
 // order below is part of the contract.
 test.describe.configure({ mode: 'serial' });
 
-/** Unique per run, so a "duplicate" is a duplicate of OUR address and nothing else. */
-const RUN = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const addr = (tag: string) => `pw-${tag}-${RUN}@example.com`;
+/**
+ * Unique per run, so a "duplicate" is a duplicate of OUR address and nothing
+ * else — and SHORT, which matters more than it looks.
+ *
+ * The page shows the local part back to the visitor only when it is 18
+ * characters or fewer, and says "you" otherwise (`page.tsx`). A longer
+ * generated address made the confirmation read "We'll email you", which is
+ * correct app behaviour and a broken test. Base-36 keeps the whole local part
+ * inside the limit while staying unique per run.
+ */
+const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 4)}`;
+const addr = (tag: string) => `${tag}-${RUN}@example.com`;
 
 const JS_ADDRESS = addr('js');
 const NOJS_ADDRESS = addr('nojs');
@@ -88,6 +97,12 @@ test('a new address is accepted and confirmed by name', async ({ page }) => {
 
   const ok = page.locator('.wl-ok');
   await expect(ok).toBeVisible();
+  // Guard the guard: if the address ever grows past the page's 18-character
+  // limit again, fail with THAT reason instead of a confusing text mismatch.
+  expect(
+    JS_ADDRESS.split('@')[0]!.length,
+    'the test address is too long for the page to echo it back',
+  ).toBeLessThanOrEqual(18);
   // The confirmation names the local part back to the visitor, which is the
   // only evidence on screen that the address it kept is the one they typed.
   await expect(ok).toContainText(JS_ADDRESS.split('@')[0]);

@@ -30,6 +30,25 @@ async function assertWidth(page: Page, projectName: string): Promise<number> {
 /** The breakpoint the mobile navigation switches at, from MobileNav.tsx. */
 const DESKTOP_FROM = 821;
 
+/**
+ * All text a visitor could read, with SCRIPT AND STYLE REMOVED.
+ *
+ * `innerText` returns only laid-out text and is not a dependable way to ask
+ * "is this on the page". Raw `textContent` goes too far the other way: Next's
+ * static export embeds its whole flight payload in inline
+ * `self.__next_f.push(...)` scripts, and that payload is full of React
+ * back-references like `$1`, which match a currency pattern and made a
+ * spec-only page look like it was quoting prices. Neither is what "what is on
+ * this page" means; this is.
+ */
+async function visibleText(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const clone = document.body.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('script, style, noscript, template').forEach((n) => n.remove());
+    return clone.textContent ?? '';
+  });
+}
+
 test.describe('every width', () => {
   test('React hydrates — the page is live, not just served', async ({ page }, info) => {
     const errors: string[] = [];
@@ -328,7 +347,7 @@ test.describe('the catalog pages hold up at this width', () => {
 
     // Specifications only — no price, no merchant, no buy link. This is the
     // claim the whole catalog rests on, so it is checked on every width.
-    const body = await page.locator('body').innerText();
+    const body = await visibleText(page);
     expect(body).toMatch(/specification/i);
     expect(body, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
   });
@@ -403,11 +422,12 @@ test.describe('the catalog pages hold up at this width', () => {
     await expect(sourceLink, 'the detail page must link its source').toBeVisible();
 
     /*
-     * The price check uses textContent, the opposite way round on purpose: a
-     * currency amount must be absent from the DOM ENTIRELY, not merely out of
-     * sight. A hidden price is still a price we are not allowed to publish.
+     * The price check reads the whole rendered DOM rather than one locator,
+     * the opposite way round on purpose: a currency amount must be absent
+     * everywhere, not merely out of sight. A hidden price is still a price we
+     * are not allowed to publish.
      */
-    const domText = (await page.locator('body').textContent()) ?? '';
+    const domText = await visibleText(page);
     expect(domText, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
   });
 });
