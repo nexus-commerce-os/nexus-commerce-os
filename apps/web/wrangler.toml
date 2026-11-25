@@ -48,7 +48,7 @@ enabled = true
 # enforces on `deploy` and `versions upload` and merely reports on `dev`, so
 # previewing the site locally is never blocked by an unfilled legal fact.
 [build]
-command = "node scripts/release-gate.mjs"
+command = "node scripts/release-gate.mjs && node scripts/verify-deploy-provenance.mjs"
 
 [assets]
 directory = "./out"
