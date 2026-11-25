@@ -2,8 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  AgentPoint,
-  AgentTerminal,
   Brand,
   Button,
   Card,
@@ -54,6 +52,14 @@ export default function NexusLanding() {
   const [who, setWho] = useState('you');
   const [note, setNote] = useState(DEFAULT_NOTE);
   const [noteErr, setNoteErr] = useState(false);
+  /*
+   * `demoOpen` starts true so the server-rendered HTML carries the panel open;
+   * the effect below closes it on a narrow viewport once scripts run.
+   * `mounted` gates the toggle button for the same reason — a button that does
+   * nothing without JavaScript is worse than no button.
+   */
+  const [demoOpen, setDemoOpen] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -103,6 +109,19 @@ export default function NexusLanding() {
       setBusy(false);
     }
   };
+
+  /*
+   * Collapse the hero illustration on a phone, once.
+   *
+   * Separate from the big effect below so it runs on mount and does not get
+   * tangled in the observer teardown. `mounted` flips here too, which is what
+   * reveals the toggle button — both facts ("scripts are running" and "this is
+   * a narrow screen") are established in the same place.
+   */
+  useEffect(() => {
+    setMounted(true);
+    if (window.matchMedia('(max-width: 820px)').matches) setDemoOpen(false);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -220,7 +239,7 @@ export default function NexusLanding() {
             <a href="#how">How it works</a>
             <a href="#ranking">Commission-blind</a>
             <a href="#savings">Verified savings</a>
-            <a href="#agent">For developers</a>
+            <a href="/for-developers">For developers</a>
             <a href="#faq">FAQ</a>
           </nav>
           <button
@@ -298,8 +317,33 @@ export default function NexusLanding() {
              * we invented would be a fabricated claim attributed to a real
              * company — and we have no relationship with any of them to invoke.
              */}
+            {/*
+             * On a phone this illustration is 1,233px of the hero's 2,059px —
+             * more than half the first screen's height, for something the badge
+             * already calls an ILLUSTRATION and that `role="img"` already
+             * summarises in one aria-label. So on narrow screens it collapses
+             * behind a disclosure.
+             *
+             * It starts OPEN and JavaScript closes it, never the other way
+             * round: the static HTML a no-JS phone receives is therefore the
+             * panel in full, exactly as before, and the toggle only appears
+             * once `mounted` proves scripts are running. Shipping it closed by
+             * default would have hidden it permanently from anyone without JS.
+             */}
+            {mounted && (
+              <button
+                type="button"
+                className="demo-toggle"
+                aria-expanded={demoOpen}
+                aria-controls="hero-demo-panel"
+                onClick={() => setDemoOpen((open) => !open)}
+              >
+                {demoOpen ? 'Hide the example' : 'See an illustrated example'}
+              </button>
+            )}
             <div
-              className="demo-panel reveal"
+              id="hero-demo-panel"
+              className={`demo-panel reveal${demoOpen ? ' is-open' : ''}`}
               data-countup-root
               role="img"
               aria-label="Illustration of a price comparison: five merchants checked, best price 328 dollars, 47 dollars 12 cents below the typical price"
@@ -582,72 +626,6 @@ export default function NexusLanding() {
                 <h3>Returned</h3>
                 <p>A cancellation or return reverses it — transparently, per published terms.</p>
               </Card>
-            </div>
-          </div>
-        </section>
-
-        <section id="agent">
-          <div className="wrap">
-            <SectionHead
-              eyebrow="Agent-first · built for developers"
-              title="Every capability is an API before it's a screen."
-            >
-              The tools the HonestTotal agent will call are a first-class public surface — the same
-              ones a partner&apos;s assistant can call, scope-gated. The web app is just one
-              renderer.
-            </SectionHead>
-            <div className="agent-grid">
-              <div>
-                <div className="agent-points">
-                  <AgentPoint
-                    index="01"
-                    title="Natural language in, structured deal out"
-                    className="reveal"
-                  >
-                    Ask in plain words; get a ranked, machine-readable offer with a signed hand-off
-                    link.
-                  </AgentPoint>
-                  <AgentPoint
-                    index="02"
-                    title="Disclosure travels with the response"
-                    className="reveal"
-                  >
-                    Every API response will carry a <span className="mono">disclosure</span> field,
-                    verbalized before any redirect. The API is designed, not yet built.
-                  </AgentPoint>
-                  <AgentPoint index="03" title="No unverified price, ever" className="reveal">
-                    Prices will be deterministically verified before they are shown, so a
-                    hallucinated price cannot reach you. No price is served today.
-                  </AgentPoint>
-                </div>
-              </div>
-              <AgentTerminal
-                session="nexus-agent · session"
-                className="reveal"
-                ariaLabel="Illustrative example conversation with the HonestTotal agent"
-              >
-                <div>
-                  <span className="u">you ›</span> find the best price on a pair of over-ear
-                  headphones — authorized sellers only
-                </div>
-                <div style={{ marginTop: '10px' }}>
-                  <span className="n">nexus ›</span> Best real price:{' '}
-                  <span className="n">$328.00</span> at Merchant A
-                </div>
-                <div>
-                  <span className="muted2">
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ranked by value, not payout · illustrative
-                    exchange, no live data
-                  </span>
-                </div>
-                <div className="disc" style={{ marginTop: '8px' }}>
-                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;heads up: I may earn a commission — it never
-                  changes my pick.
-                </div>
-                <div>
-                  <span className="cta-line">Hand off to Merchant A →</span>
-                </div>
-              </AgentTerminal>
             </div>
           </div>
         </section>

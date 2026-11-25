@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/how-we-rank`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/verified-savings`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE}/commission-blind`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE}/for-developers`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${BASE}/guides/over-ear-headphones`, changeFrequency: 'monthly', priority: 0.8 },
     {
       url: `${BASE}/guides/over-ear-vs-on-ear-vs-in-ear`,

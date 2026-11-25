@@ -58,6 +58,21 @@ is unsupported on the Node 20 that CI stage 3 runs — while `node --test dist`
 now builds the file list itself and **fails if a test source produced no
 compiled suite**, so a silently empty run cannot go green.
 
+### Exact next step
+
+Shorten the home page, in this order, each its own commit so a bad call is
+cheap to undo:
+
+1. ~~Move `#agent` ("For developers", 970px) to `/for-developers`~~ **done** —
+   home page measured 9,754px → **8,784px** at 768 wide, the exact height the
+   section occupied. Linked from the header nav, the footer and the sitemap.
+2. Cut the hero (2,234px) to roughly one viewport: the claim, the proof row
+   and one call to action. The illustration below it is already labelled
+   "ILLUSTRATION — not live data"; keep that label wherever it lands.
+3. Re-measure at 375 / 768 / 1280 and record the numbers here. The target is
+   a home page under ~5,000px at 768, and the measurement is the evidence —
+   not an impression that it "feels shorter".
+
 ## Phase 2B — Commerce intelligence
 
 | | item | state | blocked by |
@@ -99,11 +114,11 @@ surface is worse than no admin surface.
 |---|---|---|
 | ✅ | skip link, heading order, catalog touch targets | WCAG 2.4.1 and 2.5.8 |
 | ✅ | mobile header keeps the primary call to action | measured at 375px and 344px |
-| ⬜ | **mobile navigation** — `.nav-links` is hidden below 820px with no menu | the footer carries all 19 links, so nothing is unreachable, but there is no header nav on a phone |
-| ⬜ | shorten the home page | currently 7,251px tall at 1280 wide |
-| ⬜ | search-first discovery surface | search exists on the withheld catalog page |
+| ✅ | **mobile navigation** | PR #121: a 44x44 disclosure button injected once from `layout.tsx`, Escape closes and returns focus, measured at 375/768/1024 |
+| ⬜ | shorten the home page | **measured at 768px wide, section by section** — hero 2,234px · proof-strip 384 · how 771 · ranking 983 · savings 727 · agent 970 · trust 856 · (unnamed) 544 · faq 671 · cta 511 = 8,651px of sections. The two biggest wins, in order: the hero (2,234px, most of it a mock illustration) and "For developers" (`#agent`, 970px) which is a developer pitch sitting in the middle of a shopper's page and belongs on its own route. |
+| ⬜ | search-first discovery surface | **blocked on honesty, not on engineering.** The catalog is withheld (all 11 URLs are a real 404), so a prominent search box on the home page would be a control that searches nothing — which the founder's own instruction forbids. The buildable honest version is a search over the pages that DO exist (guides, FAQ, how-we-rank, commission-blind, verified-savings); that is real and worth doing. A product search ships when there is a product corpus. |
 | ⬜ | category navigation | — |
-| ⬜ | comparison layout | — |
+| ⬜ | comparison layout | domain side is done and tested (`rankByTotal`, `allInPrice`, `comparableTotal` in `@nexus/shared`); the UI waits on a real corpus for the same reason as search |
 | ⬜ | price-verification and source indicators | the catalog already labels every spec with its source and date |
 | ⬜ | empty states | — |
 
