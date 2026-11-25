@@ -214,3 +214,117 @@ all. Both gaps are now closed.
 | no authorized product feed | real prices, availability, merchant offers | owner — commercial agreement |
 
 Everything else on this page is ordinary engineering and needs no permission.
+
+---
+
+# Status, 26 November 2026
+
+Everything above about the CSP decision is now **history**: option B shipped,
+React hydrates in production, and the catalog is no longer blocked by it. What
+follows is the current state.
+
+## Landed
+
+| PR | what | into |
+|---|---|---|
+| #123 | nonce CSP, provenance gate, homepage consolidation | `release/product-catalog` |
+| #124 | artifact manifest extended to cover the **Worker bundle** | `release/product-catalog` |
+| #125 | **CJ feed ingestion, reconciliation, Postgres persistence** | `main` |
+| #126 | source-terms audit, 8 of 10 records quarantined | `release/product-catalog` |
+| #127 | the search box suggested three queries matching nothing | `release/product-catalog` |
+| #128 | Playwright at eight exact widths, wired into `ci-gate` | open — CI is its first real run |
+
+`main` and `release/product-catalog` are still separate lineages: `main` holds
+the services, `release/product-catalog` holds `wrangler.toml` and the deploy.
+**The feed pipeline is therefore merged but not deployed, because nothing on
+the release lineage consumes it yet.** That is the next structural job, and it
+is bigger than it looks: the two lineages have different data flows, so nothing
+can simply be copied across.
+
+## The automation engine exists, and what it still lacks
+
+PR #125 is the core of the automation-first design, verified against a real
+PostgreSQL in CI — 139 tests, 131 pass, 0 fail, and **0 Postgres tests
+skipped**. Of the fifteen pipeline capabilities, this covers the middle of the
+chain:
+
+| # | capability | state |
+|---|---|---|
+| 2 | CSV/XML/JSON/ZIP feed ingestion | **done** (`feed/archive.ts`, `feed/cj-shopping-feed.ts`) |
+| 3 | automatic product creation and updates | **done** (`sync/import-feed.ts`) |
+| 6 | GTIN/MPN-based matching | **partial** — identity is `(merchant_id, merchant_offer_id)`; GTIN matching across merchants is not built |
+| 8 | automatic price and stock updates | **done** |
+| 9 | historical price tracking | **done** — records movement, not sightings |
+| 13 | deactivation of expired offers | **done** — absence marks inactive, never deletes |
+| 14 | retry, failure recovery, monitoring | **partial** — transactional rollback, an import ledger and quarantine exist; no retry policy, no alerting |
+| 1 | **scheduled feed retrieval** | **not built** — an archive is handed to the package; it fetches nothing |
+| 4 | automatic category classification | **not built** |
+| 5 | authorized image ingestion | **not built** |
+| 7 | multi-merchant offer matching | **not built** — needs #6 first |
+| 10 | commission-independent total-cost ranking | **primitives only** (`packages/shared/src/offer.ts`) |
+| 11 | affiliate link generation | **not built**, and deliberately disabled |
+| 12 | automatic publication of eligible products | **not built** |
+| 15 | scalable database architecture | **done** for this shape — see the identity note in #125 |
+
+The honest summary: **the pipeline can ingest and reconcile an archive
+correctly. It cannot yet go and get one, classify what it finds, or match the
+same product across two merchants.** Items 1, 4, 6 and 7 are the next
+increment, and none of them needs a merchant approval to build.
+
+## Why the hand-transcribed catalog is a dead end
+
+The source-terms audit (`docs/engineering/source-terms-audit.md`) settled this.
+Six of nine manufacturer domains have terms that bar reproduction, commercial
+use or automated extraction with no carve-out for factual data; two could not
+be read at all. **2 of 10 records are eligible**, and they are in different
+categories, so side-by-side comparison — the central feature — cannot be built
+on them at all.
+
+This is not a setback to work around. It is the measurement that confirms the
+automation-first design was right: an authorized feed carries reproduction
+rights **with the agreement**, which is exactly what the manufacturers' terms
+withhold. One authorized merchant feed has more comparable products than this
+catalog will ever have.
+
+## Next, in order
+
+1. **Scheduled retrieval** (pipeline #1) — a Cloudflare cron that fetches an
+   archive and hands it to the existing importer. The importer is done and
+   tested; this is the missing front end.
+2. **GTIN/MPN matching and multi-merchant offers** (#6, #7) — the prerequisite
+   for comparison across merchants, and for ranking to mean anything.
+3. **Auth and RBAC**, then the admin dashboard — in that order, because the
+   dashboard's job is to control and monitor the automation, and an
+   unauthenticated control surface for a data pipeline is worse than none.
+4. **Playwright in CI** at 320/375/390/412/768/1024/1440/1920, asserting
+   `window.innerWidth` — now PR #128, wired into `ci-gate` and run against
+   `wrangler dev` so the Worker's CSP and waitlist are exercised too. Two
+   Chromium installs failed on the dev machine, so **CI is the first place it
+   actually runs** and it is not claimed as passing until it does.
+
+## What production verification found that source review could not
+
+The catalog shipped, and then driving the real search box on the live site
+showed the placeholder read `e.g. OLED, NVMe, tenkeyless` — three terms
+matching the LG television, the Samsung SSD and a keyboard, **all quarantined**.
+Measured live: OLED 0 results, NVMe 0, tenkeyless 0, while `Sennheiser` → 1 and
+the model number `508824` → 1.
+
+Search was never broken. The box's own advice matched nothing, which is the
+same dishonesty as a decorative control and is invisible to a test that only
+asks whether search narrows. Fixed in #127 by deriving the hints from published
+data, with a gate check that refuses a hard-coded `e.g. ...` literal outright.
+
+**The lesson worth keeping:** a fixture or a hint that names a specific product
+goes stale the moment eligibility changes — and eligibility will change again,
+since two records are quarantined only because their terms could not be read.
+Two search tests had already gone stale the same way.
+
+## Still blocked on something engineering cannot fix
+
+| blocker | what it stops | who |
+|---|---|---|
+| no affiliate network approval | any real affiliate link, commission data, referral revenue | owner — commercial agreement |
+| no authorized feed beyond the two CJ exports | a live catalog rather than two archived days | owner — commercial agreement |
+| legal sign-off on the two eligible records | certainty rather than a reasonable position on Sennheiser and Das Keyboard | owner — counsel |
+| Keychron and Crucial terms unreadable by automation | clearing or confirming those two records | owner, or a human reading the pages |
