@@ -1,18 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Brand,
-  Button,
-  Card,
-  Eyebrow,
-  FeatureCard,
-  MetricStat,
-  PhaseTag,
-  SectionHead,
-  StatePill,
-  Step,
-} from '@nexus/ui';
+import { Brand, Button, Eyebrow, MetricStat, PhaseTag, SectionHead, Step } from '@nexus/ui';
 
 import { SiteFooter } from '@/components/SiteFooter';
 
@@ -493,21 +482,14 @@ export default function NexusLanding() {
           </div>
         </section>
 
-        <div className="promise-band">
-          <div className="wrap">
-            <Eyebrow>Our promise</Eyebrow>
-            <p className="q reveal">
-              HonestTotal works for the <em>buyer</em> — never for whoever pays us most.
-            </p>
-            <p className="sub reveal">
-              Everything below is a published rule we can be held to, not a description of software
-              already running. The recommendation function is built so it cannot see commission, and
-              we will count a saving as real only after the merchant confirms it. If we can&apos;t
-              prove it, we don&apos;t claim it.
-            </p>
-          </div>
-        </div>
-
+        {/*
+         * The "Our promise" band was here. It said HonestTotal works for the
+         * buyer, never for whoever pays us most — which is what the hero
+         * paragraph two screens above already says, in nearly the same words,
+         * and what the Trust section below says again. Three statements of one
+         * claim do not make it three times as true; they make the page longer
+         * and the claim cheaper. The hero keeps it.
+         */}
         <section id="how">
           <div className="wrap">
             <SectionHead eyebrow="The model" title="A referral layer, not a checkout.">
@@ -535,159 +517,93 @@ export default function NexusLanding() {
           </div>
         </section>
 
+        {/*
+         * One section where there were three.
+         *
+         * `#ranking` and `#savings` each restated, at full length, an argument
+         * that already has its own page — /commission-blind and
+         * /verified-savings — and `#how` above had just made the same points a
+         * third time. On a phone those two sections alone were 2,255px of
+         * repetition, which is most of the reason the page ran to 9,583px.
+         *
+         * Nothing is lost: every claim still exists in full, on the page
+         * written to carry it, and each is linked from here. A landing page's
+         * job is to state the promise and let the reader choose which part to
+         * check — not to be the whole argument.
+         */}
         <section id="ranking">
           <div className="wrap">
             <SectionHead
-              eyebrow="Commission-blind by design"
+              eyebrow="Why trust the order"
               title="The result that's best for you sits on top."
             >
-              Most &quot;deal&quot; sites quietly sort by what pays them. The rule here is that
-              commission is never given to the ordering function at all. The test that will enforce
-              it is specified and <b>not yet running</b> — there is no ranker to test.
+              Most &quot;deal&quot; sites quietly sort by what pays them. Here, commission is never
+              given to the ordering function at all — and a saving is only counted once the network
+              has confirmed it. Both rules are written down, and both are checkable.
             </SectionHead>
-            {/*
-              These two columns contain invented prices. The hero demo panel
-              carries an ILLUSTRATION badge; this block did not, which made it
-              the one place on the site where fabricated figures appeared
-              unlabelled. Labelled here in the same words rather than removed,
-              because the contrast is what the section is explaining.
-            */}
-            <p className="proof-cap" style={{ marginBottom: 14 }}>
-              Illustration — invented figures, placeholder merchants, no live data.
-            </p>
-            <div className="rank">
-              <Card className="rank-card reveal">
-                <h3>
-                  <span className="dot" style={{ background: 'var(--accent)' }} /> HonestTotal —
-                  ranked by your value
-                </h3>
-                <div className="row">
-                  <span>Merchant A</span>
-                  <span className="price">$328.00</span>
-                  <span className="tagpill win">Top pick</span>
-                </div>
-                <div className="row">
-                  <span>Merchant B</span>
-                  <span className="price">$339.50</span>
-                  <span className="tagpill">2nd</span>
-                </div>
-                <div className="row">
-                  <span>Merchant C</span>
-                  <span className="price">$351.00</span>
-                  <span className="tagpill">3rd</span>
-                </div>
-              </Card>
-              <Card className="rank-card reveal">
-                <h3>
-                  <span className="dot" style={{ background: 'var(--amber)' }} /> Typical
-                  &quot;deal&quot; site — ranked by payout
-                </h3>
-                <div className="row">
-                  <span>Merchant C</span>
-                  <span className="price">$351.00</span>
-                  <span className="tagpill paid">Pays most</span>
-                </div>
-                <div className="row">
-                  <span>Merchant B</span>
-                  <span className="price">$339.50</span>
-                  <span className="tagpill">2nd</span>
-                </div>
-                <div className="row">
-                  <span>Merchant A</span>
-                  <span className="price">$328.00</span>
-                  <span className="tagpill">Buried</span>
-                </div>
-              </Card>
-            </div>
-            {/*
-              This section summarises the rule; the page states it in full,
-              including what would count as breaking it. Until now there was no
-              way to get from here to there — a reader who stopped at this
-              section had to find the page in the footer.
-            */}
-            <p style={{ marginTop: 22 }}>
-              <a href="/commission-blind">
-                Read the full commission-blind rule, and how it can be audited →
+            <div className="deep-links">
+              <a className="deep-link" href="/how-we-rank">
+                <span className="deep-link-title">How we rank</span>
+                <span className="deep-link-note">
+                  The full method, the inputs it is given, and the ones it is not.
+                </span>
               </a>
-            </p>
-          </div>
-        </section>
-
-        <section id="savings">
-          <div className="wrap">
-            <SectionHead
-              eyebrow="Verified Money Saved · the north star"
-              title="Every saving has an honest state."
-            >
-              We won&apos;t show you money you might not keep. A figure moves through four states,
-              and only <b>Confirmed</b> counts toward your Verified Money Saved.
-            </SectionHead>
-            <div className="life">
-              <Card className="life-card reveal">
-                <StatePill state="estimated">Estimated</StatePill>
-                <h3>Projected</h3>
-                <p>Before you buy — clearly labelled an estimate, never a guarantee.</p>
-                <span className="arrow">→</span>
-              </Card>
-              <Card className="life-card reveal">
-                <StatePill state="pending">Pending</StatePill>
-                <h3>Awaiting confirm</h3>
-                <p>
-                  You bought; we&apos;re waiting on the network&apos;s confirmation and the return
-                  window.
-                </p>
-                <span className="arrow">→</span>
-              </Card>
-              <Card className="life-card reveal">
-                <StatePill state="confirmed">Confirmed</StatePill>
-                <h3>Counts toward VMS</h3>
-                <p>
-                  Network-confirmed and past the hold period. The only state that&apos;s truly
-                  yours.
-                </p>
-                <span className="arrow">→</span>
-              </Card>
-              <Card className="life-card reveal">
-                <StatePill state="reversed">Reversed</StatePill>
-                <h3>Returned</h3>
-                <p>A cancellation or return reverses it — transparently, per published terms.</p>
-              </Card>
+              <a className="deep-link" href="/commission-blind">
+                <span className="deep-link-title">Commission-blind</span>
+                <span className="deep-link-note">
+                  Why money cannot reach the ranking, and how that is meant to be enforced.
+                </span>
+              </a>
+              <a className="deep-link" href="/verified-savings">
+                <span className="deep-link-title">Verified savings</span>
+                <span className="deep-link-note">
+                  What counts as a saving, what does not, and why the figure is $0.00 today.
+                </span>
+              </a>
             </div>
           </div>
         </section>
 
+        {/*
+         * Six promises, as a list rather than six full-width cards.
+         *
+         * As cards these stacked to 1,454px on a phone — the largest block on
+         * the page — to carry six sentences. The claims are unchanged word for
+         * word; only the furniture around them is gone.
+         */}
         <section id="trust">
           <div className="wrap">
             <SectionHead
               eyebrow="Trust & transparency"
               title="Promises we engineered, not just wrote."
             />
-            <div className="trust">
-              <FeatureCard icon="%" title="Disclosed, every time" className="reveal">
-                Before any affiliate link, the agent tells you it may earn a commission — and that
-                it never changes the recommendation (FTC-aligned).
-              </FeatureCard>
-              <FeatureCard icon="⌘" title="Authorized data only" className="reveal">
-                Official APIs, licensed feeds, and affiliate networks. No scraping, no copyright
-                shortcuts — legitimacy is built in.
-              </FeatureCard>
-              <FeatureCard icon="=" title="Un-buyable ranking" className="reveal">
-                Sponsored placements are always labelled and visually distinct. Commission can never
-                raise a product&apos;s rank.
-              </FeatureCard>
-              <FeatureCard icon="↔" title="No custody" className="reveal">
-                HonestTotal never becomes merchant of record. You pay the merchant directly through
-                a signed hand-off.
-              </FeatureCard>
-              <FeatureCard icon="◈" title="Your data stays yours" className="reveal">
-                Personalization will be a feature you control, not surveillance. Today nothing
-                personal is collected at all — see the privacy page.
-              </FeatureCard>
-              <FeatureCard icon="✓" title="Honest by metric" className="reveal">
-                Our north star is Verified Money Saved. It counts only confirmed savings — so
-                it&apos;s falsifiable, not marketing.
-              </FeatureCard>
-            </div>
+            <ul className="promises">
+              <li>
+                <b>Disclosed, every time.</b> Before any affiliate link, the agent tells you it may
+                earn a commission — and that it never changes the recommendation (FTC-aligned).
+              </li>
+              <li>
+                <b>Authorized data only.</b> Official APIs, licensed feeds and affiliate networks.
+                No scraping, no copyright shortcuts.
+              </li>
+              <li>
+                <b>Un-buyable ranking.</b> Sponsored placements are always labelled and visually
+                distinct. Commission can never raise a product&apos;s rank.
+              </li>
+              <li>
+                <b>No custody.</b> HonestTotal never becomes merchant of record. You pay the
+                merchant directly through a signed hand-off.
+              </li>
+              <li>
+                <b>Your data stays yours.</b> Personalization will be a feature you control, not
+                surveillance. Today nothing personal is collected at all — see the{' '}
+                <a href="/privacy">privacy page</a>.
+              </li>
+              <li>
+                <b>Honest by metric.</b> Our north star is Verified Money Saved. It counts only
+                confirmed savings, so it is falsifiable rather than marketing.
+              </li>
+            </ul>
           </div>
         </section>
 

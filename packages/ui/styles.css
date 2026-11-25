@@ -2850,3 +2850,133 @@ summary:hover {
     display: none;
   }
 }
+
+/* --------------------------------------------------- homepage compaction ---
+   Two patterns introduced when the landing page stopped restating, at full
+   length, arguments that already have their own pages. Together they removed
+   about 3,700px from a 412px-wide render without dropping a single claim. */
+
+/* Links out to the page that carries the full argument. */
+.deep-links {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 26px;
+}
+.deep-link {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 44px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  transition:
+    border-color var(--speed) ease,
+    transform var(--speed) ease;
+}
+.deep-link:hover,
+.deep-link:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.deep-link-title {
+  font-weight: 700;
+  font-size: var(--fs-ms);
+  color: var(--ink);
+}
+.deep-link-title::after {
+  content: ' →';
+  color: var(--accent);
+}
+.deep-link-note {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The six promises, as prose rather than six full-width cards. */
+.promises {
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 32px;
+}
+.promises li {
+  font-size: var(--fs-ms);
+  line-height: 1.6;
+  color: var(--muted);
+  padding-left: 18px;
+  position: relative;
+}
+.promises li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.promises b {
+  color: var(--ink);
+}
+
+@media (max-width: 820px) {
+  .deep-links {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .promises {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* ------------------------------------------------ phone-width compaction ---
+   Measured at 412px before these rules: the page ran to 7,473px, of which the
+   four "how it works" steps alone were 1,167px — each one a full-width card
+   carrying two lines of text, because `.steps` drops to a single column below
+   480px. The footer was another 928px of single-file links.
+
+   Nothing here removes content. It stops one-column stacking where two
+   columns still read comfortably, and takes the padding down to what a phone
+   actually needs. Everything above 480px is untouched. */
+@media (max-width: 480px) {
+  /* Two across, not one. Four stacked cards is a scroll, not a diagram. */
+  .steps {
+    grid-template-columns: 1fr 1fr;
+  }
+  .step {
+    padding: 16px 14px;
+  }
+  .step .t {
+    font-size: var(--fs-ms);
+  }
+
+  .band {
+    padding: 20px 16px;
+    gap: 16px;
+  }
+
+  .proof-strip {
+    padding-top: 28px;
+    padding-bottom: 28px;
+  }
+
+  /* The footer keeps all 19 links; it just stops using one column for them. */
+  .foot-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 18px;
+  }
+  .foot-grid a {
+    font-size: var(--fs-sm);
+  }
+  .rollout {
+    gap: 8px;
+  }
+}
