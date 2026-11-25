@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint src worker",
     "typecheck": "tsc --noEmit && tsc -p worker --noEmit",
-    "deploy:cf": "node scripts/release-gate.mjs --enforce && next build && wrangler deploy",
+    "deploy:cf": "node scripts/release-gate.mjs --enforce && pnpm run build && wrangler deploy",
     "preview:cf": "next build && wrangler dev",
     "verify:footer": "node scripts/verify-footer.mjs",
     "verify:merchants": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-merchants.mjs",
