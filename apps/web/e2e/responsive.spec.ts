@@ -172,9 +172,16 @@ test.describe('CSP is enforced, not merely declared', () => {
     const csp = response!.headers()['content-security-policy'] ?? '';
     expect(csp, 'no CSP on the document').toContain('script-src');
     expect(csp, 'script-src carries no nonce').toMatch(/'nonce-[A-Za-z0-9+/=]+'/);
-    // The whole point of the nonce approach: these must never come back.
-    expect(csp).not.toContain("'unsafe-inline'");
-    expect(csp).not.toContain("'unsafe-eval'");
+    // ONLY the script-src directive. This originally tested the whole header
+    // and failed at every width, because `style-src 'self' 'unsafe-inline'` is
+    // present, intended and unrelated: inline STYLE is not script execution.
+    // Testing the whole string made a correct policy look broken, which is
+    // worse than not testing it — a check that cries wolf gets switched off.
+    const scriptSrc = csp.match(/script-src ([^;]*)/)?.[1] ?? '';
+    expect(scriptSrc, 'script-src must not permit arbitrary inline script').not.toContain(
+      "'unsafe-inline'",
+    );
+    expect(scriptSrc, 'script-src must not permit eval').not.toContain("'unsafe-eval'");
     // HTML carrying a nonce must not be stored by a shared cache, or the nonce
     // is reused and stops being a nonce.
     expect(response!.headers()['cache-control']).toBe('no-store');
@@ -201,13 +208,49 @@ test.describe('the waitlist works without a mouse and without JavaScript', () =>
     const email = page.locator('input[type="email"][name="email"]').first();
     await expect(email, 'the waitlist input must be reachable').toBeVisible();
 
-    // A unique address per run, so a repeat is a real repeat.
+    /*
+     * THERE ARE TWO CORRECT OUTCOMES, and the first version of this test knew
+     * only one of them.
+     *
+     *   React running -> `onSubmit` calls preventDefault, posts with fetch and
+     *                    renders `.wl-ok`. The URL never changes.
+     *   No JavaScript -> the native form posts and the Worker answers 303 to
+     *                    /?joined=<outcome>.
+     *
+     * Asserting only the URL meant asserting the no-JS path with JS enabled.
+     * It failed at 320 and 375 and PASSED at 390 and above — not because those
+     * widths behave differently, but because hydration had not finished there
+     * when Enter was pressed, so the native submit still happened. A test whose
+     * result depends on winning a race is worse than no test.
+     *
+     * So: wait for hydration, then accept either real outcome.
+     */
+    await page.waitForFunction(
+      () => {
+        const root = document.querySelector('body > div, #__next, main');
+        return root ? Object.keys(root).some((k) => k.startsWith('__react')) : false;
+      },
+      undefined,
+      { timeout: 15_000 },
+    );
+
+    // A unique address per run, so a repeat is a real repeat. CI runs this
+    // against `wrangler dev --local`, whose KV is a local simulation, so no
+    // production data is touched.
     const address = `pw-${Date.now()}-${info.project.name}@example.com`;
     await email.fill(address);
     await email.press('Enter');
 
-    // The Worker answers a form post with a 303 back to /?joined=<outcome>.
-    await expect.poll(() => page.url(), { timeout: 15_000 }).toMatch(/[?&]joined=[a-z-]+/);
+    await expect
+      .poll(
+        async () => {
+          if (/[?&]joined=[a-z-]+/.test(page.url())) return 'redirected';
+          if ((await page.locator('.wl-ok').count()) > 0) return 'confirmed';
+          return 'nothing yet';
+        },
+        { timeout: 15_000 },
+      )
+      .not.toBe('nothing yet');
   });
 });
 
