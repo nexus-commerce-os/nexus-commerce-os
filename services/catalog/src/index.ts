@@ -133,3 +133,47 @@ export {
 } from './sync/reconcile';
 
 export { importFeedArchive, type ImportOptions, type ImportResult } from './sync/import-feed';
+
+/*
+ * RETRIEVAL — going and getting the feed, which this package previously could
+ * not do. An archive was handed to it; it fetched nothing. Everything here
+ * exists to produce the Buffer `importFeedArchive` already knew how to use,
+ * safely and on a schedule, from a source we do not control.
+ */
+export {
+  assertFetchableUrl,
+  isPublicAddress,
+  redactUrl,
+  UnsafeFeedUrlError,
+} from './retrieval/url-guard';
+export {
+  DEFAULT_LIMITS,
+  FeedTooLargeError,
+  expandIfCompressed,
+  gunzipWithLimit,
+  isGzip,
+  isZip,
+  readWithLimit,
+  type SizeLimits,
+} from './retrieval/limits';
+export {
+  envCredentialResolver,
+  isDue,
+  isImplemented,
+  UnsupportedTransportError,
+  validateFeedSource,
+  type CredentialResolver,
+  type FeedAuth,
+  type FeedFormat,
+  type FeedSchedule,
+  type FeedSource,
+  type FeedTransport,
+} from './retrieval/feed-source';
+export {
+  backoffMs,
+  parseRetryAfter,
+  retrieveFeed,
+  type FeedValidators,
+  type RetrievalOutcome,
+  type RetrieveOptions,
+} from './retrieval/retrieve';
