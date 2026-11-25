@@ -10,7 +10,7 @@ merchants, reviews, availability or affiliate relationships, ever. Synthetic
 fixtures live in tests and are labelled as such. A feature that cannot be
 honest yet stays disabled rather than shipping a plausible-looking lie.
 
-Last updated: 25 November 2026.
+Last updated: 25 November 2026 (Phase 2A complete).
 
 ---
 
@@ -40,13 +40,23 @@ than to a new design.
 | ✅ | match strength: `gtin` / `brand-mpn` / `none`, no fuzzy title matching | `identifiers.ts` |
 | ✅ | licence tag and its RFC-2119 rules as functions | `license.ts` |
 | ✅ | freshness tiers, staleness, future-timestamp handling | `freshness.ts` |
-| ⬜ | `Offer` type per `docs/06 §4`, deterministic `offer_id` | next batch |
-| ⬜ | all-in price: item + shipping + tax, in one currency | next batch |
-| ⬜ | `PriceObservation` and `PriceHistory` + analysis (min/max/trailing low, volatility) | next batch |
-| ⬜ | regional availability | next batch |
-| ⬜ | product variants | next batch |
-| ⬜ | offer and product validation | next batch |
-| ⬜ | CSV and JSON import/export | next batch |
+| ✅ | `Offer` type per `docs/06 §4`, deterministic `offer_id` | `offer.ts` |
+| ✅ | all-in price: item + shipping + tax, in one currency | `CostComponent` is known-or-explicitly-unknown, so a missing shipping cost can never become a silent zero |
+| ✅ | `PriceObservation` and price-history analysis (low/high/mean, trailing low, volatility, daily closes) | `price-history.ts`; a drop is measured from the highest price **actually observed**, never a merchant "was" price |
+| ✅ | `Product`, category paths and variants | `product.ts`; variants are products sharing a `variantGroupId`, so each keeps its own GTIN |
+| ✅ | regional availability | `region.ts`; licence-region and merchant-shipping refusals are reported **separately** |
+| ✅ | offer and product validation | every problem collected per record, not just the first |
+| ✅ | CSV and JSON import/export | `serialization.ts`; per-row validation with line numbers, faithful round trip, CSV-injection defence |
+| ✅ | the whole package is exported and consumable | 90 public exports from `packages/shared/src/index.ts` |
+
+**Test evidence:** 138 tests across 9 suites, all passing (`pnpm --filter @nexus/shared test`).
+Round-trip tests found two real fidelity bugs during this work, both fixed:
+the exporter wrote the zero-padded GTIN-14 form so re-import lost the length
+the merchant quoted, and the test script's `node --test "dist/*.test.js"` glob
+is unsupported on the Node 20 that CI stage 3 runs — while `node --test dist`
+"passes" on Node 24 by running one phantom test and no real suite. The runner
+now builds the file list itself and **fails if a test source produced no
+compiled suite**, so a silently empty run cannot go green.
 
 ## Phase 2B — Commerce intelligence
 

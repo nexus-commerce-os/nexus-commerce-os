@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc -p tsconfig.json && node --test \"dist/*.test.js\""
+    "test": "tsc -p tsconfig.json && node scripts/run-tests.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

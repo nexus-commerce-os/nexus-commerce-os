@@ -32,7 +32,7 @@ import {
 import { type Product, validateProduct } from './product.js';
 import { type FreshnessTier } from './freshness.js';
 import { type AcquisitionMethod, type LicenseTag } from './license.js';
-import { tryParseGtin } from './identifiers.js';
+import { gtinInOriginalFormat, tryParseGtin } from './identifiers.js';
 
 export class SerializationError extends Error {
   constructor(message: string) {
@@ -132,8 +132,51 @@ export function csvField(value: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-export function toCsv(header: readonly string[], rows: readonly (readonly string[])[]): string {
-  return [header, ...rows].map((r) => r.map(csvField).join(',')).join('\r\n');
+/**
+ * Leading characters that Excel, LibreOffice and Google Sheets treat as the
+ * start of a formula rather than as text. A cell beginning with one of these
+ * can run a calculation, pull a remote URL, or — with DDE — prompt to launch a
+ * command, which is CSV injection (CWE-1236).
+ *
+ * Quoting does NOT prevent it: a spreadsheet strips the quotes and then reads
+ * the formula. The only reliable fix is to change the value.
+ */
+const FORMULA_LEADERS = ['=', '+', '-', '@', '\t', '\r'];
+
+export const looksLikeFormula = (value: string): boolean =>
+  value.length > 0 && FORMULA_LEADERS.includes(value[0]);
+
+/**
+ * Neutralises a formula-leading cell by prefixing an apostrophe, which every
+ * major spreadsheet reads as "the rest of this cell is text".
+ *
+ * This CHANGES THE VALUE, which is why it is not applied by default. A faithful
+ * export must round-trip byte-for-byte, and a product title that legitimately
+ * begins with "-" is not an attack. So the two needs are separate functions:
+ * `exportOffersCsv` is faithful and is what an importer consumes;
+ * `spreadsheetSafe: true` is for a file a human will open, where a mangled
+ * leading character is a far smaller problem than a live formula.
+ */
+export function sanitizeForSpreadsheet(value: string): string {
+  return looksLikeFormula(value) ? `'${value}` : value;
+}
+
+export interface CsvOptions {
+  /**
+   * Prefix formula-leading cells with an apostrophe. Use for files a person
+   * will open in a spreadsheet; never for a file that will be re-imported,
+   * because it alters the data.
+   */
+  readonly spreadsheetSafe?: boolean;
+}
+
+export function toCsv(
+  header: readonly string[],
+  rows: readonly (readonly string[])[],
+  options: CsvOptions = {},
+): string {
+  const prepare = options.spreadsheetSafe ? sanitizeForSpreadsheet : (v: string) => v;
+  return [header, ...rows].map((r) => r.map((f) => csvField(prepare(f))).join(',')).join('\r\n');
 }
 
 /** Maps a header row to indices, so column ORDER in the source file is free. */
@@ -252,10 +295,10 @@ export function importProductsCsv(text: string): ImportResult<Product> {
   return { accepted, rejected };
 }
 
-export function exportProductsCsv(products: readonly Product[]): string {
+export function exportProductsCsv(products: readonly Product[], options: CsvOptions = {}): string {
   const rows = products.map((p) => [
     p.productId,
-    p.gtin?.gtin14 ?? '',
+    p.gtin ? gtinInOriginalFormat(p.gtin) : '',
     p.mpn ?? '',
     p.brand,
     p.canonicalTitle,
@@ -266,7 +309,7 @@ export function exportProductsCsv(products: readonly Product[]): string {
       .map(([k, v]) => `${k}=${v}`)
       .join(';'),
   ]);
-  return toCsv([...PRODUCT_CSV_HEADER], rows);
+  return toCsv([...PRODUCT_CSV_HEADER], rows, options);
 }
 
 /* ---------------------------------------------------------------- Offer CSV */
@@ -456,7 +499,7 @@ export function importOffersCsv(text: string, now: Date = new Date()): ImportRes
   return { accepted, rejected };
 }
 
-export function exportOffersCsv(offers: readonly Offer[]): string {
+export function exportOffersCsv(offers: readonly Offer[], options: CsvOptions = {}): string {
   const amount = (m: Money) => toDecimalString(m);
   const rows = offers.map((o) => [
     o.sourceId,
@@ -487,7 +530,7 @@ export function exportOffersCsv(offers: readonly Offer[]): string {
     o.licenseTag.geoRestrictions.join(';'),
     o.licenseTag.expiresAt,
   ]);
-  return toCsv([...OFFER_CSV_HEADER], rows);
+  return toCsv([...OFFER_CSV_HEADER], rows, options);
 }
 
 /* --------------------------------------------------------------------- JSON */

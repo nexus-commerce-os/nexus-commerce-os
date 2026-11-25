@@ -155,3 +155,17 @@ export function matchStrength(a: ProductIdentifiers, b: ProductIdentifiers): Mat
 
 export const isSameProduct = (a: ProductIdentifiers, b: ProductIdentifiers): boolean =>
   matchStrength(a, b) !== 'none';
+
+/**
+ * The GTIN written back in the length it arrived in.
+ *
+ * Storage and comparison use the 14-digit form, but an export that emits
+ * `04006381333931` for a GTIN-13 cannot be re-imported faithfully: parsing it
+ * back yields format `GTIN-14`, because that is what 14 digits means. Writing
+ * the original length keeps export → import a true round trip, and keeps the
+ * file readable to the merchant who quoted it.
+ */
+export function gtinInOriginalFormat(gtin: Gtin): string {
+  const length = Number(gtin.format.slice('GTIN-'.length));
+  return gtin.gtin14.slice(gtin.gtin14.length - length);
+}

@@ -50,6 +50,7 @@ export {
   parseGtin,
   tryParseGtin,
   gtinEquals,
+  gtinInOriginalFormat,
   normalizeMpn,
   merchantSkuKey,
   matchStrength,
@@ -114,3 +115,54 @@ export {
   volatilityBasisPoints,
   dailyCloses,
 } from './price-history.js';
+
+export {
+  type Product,
+  type ProductProblem,
+  type ProductValidation,
+  type VariantAxis,
+  type VariantGroup,
+  ProductError,
+  categoryKey,
+  isWithinCategory,
+  identifiersOf,
+  productMatchStrength,
+  variantKey,
+  groupVariants,
+  duplicateVariants,
+  validateProduct,
+} from './product.js';
+
+export {
+  type AvailabilityRefusal,
+  type ReachVerdict,
+  type RegionCode,
+  type RegionalAvailability,
+  type ShippingReach,
+  normalizeRegion,
+  reachesRegion,
+  regionalAvailability,
+  offersVisibleInRegion,
+} from './region.js';
+
+export {
+  type CsvOptions,
+  type ImportResult,
+  type RowRejection,
+  OFFER_CSV_HEADER,
+  PRODUCT_CSV_HEADER,
+  SerializationError,
+  parseCsv,
+  csvField,
+  toCsv,
+  looksLikeFormula,
+  sanitizeForSpreadsheet,
+  importProductsCsv,
+  exportProductsCsv,
+  importOffersCsv,
+  exportOffersCsv,
+  importOffersJson,
+  importProductsJson,
+  exportOffersJson,
+  exportProductsJson,
+} from './serialization.js';
