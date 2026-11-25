@@ -38,7 +38,7 @@ const COLUMNS = [
       { label: 'How we rank', href: '/how-we-rank' },
       { label: 'Commission-blind', href: '/commission-blind' },
       { label: 'Verified savings', href: '/verified-savings' },
-      { label: 'For developers', href: '/#agent' },
+      { label: 'For developers', href: '/for-developers' },
     ],
   },
   {

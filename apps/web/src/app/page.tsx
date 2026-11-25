@@ -2,8 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  AgentPoint,
-  AgentTerminal,
   Brand,
   Button,
   Card,
@@ -220,7 +218,7 @@ export default function NexusLanding() {
             <a href="#how">How it works</a>
             <a href="#ranking">Commission-blind</a>
             <a href="#savings">Verified savings</a>
-            <a href="#agent">For developers</a>
+            <a href="/for-developers">For developers</a>
             <a href="#faq">FAQ</a>
           </nav>
           <button
@@ -582,72 +580,6 @@ export default function NexusLanding() {
                 <h3>Returned</h3>
                 <p>A cancellation or return reverses it — transparently, per published terms.</p>
               </Card>
-            </div>
-          </div>
-        </section>
-
-        <section id="agent">
-          <div className="wrap">
-            <SectionHead
-              eyebrow="Agent-first · built for developers"
-              title="Every capability is an API before it's a screen."
-            >
-              The tools the HonestTotal agent will call are a first-class public surface — the same
-              ones a partner&apos;s assistant can call, scope-gated. The web app is just one
-              renderer.
-            </SectionHead>
-            <div className="agent-grid">
-              <div>
-                <div className="agent-points">
-                  <AgentPoint
-                    index="01"
-                    title="Natural language in, structured deal out"
-                    className="reveal"
-                  >
-                    Ask in plain words; get a ranked, machine-readable offer with a signed hand-off
-                    link.
-                  </AgentPoint>
-                  <AgentPoint
-                    index="02"
-                    title="Disclosure travels with the response"
-                    className="reveal"
-                  >
-                    Every API response will carry a <span className="mono">disclosure</span> field,
-                    verbalized before any redirect. The API is designed, not yet built.
-                  </AgentPoint>
-                  <AgentPoint index="03" title="No unverified price, ever" className="reveal">
-                    Prices will be deterministically verified before they are shown, so a
-                    hallucinated price cannot reach you. No price is served today.
-                  </AgentPoint>
-                </div>
-              </div>
-              <AgentTerminal
-                session="nexus-agent · session"
-                className="reveal"
-                ariaLabel="Illustrative example conversation with the HonestTotal agent"
-              >
-                <div>
-                  <span className="u">you ›</span> find the best price on a pair of over-ear
-                  headphones — authorized sellers only
-                </div>
-                <div style={{ marginTop: '10px' }}>
-                  <span className="n">nexus ›</span> Best real price:{' '}
-                  <span className="n">$328.00</span> at Merchant A
-                </div>
-                <div>
-                  <span className="muted2">
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ranked by value, not payout · illustrative
-                    exchange, no live data
-                  </span>
-                </div>
-                <div className="disc" style={{ marginTop: '8px' }}>
-                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;heads up: I may earn a commission — it never
-                  changes my pick.
-                </div>
-                <div>
-                  <span className="cta-line">Hand off to Merchant A →</span>
-                </div>
-              </AgentTerminal>
             </div>
           </div>
         </section>

@@ -63,9 +63,9 @@ compiled suite**, so a silently empty run cannot go green.
 Shorten the home page, in this order, each its own commit so a bad call is
 cheap to undo:
 
-1. Move `#agent` ("For developers", 970px) to `/for-developers`, linked from
-   the nav and the footer. It is a developer pitch in the middle of a
-   shopper's page.
+1. ~~Move `#agent` ("For developers", 970px) to `/for-developers`~~ **done** —
+   home page measured 9,754px → **8,784px** at 768 wide, the exact height the
+   section occupied. Linked from the header nav, the footer and the sitemap.
 2. Cut the hero (2,234px) to roughly one viewport: the claim, the proof row
    and one call to action. The illustration below it is already labelled
    "ILLUSTRATION — not live data"; keep that label wherever it lands.
