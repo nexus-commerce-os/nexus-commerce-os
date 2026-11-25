@@ -243,6 +243,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build the site exactly as the deploy does
         run: pnpm --filter @nexus/web build
+      - name: The deploy path must run this same build
+        # This is the check that would have caught the bug it was written for.
+        # `deploy:cf` called `next build` directly, so release-gate ran but
+        # gate-catalog, verify-headers, verify-footer, verify-merchants and
+        # verify-catalog did not -- the deploy was always less checked than the
+        # build, and a catalog gate wired into `build` shipped the catalog
+        # anyway. Measured on production, not guessed.
+        run: |
+          set -euo pipefail
+          deploy=$(node -e "process.stdout.write(require('./apps/web/package.json').scripts['deploy:cf'])")
+          echo "  deploy:cf = $deploy"
+          case "$deploy" in
+            *"pnpm run build"*) echo "  OK — the deploy runs the verified build" ;;
+            *) echo "::error::deploy:cf does not run 'pnpm run build', so the artifact checks would be skipped on deploy"; exit 1 ;;
+          esac
+
       - name: The artifact must not contain the unpublished catalog
         # gate-catalog already asserts this and fails the build if it cannot
         # remove them. Checked again here from the outside, because a guard
