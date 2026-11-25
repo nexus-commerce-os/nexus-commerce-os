@@ -38,7 +38,12 @@ globalThis.HTMLRewriter ??= class {
     const handlers = this.#handlers;
     const rewrite = async () => {
       const html = await response.text();
-      return html.replace(/<script([^>]*)>/g, (whole, attrs) => {
+      // Case-insensitive: `<SCRIPT>` is the same element to a browser, and a
+      // shim that only matched lower case would quietly be laxer than the
+      // parser it stands in for. CodeQL flags exactly this (js/bad-tag-filter)
+      // and is right to — a tag filter that misses a case variant is the
+      // classic way one of these is bypassed.
+      return html.replace(/<script([^>]*)>/gi, (whole, attrs) => {
         const parsed = new Map(
           [...attrs.matchAll(/([\w-]+)(?:="([^"]*)")?/g)].map((m) => [m[1], m[2] ?? '']),
         );
@@ -187,4 +192,15 @@ test('an asset response with no CSP is not given a fabricated one', async () => 
   });
   const r = await get(env);
   assert.equal(r.headers.get('content-security-policy'), null);
+});
+
+test('an upper-case SCRIPT tag is treated the same as a lower-case one', () => {
+  // Not about the Worker — HTMLRewriter is a real parser and never had this
+  // problem. This pins the SHIM, which did: its regex was case-sensitive, so
+  // it would have reported a clean pass on markup the real parser rewrites.
+  // CodeQL caught it (js/bad-tag-filter); the test keeps it caught.
+  const pattern = /<script([^>]*)>/gi;
+  assert.ok(pattern.test('<SCRIPT>'), 'a shim that misses <SCRIPT> is laxer than the parser');
+  pattern.lastIndex = 0;
+  assert.ok(pattern.test('<ScRiPt nonce="x">'));
 });
