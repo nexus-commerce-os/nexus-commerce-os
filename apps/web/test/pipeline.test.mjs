@@ -135,3 +135,27 @@ test('the catalog is withheld unless PUBLISH_CATALOG is explicitly set', () => {
     'the gate must target the catalog index and its product pages',
   );
 });
+
+test('the build records what it produced, and the deploy checks it', () => {
+  // Build once, verify, deploy that exact set — the promotion step that was
+  // missing. Without the write there is nothing to compare against; without
+  // the verify nothing compares it, and the deploy is back to trusting that
+  // two builds of one commit produce the same bytes.
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(
+    pkg.scripts.build,
+    /artifact-manifest\.mjs write/,
+    'the build must record a manifest of what it produced',
+  );
+  assert.match(
+    pkg.scripts['deploy:cf'],
+    /artifact-manifest\.mjs verify/,
+    'the deploy must verify the artifact it is about to upload',
+  );
+  // Order matters: verifying before the build would check the previous one.
+  const deploy = pkg.scripts['deploy:cf'];
+  assert.ok(
+    deploy.indexOf('pnpm run build') < deploy.indexOf('artifact-manifest.mjs verify'),
+    'the verify must come after the build, or it checks a stale artifact',
+  );
+});
