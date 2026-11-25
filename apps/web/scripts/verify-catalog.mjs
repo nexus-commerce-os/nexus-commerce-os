@@ -54,6 +54,7 @@ console.log('verify-catalog:');
 
 const data = await import('../src/data/catalog.ts');
 const {
+  ALL_RECORDS,
   PRODUCTS,
   CATEGORIES,
   PRICE_STATUS,
@@ -79,12 +80,21 @@ check('every category has at least one product (no empty grid)', () => {
   return empty.length === 0 ? true : `empty: ${empty.map((c) => c.slug).join(', ')}`;
 });
 
-check('all five declared categories are present and populated', () => {
-  const want = ['headphones', 'televisions', 'storage', 'laptops', 'keyboards'];
-  const missing = want.filter((slug) => !CATEGORIES.some((c) => c.slug === slug));
-  if (missing.length > 0) return `category missing: ${missing.join(', ')}`;
-  const bare = want.filter((slug) => PRODUCTS.filter((p) => p.categorySlug === slug).length === 0);
-  return bare.length === 0 ? true : `no product in: ${bare.join(', ')}`;
+check('every published category is populated, and none is published empty', () => {
+  // This check used to name all five declared categories. It cannot any more,
+  // and the reason is the point: three of them (televisions, storage, laptops)
+  // have no eligible product after the 26 November source-terms audit, so
+  // publishing them would render an empty grid and a filter that never
+  // narrows. CATEGORIES is now DERIVED from what is publishable, and what must
+  // be asserted is the invariant — every published category has products —
+  // rather than a count that was only true of one dataset.
+  const bare = CATEGORIES.filter((c) => PRODUCTS.filter((p) => p.categorySlug === c.slug).length === 0);
+  if (bare.length > 0) return `published but empty: ${bare.map((c) => c.slug).join(', ')}`;
+  // Every published product's category must itself be published, or a detail
+  // page links to a category page that does not exist.
+  const orphans = PRODUCTS.filter((p) => !CATEGORIES.some((c) => c.slug === p.categorySlug));
+  if (orphans.length > 0) return `product in an unpublished category: ${orphans.map((p) => p.slug).join(', ')}`;
+  return CATEGORIES.length > 0 ? true : 'no category is publishable at all';
 });
 
 check('product slugs are unique', () => {
@@ -144,6 +154,61 @@ check('no source URL is a marketplace, reseller or affiliate link', () => {
   if (bad.length > 0) return `non-manufacturer host: ${bad.map((p) => p.slug).join(', ')}`;
   const tagged = PRODUCTS.filter((p) => /[?&](tag|aff|affid|utm_|ref|clickid|subid)=/i.test(p.sourceUrl));
   return tagged.length === 0 ? true : `tracking parameters: ${tagged.map((p) => p.slug).join(', ')}`;
+});
+
+/*
+ * SOURCE-TERMS ELIGIBILITY
+ *
+ * Public availability of a specification is not permission to republish it.
+ * The audit of 26 November 2026 (docs/engineering/source-terms-audit.md) read
+ * the terms of use for all nine source domains: six restrict reproduction,
+ * commercial use or automated extraction with no carve-out for factual data,
+ * and two could not be read at all. Only two records came back eligible.
+ *
+ * These checks make that verdict load-bearing. Without them the audit is a
+ * document someone has to remember, and the failure mode is publishing a
+ * brand that said no.
+ */
+check('every product carries a source-terms verdict', () => {
+  // A missing verdict is the dangerous case: it is a record nobody audited,
+  // and it must fail the build rather than default to publishable.
+  // ALL_RECORDS, not PRODUCTS. PRODUCTS is already filtered to eligible
+  // records, so a record with no verdict is dropped from it — and checking the
+  // filtered set meant an unaudited product vanished from the site in silence
+  // instead of failing the build. Found by deleting a verdict and watching
+  // this check stay green.
+  const missing = ALL_RECORDS.filter((p) => !p.sourceTerms || !p.sourceTerms.verdict).map(
+    (p) => p.slug,
+  );
+  return missing.length === 0
+    ? true
+    : `no source-terms audit for: ${missing.join(', ')} — audit the source or remove the record`;
+});
+
+check('every source-terms verdict is a recognised value with a reason and a date', () => {
+  const allowed = new Set(['eligible', 'quarantined']);
+  const bad = [];
+  for (const p of ALL_RECORDS) {
+    const t = p.sourceTerms ?? {};
+    if (!allowed.has(t.verdict)) bad.push(`${p.slug}: verdict "${t.verdict}" is not eligible|quarantined`);
+    // A verdict with no stated reason is a guess wearing a verdict's clothes.
+    if (!t.reason || t.reason.trim().length < 20) bad.push(`${p.slug}: no usable reason given`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t.auditedOn ?? '')) bad.push(`${p.slug}: auditedOn is not YYYY-MM-DD`);
+    else if (t.auditedOn > latestDateOnEarth()) bad.push(`${p.slug}: audited in the future`);
+    // termsUrl may be null — that is how "no terms page exists" and "the terms
+    // could not be read" are recorded — but it must be https when present.
+    if (t.termsUrl != null && !/^https:\/\//.test(t.termsUrl)) bad.push(`${p.slug}: termsUrl is not https`);
+  }
+  return bad.length === 0 ? true : bad.join('; ');
+});
+
+check('a quarantined record is never published', () => {
+  // The whole point. `gate-catalog.mjs` decides whether the catalog ships at
+  // all; this decides which records may be in it when it does.
+  const published = PRODUCTS.filter((p) => p.sourceTerms?.verdict !== 'eligible');
+  return published.length === 0
+    ? true
+    : `quarantined records are in the published dataset: ${published.map((p) => p.slug).join(', ')}`;
 });
 
 check('every verification date is a real, non-future ISO date', () => {
@@ -232,21 +297,57 @@ check('the unverified-status strings contain no number', () => {
 check('search returns everything for an empty query and narrows for a real one', () => {
   if (searchProducts('').length !== PRODUCTS.length) return 'empty query did not return all';
   if (searchProducts('   ').length !== PRODUCTS.length) return 'whitespace query did not return all';
-  const narrowed = searchProducts('OLED');
-  if (narrowed.length === 0) return 'a query present in the data matched nothing';
-  if (narrowed.length >= PRODUCTS.length) return 'a specific query did not narrow the set';
+  // Derived from the published data rather than hard-coded: this check used
+  // 'OLED', which matched the LG television until that record was quarantined.
+  // A fixture that names a specific product goes stale the moment the dataset
+  // changes, and a stale search test is worse than none.
+  const needle = PRODUCTS[0].brand;
+  const narrowed = searchProducts(needle);
+  if (narrowed.length === 0) return `"${needle}" is in the data but matched nothing`;
+  if (PRODUCTS.length > 1 && narrowed.length >= PRODUCTS.length)
+    return `"${needle}" did not narrow the set`;
   if (searchProducts('zzzzzznothing').length !== 0) return 'a nonsense query matched something';
   return true;
 });
 
 check('search matches whole words, not letters inside other words', () => {
-  // "actively cooled" contains the letters o-l-e-d. A substring search returns
-  // laptops for "OLED"; this is the regression test for that.
-  const oled = searchProducts('OLED');
-  const wrong = oled.filter((p) => p.categorySlug !== 'televisions');
-  if (wrong.length > 0) return `OLED matched non-televisions: ${wrong.map((p) => p.slug).join(', ')}`;
-  if (searchProducts('sennh').length === 0) return 'a prefix query matched nothing';
-  if (searchProducts('OLED nvme').length !== 0) return 'two unrelated tokens matched something';
+  // ORIGINALLY: "actively cooled" contains the letters o-l-e-d, so a substring
+  // search returned laptops for "OLED". That fixture died when the television
+  // and the laptop were both quarantined by the source-terms audit, so the
+  // same property is now asserted against the published data instead. A
+  // fixture naming one product goes stale the moment eligibility changes, and
+  // a stale search test is worse than no search test.
+  //
+  // "open" appears in the HD 600 as a whole word. "pen" sits inside it and is
+  // not a word of its own, so a substring search returns the HD 600 for "pen"
+  // while a whole-word search returns nothing.
+  const inner = searchProducts('pen');
+  if (inner.length > 0) {
+    return `"pen" matched inside a word: ${inner.map((p) => p.slug).join(', ')}`;
+  }
+
+  const whole = /\bopen\b/i;
+  const hits = searchProducts('open');
+  if (hits.length === 0) return '"open" is in the published data but matched nothing';
+  // "open" is legitimately in the name and the summary, not only the specs —
+  // the HD 600 is an "Open-Back" headphone. A hit is wrong only if the word
+  // appears nowhere in that record as a whole word.
+  const wrong = hits.filter(
+    (p) =>
+      !whole.test(p.name) &&
+      !whole.test(p.summary) &&
+      !p.specs.some((x) => whole.test(x.value) || whole.test(x.label)),
+  );
+  if (wrong.length > 0) {
+    return `"open" matched a record that does not contain it: ${wrong.map((p) => p.slug).join(', ')}`;
+  }
+
+  const prefix = PRODUCTS[0].brand.slice(0, 5).toLowerCase();
+  if (searchProducts(prefix).length === 0) return `prefix query "${prefix}" matched nothing`;
+  // Two tokens that never co-occur must match nothing, whatever the dataset.
+  if (searchProducts('open 104-key').length !== 0) {
+    return 'two tokens from different products matched something';
+  }
   return true;
 });
 
