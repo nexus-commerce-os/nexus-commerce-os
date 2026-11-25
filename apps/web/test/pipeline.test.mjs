@@ -136,6 +136,48 @@ test('the catalog is withheld unless PUBLISH_CATALOG is explicitly set', () => {
   );
 });
 
+test('the manifest covers the Worker bundle, not only the static assets', () => {
+  // WHY THIS IS ITS OWN TEST. The first manifest hashed `out/` and nothing
+  // else. But a deploy uploads two things: the assets in `out/`, and a Worker
+  // bundled from `worker/index.ts` AT DEPLOY TIME — the code that sets every
+  // security header, mints the CSP nonce and handles the waitlist. It is not a
+  // file on disk until wrangler bundles it, so hashing `out/` reported a
+  // confident pass while the most security-sensitive thing that ships was
+  // unchecked. Proven by weakening the nonce from 16 bytes to 4 and watching
+  // the manifest call it `changed: worker/index.js`.
+  const manifest = read('scripts/artifact-manifest.mjs');
+  assert.match(
+    manifest,
+    /hashWorkerBundle/,
+    'the manifest must bundle and hash the Worker, or the Worker ships unverified',
+  );
+  assert.match(
+    manifest,
+    /files\['worker\/index\.js'\] = await hashWorkerBundle\(\)/,
+    'the Worker hash must be part of the hashed set, not merely computed',
+  );
+  // The bundle must come from wrangler itself. A second bundler would hash
+  // something other than what Cloudflare runs.
+  assert.match(manifest, /WRANGLER_BIN/, "the bundle must be wrangler's own output");
+
+  // The version guard: a v1 manifest did not cover the Worker, so accepting one
+  // would report a pass over an artifact whose Worker was never hashed.
+  assert.match(manifest, /recorded\.version !== 2/, 'a pre-Worker manifest must be refused');
+});
+
+test('the manifest is not written into the directory that gets published', () => {
+  // `out/` is the [assets] directory, so every file in it is uploaded AND
+  // SERVED. A manifest left there publishes a complete inventory of the site's
+  // files and their hashes at a guessable URL.
+  const manifest = read('scripts/artifact-manifest.mjs');
+  const path = manifest.match(/const MANIFEST_PATH = join\(([^)]*)\)/)?.[1];
+  assert.ok(path, 'the manifest path must be explicit');
+  assert.ok(
+    !/OUT_DIR/.test(path),
+    `the manifest must not live inside out/ — it would be served publicly (got: ${path})`,
+  );
+});
+
 test('the build records what it produced, and the deploy checks it', () => {
   // Build once, verify, deploy that exact set — the promotion step that was
   // missing. Without the write there is nothing to compare against; without
