@@ -1,0 +1,458 @@
+/*
+ * The waitlist store: fail-closed in production, and bounded when the provider
+ * misbehaves.
+ *
+ * NOTHING HERE TOUCHES A NETWORK. Every test injects a `fetch` double, and the
+ * only URL used is under `.invalid`, which RFC 2606 reserves so it can never
+ * resolve.
+ *
+ * The test that matters most is the first one. A production default of
+ * in-memory storage is the worst failure this site can have: every sign-up
+ * returns 200, the visitor is thanked, and the address is gone at the next cold
+ * start — with nothing logged and no dashboard turning red. So the assertion is
+ * not "it warns"; it is that production REFUSES TO SERVE without a durable
+ * destination.
+ */
+import assert from 'node:assert/strict';
+import { afterEach, test } from 'node:test';
+
+const MOD = '../dist/lib/waitlist.js';
+
+/** Fresh module state + a clean environment for every case. */
+async function load(env = {}) {
+  const mod = await import(MOD);
+  mod.resetWaitlistStoreForTests();
+  delete process.env.WAITLIST_ESP_URL;
+  delete process.env.WAITLIST_ESP_TOKEN;
+  delete process.env.NODE_ENV;
+  for (const [k, v] of Object.entries(env)) process.env[k] = v;
+  return mod;
+}
+
+afterEach(async () => {
+  const mod = await import(MOD);
+  mod.resetWaitlistStoreForTests();
+  delete process.env.WAITLIST_ESP_URL;
+  delete process.env.WAITLIST_ESP_TOKEN;
+  delete process.env.NODE_ENV;
+});
+
+const ENTRY = {
+  email: 'someone@example.invalid',
+  source: 'web',
+  createdAt: '2026-11-13T00:00:00.000Z',
+};
+
+/* ─── fail closed ───────────────────────────────────────────────────────── */
+
+test('production with no ESP configured REFUSES to build a store', async () => {
+  const mod = await load({ NODE_ENV: 'production' });
+  assert.throws(
+    () => mod.getWaitlistStore(),
+    (error) => {
+      assert.equal(error.name, 'WaitlistNotConfiguredError');
+      assert.equal(error._tag, 'WaitlistNotConfiguredError');
+      // The message must tell an operator exactly what to set.
+      assert.match(error.message, /WAITLIST_ESP_URL/);
+      assert.match(error.message, /development only/);
+      return true;
+    },
+  );
+});
+
+test('the refusal is not cached, so supplying the variable fixes the next boot', async () => {
+  const mod = await load({ NODE_ENV: 'production' });
+  assert.throws(() => mod.getWaitlistStore());
+
+  // Same process, variable now present: must succeed without a restart.
+  process.env.WAITLIST_ESP_URL = 'https://esp.example.invalid/hook';
+  const store = mod.getWaitlistStore();
+  assert.equal(typeof store.add, 'function');
+});
+
+test('development without an ESP still gets the memory store', async () => {
+  // Otherwise `pnpm dev` would refuse to run, which is not the point.
+  const mod = await load({ NODE_ENV: 'development' });
+  const store = mod.getWaitlistStore();
+  assert.equal((await store.add(ENTRY)).status, 'added');
+  assert.equal((await store.add(ENTRY)).status, 'duplicate', 'memory store dedups');
+});
+
+test('an unset NODE_ENV is treated as non-production', async () => {
+  const mod = await load();
+  assert.doesNotThrow(() => mod.getWaitlistStore());
+});
+
+test('production WITH an ESP configured builds the durable store', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  assert.doesNotThrow(() => mod.getWaitlistStore());
+});
+
+/* ─── the ESP driver: request shape ─────────────────────────────────────── */
+
+test('the entry is posted as JSON, with the token as a Bearer header', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+    WAITLIST_ESP_TOKEN: 's3cret-token',
+  });
+  let seenUrl = null;
+  let seenInit = null;
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    seenUrl = url;
+    seenInit = init;
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    assert.equal((await mod.getWaitlistStore().add(ENTRY)).status, 'added');
+  } finally {
+    globalThis.fetch = original;
+  }
+
+  assert.equal(seenUrl, 'https://esp.example.invalid/hook');
+  assert.equal(seenInit.method, 'POST');
+  assert.equal(seenInit.headers['content-type'], 'application/json');
+  assert.equal(seenInit.headers.authorization, 'Bearer s3cret-token');
+  assert.deepEqual(JSON.parse(seenInit.body), ENTRY);
+  // The deadline must actually be wired up.
+  assert.ok(seenInit.signal, 'a timeout signal must be passed');
+  assert.equal(typeof seenInit.signal.aborted, 'boolean');
+});
+
+test('no authorization header is invented when no token is configured', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  let seenInit = null;
+  const original = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    seenInit = init;
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    await mod.getWaitlistStore().add(ENTRY);
+  } finally {
+    globalThis.fetch = original;
+  }
+  assert.equal('authorization' in seenInit.headers, false);
+});
+
+/* ─── the ESP driver: failure handling ──────────────────────────────────── */
+
+test('a non-2xx response is an error carrying the status and nothing else', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook?key=webhook-secret',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('nope', { status: 503 });
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), (error) => {
+      assert.match(error.message, /503/);
+      // An ESP webhook URL is often itself the secret: it must not leak.
+      assert.equal(
+        /webhook-secret|esp\.example\.invalid/.test(error.message),
+        false,
+        error.message,
+      );
+      assert.equal(error.cause, undefined);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a 409 is a returning visitor, not a failure', async () => {
+  /*
+   * Loops answers a repeat address with 409. Before this was handled, a
+   * returning visitor got a 502 and "Could not save right now" -- wrong, and
+   * the single most likely repeat action on a waitlist page.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: false, message: 'Email already exists' }), {
+      status: 409,
+    });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'duplicate' }, 'a 409 must resolve, not reject');
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+/* --- double opt-in: accepted is not the same as subscribed ------------- */
+
+test('a 200 with no opt-in signal is a plain confirmed sign-up', async () => {
+  /*
+   * The behaviour MEASURED against live Loops on 17 Nov 2026, with double
+   * opt-in switched ON in the dashboard: create returns a bare `{success,id}`
+   * and the contact reads `subscribed: true, optInStatus: null`. So the
+   * dashboard setting alone must NOT make us claim a confirmation step exists.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, id: 'abc123' }), { status: 200 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'added' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a 202 means accepted but not yet confirmed', async () => {
+  // Mapped on status alone -- 202 is what HTTP already means by "taken, not
+  // yet complete" -- so no provider-specific parsing is involved.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('', { status: 202 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'pending' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('optInStatus "pending" in the body is honoured', async () => {
+  /*
+   * Loops' docs: "API endpoints like Create contact and Update contact are not
+   * yet gated. Coverage will expand to these endpoints soon." When it does, a
+   * visitor must not be told they are on the list while they are not.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, id: 'x', optInStatus: 'pending' }), {
+      status: 200,
+    });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'pending' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('subscribed:false in the body is also pending', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, subscribed: false }), { status: 200 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'pending' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('optInStatus "accepted" is confirmed, not pending', async () => {
+  // Only an explicit pending signal may downgrade the outcome; anything else
+  // is a confirmed sign-up. Inventing a confirmation step is its own lie.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, optInStatus: 'accepted', subscribed: true }), {
+      status: 200,
+    });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'added' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('an unreadable success body never breaks a sign-up that already stored', async () => {
+  /*
+   * By the time the body is parsed the address IS stored. Letting a malformed
+   * body turn that into a 502 would tell the visitor to try again when there
+   * is nothing to retry.
+   */
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<html>not json</html>', { status: 200 });
+  try {
+    const result = await mod.getWaitlistStore().add(ENTRY);
+    assert.deepEqual(result, { status: 'added' });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a provider error is still an error, whatever the body says', async () => {
+  // A 500 carrying a cheerful JSON body must not be mistaken for success.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, optInStatus: 'accepted' }), { status: 500 });
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), /500/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a 400 is still an error — it can mean a malformed address', async () => {
+  // Deliberately NOT treated as a duplicate: swallowing 400 would hide a real
+  // bug. A provider that signals duplicates with 400 needs its own adapter.
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response('bad request', { status: 400 });
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), /400/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a timeout is reported as a timeout, with the deadline named', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const error = new Error('The operation was aborted due to timeout');
+    error.name = 'TimeoutError';
+    throw error;
+  };
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), (error) => {
+      assert.match(error.message, /did not respond within \d+ms/);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a network failure does not leak the URL from the underlying error', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook?key=webhook-secret',
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => {
+    // This is the shape Node really throws: the URL is in the message.
+    throw new TypeError('fetch failed for https://esp.example.invalid/hook?key=webhook-secret');
+  };
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), (error) => {
+      assert.equal(error.message, 'Waitlist ESP request failed');
+      const surface = `${error.message} ${error.stack ?? ''}`;
+      for (const secret of ['webhook-secret', 'esp.example.invalid']) {
+        assert.equal(surface.includes(secret), false, `leaked ${secret}`);
+      }
+      assert.equal(error.cause, undefined, 'cause would carry the URL');
+      return true;
+    });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('the timeout is a real deadline, not just a passed-through option', async () => {
+  const mod = await load({
+    NODE_ENV: 'production',
+    WAITLIST_ESP_URL: 'https://esp.example.invalid/hook',
+  });
+  assert.ok(
+    mod.ESP_TIMEOUT_MS > 0 && mod.ESP_TIMEOUT_MS <= 15_000,
+    `ESP_TIMEOUT_MS=${mod.ESP_TIMEOUT_MS}`,
+  );
+
+  const original = globalThis.fetch;
+  /*
+   * Honour the signal the way undici does: reject when it aborts.
+   *
+   * The `keepAlive` timer is load-bearing, and its absence made this test fail
+   * on CI while passing locally. `AbortSignal.timeout` uses an UNREF'd timer, so
+   * it does not by itself keep the event loop alive. With a mock that creates no
+   * timer of its own, the loop can drain before the deadline fires and Node
+   * reports `Promise resolution is still pending but the event loop has already
+   * resolved` -- the test neither passes nor fails, it is cancelled. A real
+   * `fetch` always has a socket holding the loop open; the mock has to stand in
+   * for that.
+   */
+  globalThis.fetch = (_url, init) =>
+    new Promise((_resolve, reject) => {
+      const keepAlive = setTimeout(() => {
+        reject(new Error('the abort never fired — the deadline is not wired up'));
+      }, 30_000);
+      init.signal.addEventListener('abort', () => {
+        clearTimeout(keepAlive);
+        const error = new Error('aborted');
+        error.name = 'TimeoutError';
+        reject(error);
+      });
+    });
+  try {
+    await assert.rejects(mod.getWaitlistStore().add(ENTRY), /did not respond within/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+/* ─── the shared validator, from the same compiled output ───────────────── */
+
+test('the email validator is the single shared one, cap first', async () => {
+  const { isValidEmail, MAX_EMAIL_LENGTH, EMAIL_PATTERN } = await import('../dist/lib/email.js');
+  assert.equal(MAX_EMAIL_LENGTH, 254);
+
+  for (const ok of ['a@b.co', "o'brien@example.invalid", 'x+tag@mail.example.invalid']) {
+    assert.equal(isValidEmail(ok), true, ok);
+  }
+  for (const bad of ['a@b', 'user@example..com', 'user@.example.com', '', 'a b@c.co']) {
+    assert.equal(isValidEmail(bad), false, bad);
+  }
+
+  // Over the cap, but structurally valid: the CAP must be what refuses it.
+  const overCap = `${'a'.repeat(MAX_EMAIL_LENGTH)}@b.co`;
+  assert.equal(EMAIL_PATTERN.test(overCap), true, 'fixture should be structurally valid');
+  assert.equal(isValidEmail(overCap), false, 'the cap must refuse it');
+
+  // And the pattern itself stays linear on the old attack shape.
+  const hostile = `a@${'.'.repeat(200_000)}@`;
+  const started = process.hrtime.bigint();
+  assert.equal(EMAIL_PATTERN.test(hostile), false);
+  const ms = Number(process.hrtime.bigint() - started) / 1e6;
+  assert.ok(ms < 500, `200k hostile input took ${ms.toFixed(1)}ms`);
+});
