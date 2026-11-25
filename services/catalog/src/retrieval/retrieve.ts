@@ -176,7 +176,8 @@ async function buildRequest(
   const auth = source.auth ?? { kind: 'none' as const };
 
   if (auth.kind !== 'none') {
-    if (!source.credentialRef) throw new Error(`${source.id}: auth configured with no credentialRef`);
+    if (!source.credentialRef)
+      throw new Error(`${source.id}: auth configured with no credentialRef`);
     if (!resolveCredential) throw new Error(`${source.id}: no credential resolver supplied`);
     const secret = await resolveCredential(source.credentialRef);
     if (!secret) {
@@ -213,7 +214,12 @@ async function attemptOnce(
 
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     await assertPublicHost(current.hostname, lookupImpl);
-    const { url, headers } = await buildRequest(source, current, previous, options.resolveCredential);
+    const { url, headers } = await buildRequest(
+      source,
+      current,
+      previous,
+      options.resolveCredential,
+    );
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULTS.timeoutMs);
@@ -240,7 +246,8 @@ async function attemptOnce(
      */
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get('location');
-      if (!location) throw new Error(`redirect with no location from ${redactUrl(current.toString())}`);
+      if (!location)
+        throw new Error(`redirect with no location from ${redactUrl(current.toString())}`);
       // Re-validated on the next loop. A redirect is an instruction from a
       // party we do not control, so it gets the same scrutiny as the original.
       current = assertFetchableUrl(new URL(location, current).toString());

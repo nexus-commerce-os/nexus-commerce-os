@@ -53,7 +53,10 @@ const source = (over = {}) => ({
 });
 
 const AT = new Date('2026-11-26T12:00:00Z');
-const clock = (d = AT) => () => d;
+const clock =
+  (d = AT) =>
+  () =>
+    d;
 
 /** A retrieve stand-in with a fixed outcome. */
 const retrieving = (outcome) => async () => outcome;
@@ -102,12 +105,17 @@ test('a source that is not due is skipped, and skipping is not a failure', async
 });
 
 test('a disabled source is never retrieved', async () => {
-  const report = await runCycle([source({ enabled: false })], new InMemoryOfferStore(), new InMemorySourceState(), {
-    now: clock(),
-    retrieve: async () => {
-      throw new Error('a disabled source must not be fetched');
+  const report = await runCycle(
+    [source({ enabled: false })],
+    new InMemoryOfferStore(),
+    new InMemorySourceState(),
+    {
+      now: clock(),
+      retrieve: async () => {
+        throw new Error('a disabled source must not be fetched');
+      },
     },
-  });
+  );
   assert.equal(report.outcomes[0].outcome, 'skipped');
   assert.match(report.outcomes[0].reason, /disabled/);
 });
@@ -144,7 +152,11 @@ test('A FAILED RETRIEVAL IMPORTS NOTHING AND RETIRES NOTHING', async () => {
 
   const after = await store.listOffers('soundcore');
   assert.equal(after.length, 5, 'the catalogue must be untouched');
-  assert.equal(after.filter((o) => o.inactiveSince).length, 0, 'NOTHING may be retired by an outage');
+  assert.equal(
+    after.filter((o) => o.inactiveSince).length,
+    0,
+    'NOTHING may be retired by an outage',
+  );
 });
 
 test('an unchanged feed is recorded as unchanged, not as an import', async () => {
@@ -192,7 +204,13 @@ test('one broken provider does not stop the others', async () => {
     concurrency: 1,
     retrieve: async (src) =>
       src.id === 'bad'
-        ? { status: 'failed', reason: 'down', retryable: true, fetchedAt: AT.toISOString(), attempts: 1 }
+        ? {
+            status: 'failed',
+            reason: 'down',
+            retryable: true,
+            fetchedAt: AT.toISOString(),
+            attempts: 1,
+          }
         : fetchedArchive(2),
   });
 
@@ -257,7 +275,11 @@ test('a CRASHED job stops blocking its source once it is old enough', async () =
     skipReason: null,
   });
 
-  assert.equal(await isAlreadyRunning(store, source(), AT, 30), false, 'two hours old is abandoned');
+  assert.equal(
+    await isAlreadyRunning(store, source(), AT, 30),
+    false,
+    'two hours old is abandoned',
+  );
 
   const report = await runCycle([source()], store, new InMemorySourceState(), {
     now: clock(),
@@ -275,9 +297,7 @@ test('concurrency is bounded', async () => {
   const store = new InMemoryOfferStore();
   let inFlight = 0;
   let peak = 0;
-  const sources = Array.from({ length: 6 }, (_, i) =>
-    source({ id: `s${i}`, merchantId: `m${i}` }),
-  );
+  const sources = Array.from({ length: 6 }, (_, i) => source({ id: `s${i}`, merchantId: `m${i}` }));
 
   await runCycle(sources, store, new InMemorySourceState(), {
     now: clock(),
@@ -302,7 +322,10 @@ test('every source produces exactly one structured log line', async () => {
   });
   assert.equal(report.outcomes.length, 2);
   for (const out of report.outcomes) {
-    assert.ok(out.sourceId && out.merchantId && out.startedAt && out.finishedAt, 'incomplete log line');
+    assert.ok(
+      out.sourceId && out.merchantId && out.startedAt && out.finishedAt,
+      'incomplete log line',
+    );
     assert.ok(out.reason.length > 0, 'every outcome must state a reason');
   }
 });

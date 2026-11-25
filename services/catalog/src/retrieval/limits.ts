@@ -113,9 +113,7 @@ export async function gunzipWithLimit(
   gunzip.on('data', (chunk: Buffer) => {
     expanded += chunk.byteLength;
     if (expanded > limits.maxExpandedBytes) {
-      gunzip.destroy(
-        new FeedTooLargeError(`expanded past ${limits.maxExpandedBytes} bytes`),
-      );
+      gunzip.destroy(new FeedTooLargeError(`expanded past ${limits.maxExpandedBytes} bytes`));
       return;
     }
     // `input.length` is never 0 here: an empty buffer is not valid gzip.

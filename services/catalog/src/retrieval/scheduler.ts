@@ -213,9 +213,13 @@ export async function runCycle(
       } catch (error) {
         // An import that threw leaves the catalogue untouched — the write
         // phase is one transaction — but the attempt is still a fact.
-        return done('failed', `import threw: ${error instanceof Error ? error.message : String(error)}`, {
-          attempts: result.attempts,
-        });
+        return done(
+          'failed',
+          `import threw: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            attempts: result.attempts,
+          },
+        );
       }
 
       // Validators are only remembered after a SUCCESSFUL import. Storing them
@@ -227,9 +231,13 @@ export async function runCycle(
       });
 
       if (!imported.applied) {
-        return done('unchanged', imported.run.skipReason ?? `not applied (${imported.run.status})`, {
-          attempts: result.attempts,
-        });
+        return done(
+          'unchanged',
+          imported.run.skipReason ?? `not applied (${imported.run.status})`,
+          {
+            attempts: result.attempts,
+          },
+        );
       }
 
       const r = imported.reconciliation;

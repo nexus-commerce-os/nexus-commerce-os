@@ -65,7 +65,10 @@ const noSleep = async () => {};
 // ---------------------------------------------------------------- URL guard
 
 test('a plain-http feed URL is refused', () => {
-  assert.throws(() => assertFetchableUrl('http://feeds.example.com/f.csv'), /must be https|not allowed/i);
+  assert.throws(
+    () => assertFetchableUrl('http://feeds.example.com/f.csv'),
+    /must be https|not allowed/i,
+  );
 });
 
 test('credentials inside the URL are refused', () => {
@@ -77,7 +80,10 @@ test('credentials inside the URL are refused', () => {
 
 test('the cloud metadata address is refused', () => {
   // The single most valuable refusal in this file.
-  assert.throws(() => assertFetchableUrl('https://169.254.169.254/latest/meta-data/'), /not a public/i);
+  assert.throws(
+    () => assertFetchableUrl('https://169.254.169.254/latest/meta-data/'),
+    /not a public/i,
+  );
 });
 
 test('loopback, private and link-local addresses are all refused', () => {
@@ -158,12 +164,18 @@ test('a credentialRef must be a NAME, not a pasted secret', () => {
   const problems = validateFeedSource(
     source({ credentialRef: 'sk_live_abc!@#$%^', auth: { kind: 'bearer' } }),
   );
-  assert.ok(problems.some((p) => /NAME of a secret/i.test(p)), problems.join('; '));
+  assert.ok(
+    problems.some((p) => /NAME of a secret/i.test(p)),
+    problems.join('; '),
+  );
 });
 
 test('auth without a credentialRef is a configuration error', () => {
   const problems = validateFeedSource(source({ auth: { kind: 'bearer' }, credentialRef: null }));
-  assert.ok(problems.some((p) => /needs a credentialRef/i.test(p)), problems.join('; '));
+  assert.ok(
+    problems.some((p) => /needs a credentialRef/i.test(p)),
+    problems.join('; '),
+  );
 });
 
 test('a valid source has no problems', () => {
@@ -196,7 +208,10 @@ test('backoff grows exponentially and is capped', () => {
 });
 
 test('backoff is jittered, so failures do not synchronise into a stampede', () => {
-  assert.equal(backoffMs(5, () => 0), 0);
+  assert.equal(
+    backoffMs(5, () => 0),
+    0,
+  );
   assert.ok(backoffMs(5, () => 0.5) < backoffMs(5, () => 1));
 });
 
@@ -213,9 +228,16 @@ test('Retry-After is honoured in both seconds and HTTP-date form', () => {
 
 test('a successful fetch returns the body and records validators', async () => {
   const fetchImpl = scriptedFetch([
-    bodyResponse('sku,title\n1,A\n', { etag: '"v1"', 'last-modified': 'Wed, 25 Nov 2026 10:00:00 GMT' }),
+    bodyResponse('sku,title\n1,A\n', {
+      etag: '"v1"',
+      'last-modified': 'Wed, 25 Nov 2026 10:00:00 GMT',
+    }),
   ]);
-  const out = await retrieveFeed(source(), { fetchImpl, lookupImpl: publicLookup, sleepImpl: noSleep });
+  const out = await retrieveFeed(source(), {
+    fetchImpl,
+    lookupImpl: publicLookup,
+    sleepImpl: noSleep,
+  });
   assert.equal(out.status, 'fetched');
   assert.equal(out.body.toString(), 'sku,title\n1,A\n');
   assert.equal(out.validators.etag, '"v1"');
@@ -232,7 +254,10 @@ test('a conditional request is sent when validators are known', async () => {
   });
   assert.equal(out.status, 'unchanged');
   assert.equal(fetchImpl.calls[0].headers.get('if-none-match'), '"v1"');
-  assert.equal(fetchImpl.calls[0].headers.get('if-modified-since'), 'Wed, 25 Nov 2026 10:00:00 GMT');
+  assert.equal(
+    fetchImpl.calls[0].headers.get('if-modified-since'),
+    'Wed, 25 Nov 2026 10:00:00 GMT',
+  );
 });
 
 test('identical bytes with no ETag are still recognised as unchanged', async () => {
@@ -257,7 +282,11 @@ test('a gzipped response is expanded transparently', async () => {
   const fetchImpl = scriptedFetch([
     new Response(gz, { status: 200, headers: { 'content-type': 'application/gzip' } }),
   ]);
-  const out = await retrieveFeed(source(), { fetchImpl, lookupImpl: publicLookup, sleepImpl: noSleep });
+  const out = await retrieveFeed(source(), {
+    fetchImpl,
+    lookupImpl: publicLookup,
+    sleepImpl: noSleep,
+  });
   assert.equal(out.status, 'fetched');
   assert.equal(out.body.toString(), 'sku,title\n1,A\n');
 });
@@ -296,7 +325,11 @@ test('a 429 waits for exactly as long as Retry-After says', async () => {
 
 test('a 404 is NOT retried — it is a configuration fault, not a bad minute', async () => {
   const fetchImpl = scriptedFetch([new Response('gone', { status: 404 })]);
-  const out = await retrieveFeed(source(), { fetchImpl, lookupImpl: publicLookup, sleepImpl: noSleep });
+  const out = await retrieveFeed(source(), {
+    fetchImpl,
+    lookupImpl: publicLookup,
+    sleepImpl: noSleep,
+  });
   assert.equal(out.status, 'failed');
   assert.equal(out.retryable, false);
   assert.equal(out.attempts, 1);
@@ -308,7 +341,11 @@ test('a failed retrieval is reported as FAILED, never as an empty feed', async (
   const fetchImpl = scriptedFetch(
     Array.from({ length: 4 }, () => () => Promise.reject(new Error('socket hang up'))),
   );
-  const out = await retrieveFeed(source(), { fetchImpl, lookupImpl: publicLookup, sleepImpl: noSleep });
+  const out = await retrieveFeed(source(), {
+    fetchImpl,
+    lookupImpl: publicLookup,
+    sleepImpl: noSleep,
+  });
   assert.equal(out.attempts, 4, 'a transient error must exhaust the retry budget');
   assert.equal(out.status, 'failed');
   // The distinction the whole pipeline depends on: nothing downstream may read
@@ -332,7 +369,11 @@ test('a redirect to a private address is refused at the hop, not followed', asyn
   const fetchImpl = scriptedFetch([
     new Response(null, { status: 302, headers: { location: 'https://169.254.169.254/latest/' } }),
   ]);
-  const out = await retrieveFeed(source(), { fetchImpl, lookupImpl: publicLookup, sleepImpl: noSleep });
+  const out = await retrieveFeed(source(), {
+    fetchImpl,
+    lookupImpl: publicLookup,
+    sleepImpl: noSleep,
+  });
   assert.equal(out.status, 'failed');
   assert.equal(out.retryable, false, 'an SSRF attempt is not a transient error');
   assert.match(out.reason, /not a public/i);
