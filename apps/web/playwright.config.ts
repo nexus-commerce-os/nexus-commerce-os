@@ -43,8 +43,18 @@ export default defineConfig({
   // Deterministic ordering matters more than speed here: the screenshots are
   // the deliverable and they should come out in a stable order.
   workers: process.env.CI ? 2 : undefined,
+  // Within a file, tests run in declaration order in one worker unless a file
+  // opts out. waitlist.spec.ts relies on that ordering for the rate-limit test.
+  fullyParallel: false,
   reporter: process.env.CI
-    ? [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
+    ? [
+        ['list'],
+        ['html', { outputFolder: 'playwright-report', open: 'never' }],
+        // JSON too, because `verify-browser-coverage.mjs` reads it to prove the
+        // suite actually ran what it claims. A green run of nothing looks
+        // identical to a green run of everything without it.
+        ['json', { outputFile: 'playwright-report/report.json' }],
+      ]
     : [['list']],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
@@ -53,18 +63,41 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  // One project per width, so a failure names the width it failed at.
-  projects: WIDTHS.map((width) => ({
-    name: `w${width}`,
-    use: {
-      ...devices['Desktop Chrome'],
-      viewport: { width, height: heightFor(width) },
-      // Below the tablet breakpoint, behave like a touch device: layout that
-      // only works with a mouse is a bug at 320px.
-      hasTouch: width < 768,
-      isMobile: false,
+  projects: [
+    // One project per width, so a failure names the width it failed at. These
+    // cover LAYOUT and rendering only; they deliberately submit nothing.
+    ...WIDTHS.map((width) => ({
+      name: `w${width}`,
+      testMatch: /responsive\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width, height: heightFor(width) },
+        // Below the tablet breakpoint, behave like a touch device: layout that
+        // only works with a mouse is a bug at 320px.
+        hasTouch: width < 768,
+        isMobile: false,
+      },
+    })),
+    /*
+     * The waitlist flows run ONCE, serially, in a project of their own.
+     *
+     * WHY NOT AT EVERY WIDTH. The Worker rate-limits to 5 posts per 60s and,
+     * under `wrangler dev`, every request shares one bucket because
+     * CF-Connecting-IP is absent. Submitting from eight parallel projects
+     * exhausted the budget and the last three widths failed while the rate
+     * limiter was working correctly — a test that fights a protection teaches
+     * you to remove the protection. Running the flows once, in a known order,
+     * makes the budget predictable enough to assert the limit ON PURPOSE.
+     *
+     * The per-width suites still assert the form is REACHABLE at every width,
+     * which is the part that is actually width-dependent.
+     */
+    {
+      name: 'flows',
+      testMatch: /waitlist\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
     },
-  })),
+  ],
   webServer: {
     // `--local` keeps KV in a local simulation: no production namespace is
     // touched and no credential is needed.

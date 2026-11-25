@@ -37,6 +37,16 @@ export default function NexusLanding() {
   const countRef = useRef<HTMLSpanElement>(null);
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  /*
+   * Whether the address was ALREADY on the list.
+   *
+   * The Worker has always computed this and returned `status: 'duplicate'`,
+   * and the no-JavaScript path has always shown it (`?joined=already`). The
+   * hydrated path read `ok` and threw the rest away, so a visitor who signed
+   * up twice got an identical "You're on the list" both times — the JS path
+   * showed LESS than the no-JS fallback, which is the wrong way round.
+   */
+  const [already, setAlready] = useState(false);
   const [busy, setBusy] = useState(false);
   const [who, setWho] = useState('you');
   const [note, setNote] = useState(DEFAULT_NOTE);
@@ -82,10 +92,11 @@ export default function NexusLanding() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: v }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as { ok?: boolean; status?: string; error?: string };
       if (res.ok && data.ok) {
         const local = v.split('@')[0] ?? 'you';
         setWho(local.length > 18 ? 'you' : local);
+        setAlready(data.status === 'duplicate');
         setSubmitted(true);
       } else {
         setNote(data.error ?? 'Something went wrong — please try again.');
@@ -134,7 +145,10 @@ export default function NexusLanding() {
     if (!message) return;
     setNote(message);
     setNoteErr(isError);
-    if (!isError) setSubmitted(true);
+    if (!isError) {
+      setAlready(outcome === 'already');
+      setSubmitted(true);
+    }
     window.history.replaceState(null, '', window.location.pathname + window.location.hash);
   }, []);
 
@@ -695,7 +709,8 @@ export default function NexusLanding() {
               </p>
               {submitted ? (
                 <p className="wl-ok">
-                  <span className="chk">✓</span> You&apos;re on the list. We&apos;ll email{' '}
+                  <span className="chk">✓</span>{' '}
+                  {already ? "You're already on the list." : "You're on the list."} We&apos;ll email{' '}
                   <b>{who}</b> the moment your region opens.
                 </p>
               ) : (

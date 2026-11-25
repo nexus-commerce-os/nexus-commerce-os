@@ -200,81 +200,36 @@ test.describe('CSP is enforced, not merely declared', () => {
   });
 });
 
-test.describe('the waitlist works without a mouse and without JavaScript', () => {
-  test('the form posts and comes back with an outcome', async ({ page }, info) => {
+test.describe('the waitlist form is reachable at this width', () => {
+  /*
+   * REACHABILITY ONLY — no submission happens here, on purpose.
+   *
+   * The Worker allows 5 posts per 60s and under `wrangler dev` every request
+   * shares one bucket, so submitting from eight parallel projects exhausted
+   * the budget and three widths failed while the rate limiter did its job.
+   * The flows that need to POST live in waitlist.spec.ts, which runs once and
+   * serially. What is genuinely WIDTH-dependent is whether a visitor can see
+   * and hit the field at all, and that is what this asserts.
+   */
+  test('the field and its submit control are visible and big enough to hit', async ({
+    page,
+  }, info) => {
     await page.goto('/');
-    await assertWidth(page, info.project.name);
+    const width = await assertWidth(page, info.project.name);
 
     const email = page.locator('input[type="email"][name="email"]').first();
-    await expect(email, 'the waitlist input must be reachable').toBeVisible();
+    await expect(email, `the waitlist field must be reachable at ${width}px`).toBeVisible();
 
-    /*
-     * THERE ARE TWO CORRECT OUTCOMES, and the first version of this test knew
-     * only one of them.
-     *
-     *   React running -> `onSubmit` calls preventDefault, posts with fetch and
-     *                    renders `.wl-ok`. The URL never changes.
-     *   No JavaScript -> the native form posts and the Worker answers 303 to
-     *                    /?joined=<outcome>.
-     *
-     * Asserting only the URL meant asserting the no-JS path with JS enabled.
-     * It failed at 320 and 375 and PASSED at 390 and above — not because those
-     * widths behave differently, but because hydration had not finished there
-     * when Enter was pressed, so the native submit still happened. A test whose
-     * result depends on winning a race is worse than no test.
-     *
-     * So: wait for hydration, then accept either real outcome.
-     */
-    await page.waitForFunction(
-      () => {
-        const root = document.querySelector('body > div, #__next, main');
-        return root ? Object.keys(root).some((k) => k.startsWith('__react')) : false;
-      },
-      undefined,
-      { timeout: 15_000 },
-    );
+    const box = await email.boundingBox();
+    expect(box).not.toBeNull();
+    // WCAG 2.5.8 asks for 24px; 44px is this site's own standard.
+    expect(Math.round(box!.height), 'the field is too short to tap').toBeGreaterThanOrEqual(36);
+    expect(box!.x, 'the field starts off the left edge').toBeGreaterThanOrEqual(-1);
+    expect(box!.x + box!.width, 'the field runs off the right edge').toBeLessThanOrEqual(width + 1);
 
-    // A unique address per run, so a repeat is a real repeat. CI runs this
-    // against `wrangler dev --local`, whose KV is a local simulation, so no
-    // production data is touched.
-    const address = `pw-${Date.now()}-${info.project.name}@example.com`;
-    await email.fill(address);
-    await email.press('Enter');
-
-    /*
-     * A RATE-LIMIT REFUSAL IS A CORRECT OUTCOME, and the first version of this
-     * did not know that either. The Worker rate-limits by IP; in CI all eight
-     * viewport projects submit from 127.0.0.1, so the run goes 5×200 then
-     * 429 — and the last three widths failed while the rate limiter was doing
-     * precisely its job. Measured in the CI log, in order:
-     *   200, 200, 200, 200, 200, 429, 429, 429, 429, 429, 200
-     *
-     * What actually matters here is the bug this test exists for: the form
-     * once accepted an address and silently did NOTHING with it, because the
-     * CSP blocked hydration and the markup had no native fallback. So the
-     * assertion is that the form always produces a DEFINITE, VISIBLE outcome —
-     * confirmation, redirect, or a stated reason. Silence is the only failure.
-     */
-    const outcome = await expect
-      .poll(
-        async () => {
-          if (/[?&]joined=[a-z-]+/.test(page.url())) return 'redirected';
-          if ((await page.locator('.wl-ok').count()) > 0) return 'confirmed';
-          // `.wl-note` carries the refusal, including the rate-limit message.
-          const note = page.locator('.wl-note');
-          if ((await note.count()) > 0 && (await note.first().innerText()).trim().length > 0) {
-            return 'told why not';
-          }
-          return 'silence';
-        },
-        {
-          timeout: 15_000,
-          message: 'the waitlist form gave the visitor no outcome at all',
-        },
-      )
-      .not.toBe('silence');
-
-    void outcome;
+    // It must be focusable by keyboard, not merely painted.
+    await email.focus();
+    await expect(email).toBeFocused();
   });
 });
 
@@ -310,6 +265,133 @@ test.describe('the published catalog is real', () => {
     // Every published record must show where it came from and when it was read.
     const body = await page.locator('body').innerText();
     expect(body, 'the catalog must say it is specifications only').toMatch(/specification/i);
+  });
+});
+
+test.describe('the catalog pages hold up at this width', () => {
+  /*
+   * The layout suite used to load the home page and nothing else, so a
+   * horizontal overflow on /products would have gone unseen — and /products
+   * is the page with the widest content: specification rows of label/value
+   * pairs that do not wrap the way prose does.
+   *
+   * The catalog is only in the artifact when PUBLISH_CATALOG=1 was set for the
+   * build. Skipping is honest; pretending to have tested it is not.
+   */
+  async function openCatalog(page: Page, projectName: string) {
+    const response = await page.goto('/products');
+    const width = await assertWidth(page, projectName);
+    if (!response || response.status() === 404) {
+      test.skip(true, 'catalog not published in this build (PUBLISH_CATALOG unset)');
+    }
+    return width;
+  }
+
+  /** scrollWidth must never exceed clientWidth, and the offender must be named. */
+  async function assertNoOverflow(page: Page, width: number, where: string) {
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    const offenders = await page.evaluate((vw) => {
+      const out: string[] = [];
+      for (const el of Array.from(document.querySelectorAll('body *'))) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        const style = getComputedStyle(el);
+        if (
+          style.position === 'fixed' ||
+          style.overflowX === 'auto' ||
+          style.overflowX === 'scroll'
+        )
+          continue;
+        if (r.right > vw + 1) {
+          const tag = el.tagName.toLowerCase();
+          const cls = (el.className || '').toString().split(/\s+/).filter(Boolean)[0] ?? '';
+          out.push(`${tag}${cls ? `.${cls}` : ''} right=${Math.round(r.right)}`);
+        }
+      }
+      return out.slice(0, 6);
+    }, width);
+    expect(offenders, `${where}: elements overflowing ${width}px`).toEqual([]);
+    expect(scrollWidth, `${where}: horizontal overflow at ${width}px`).toBeLessThanOrEqual(
+      clientWidth + 1,
+    );
+  }
+
+  test('the product list renders, fits, and says what it is', async ({ page }, info) => {
+    const width = await openCatalog(page, info.project.name);
+    await assertNoOverflow(page, width, '/products');
+
+    const cards = page.locator('[data-product-slug], article');
+    expect(await cards.count(), 'no product cards rendered').toBeGreaterThan(0);
+
+    // Specifications only — no price, no merchant, no buy link. This is the
+    // claim the whole catalog rests on, so it is checked on every width.
+    const body = await page.locator('body').innerText();
+    expect(body).toMatch(/specification/i);
+    expect(body, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
+  });
+
+  test('search and the category filter actually narrow the list', async ({ page }, info) => {
+    const width = await openCatalog(page, info.project.name);
+    const cards = page.locator('[data-product-slug], article');
+    const total = await cards.count();
+
+    const search = page.locator('input[type="search"], input[name="q"]').first();
+    await expect(search, `search must be reachable at ${width}px`).toBeVisible();
+
+    // Every term the box SUGGESTS must return something. The placeholder once
+    // read "e.g. OLED, NVMe, tenkeyless" — three terms that, after the
+    // source-terms audit quarantined those products, matched nothing at all.
+    const placeholder = (await search.getAttribute('placeholder')) ?? '';
+    for (const term of placeholder.replace(/^e\.g\.\s*/i, '').split(',')) {
+      const q = term.trim();
+      if (!q) continue;
+      await search.fill(q);
+      await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeGreaterThan(0);
+    }
+
+    await search.fill('zzzzzznothing');
+    await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeLessThan(total);
+
+    await search.fill('');
+    await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBe(total);
+
+    // The category filter must narrow to a real subset, not merely exist.
+    const category = page.locator('select').first();
+    if ((await category.count()) > 0) {
+      const values = await category
+        .locator('option')
+        .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+      const real = values.find((v) => v && v !== 'all');
+      if (real) {
+        await category.selectOption(real);
+        await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeGreaterThan(0);
+        await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeLessThanOrEqual(total);
+      }
+    }
+  });
+
+  test('a product detail page fits and cites its source', async ({ page }, info) => {
+    await openCatalog(page, info.project.name);
+    const first = page.locator('a[href^="/products/"]').first();
+    await expect(first).toBeVisible();
+    await first.click();
+    await page.waitForURL(/\/products\/[a-z0-9-]+/);
+    const width = await assertWidth(page, info.project.name);
+
+    await assertNoOverflow(page, width, 'product detail');
+
+    // Provenance is the product here: a spec with no source and no date is
+    // just an assertion.
+    const body = await page.locator('body').innerText();
+    expect(body, 'the detail page must cite a verification date').toMatch(
+      /(verified|checked|read)/i,
+    );
+    const sourceLink = page.locator('a[href^="https://"]').first();
+    expect(await sourceLink.count(), 'the detail page must link its source').toBeGreaterThan(0);
+    expect(body, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
   });
 });
 

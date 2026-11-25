@@ -834,6 +834,14 @@ jobs:
         # These tests drive a real browser against the real Worker, and each one
         # asserts window.innerWidth before believing anything else.
         run: npx playwright test
+      - name: Prove the suite ran what it claims to cover
+        working-directory: apps/web
+        # A green Playwright run is not evidence the tests RAN: a bad testMatch
+        # matches nothing, a project can vanish from the config, and a stray
+        # skip reports success. This reads the JSON report and fails if any
+        # viewport project is missing, any project is short of its expected
+        # test count, or anything was skipped that is not on the allowed list.
+        run: node scripts/verify-browser-coverage.mjs playwright-report/report.json
       - name: Keep the report and the screenshots
         if: always()
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
