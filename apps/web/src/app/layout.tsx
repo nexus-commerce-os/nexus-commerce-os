@@ -1,5 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
+
+import { MobileNav } from '@/components/MobileNav';
 import '@nexus/ui/styles.css';
 
 export const metadata: Metadata = {
@@ -110,6 +112,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         {children}
+        {/*
+         * Gives every page's header a working menu below 820px, where
+         * `.nav-links` is hidden and nothing replaced it. Here for the same
+         * reason as the skip link: the header markup is repeated across 25
+         * pages, and adding a button to each by hand is how 24 of them get it.
+         */}
+        <MobileNav />
       </body>
     </html>
   );

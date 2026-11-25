@@ -345,8 +345,110 @@ header.nav {
 .nav-links a.active::after {
   transform: scaleX(1);
 }
+/* ---------------------------------------------------------- mobile menu ---
+   The button is injected by `MobileNav` (apps/web), because the header markup
+   lives in 25 separate pages. It is hidden above the breakpoint and hidden
+   entirely when scripts do not run, since nothing creates it then; the footer
+   navigation is the no-JavaScript path and is unaffected. */
+.nav-toggle {
+  display: none;
+  margin-left: auto;
+  /* `flex: none`, because the default `0 1 auto` let the flex row shrink the
+     button to 32px wide — still above the WCAG 2.5.8 minimum of 24, but not
+     the 44 it asks for, and measurably harder to hit with a thumb. */
+  flex: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.nav-toggle:hover {
+  border-color: var(--accent);
+}
+.nav-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Two bars that become an X when open, drawn from one element so there is no
+   extra markup to keep in sync. */
+.nav-toggle-bars,
+.nav-toggle-bars::before {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transition:
+    transform var(--speed) ease,
+    opacity var(--speed) ease;
+}
+.nav-toggle-bars {
+  position: relative;
+  transform: translateY(-4px);
+}
+.nav-toggle-bars::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 0;
+}
+.nav-open .nav-toggle-bars {
+  transform: rotate(45deg);
+}
+.nav-open .nav-toggle-bars::before {
+  top: 0;
+  transform: rotate(-90deg);
+}
+
 @media (max-width: 820px) {
   .nav-links {
+    display: none;
+  }
+  .nav-toggle {
+    display: inline-flex;
+  }
+  /* The panel sits under the bar rather than over the page: a full-screen
+     overlay on a 5-item menu hides the content for no benefit and needs a
+     focus trap to be safe. */
+  .nav-open .nav-links {
+    display: flex;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    flex-direction: column;
+    gap: 0;
+    margin: 0;
+    padding: 8px;
+    /* Opaque --card, not the header's translucent --paper: a blurred panel
+       with body text showing through it is unreadable on a phone. */
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
+    z-index: 60;
+  }
+  .nav-open .nav-links a {
+    /* 44px of target, not a 20px line of text with padding guessed around it. */
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: var(--fs-md);
+  }
+  .nav-open .nav-links a:hover,
+  .nav-open .nav-links a:focus-visible {
+    background: var(--paper);
+  }
+  /* The underline animation is a pointer affordance; in a stacked list it just
+     draws a line across the row. */
+  .nav-open .nav-links a::after {
     display: none;
   }
 }
