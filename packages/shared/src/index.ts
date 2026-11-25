@@ -80,3 +80,37 @@ export {
   isFresh,
   describeAge,
 } from './freshness.js';
+
+export {
+  type AllInResult,
+  type Availability,
+  type CostComponent,
+  type Offer,
+  type OfferProblem,
+  type OfferValidation,
+  OfferError,
+  knownCost,
+  unknownCost,
+  offerId,
+  allInPrice,
+  comparableTotal,
+  validateOffer,
+  offerIsDisplayable,
+  rankByTotal,
+  sameTotal,
+} from './offer.js';
+
+export {
+  type DropClaim,
+  type PriceObservation,
+  type PriceSummary,
+  PriceHistoryError,
+  sortByTime,
+  withinWindow,
+  summarise,
+  describeDrop,
+  trailingLow,
+  daysSinceLow,
+  volatilityBasisPoints,
+  dailyCloses,
+} from './price-history.js';
