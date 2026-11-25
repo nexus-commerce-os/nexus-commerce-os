@@ -310,6 +310,31 @@ check('search returns everything for an empty query and narrows for a real one',
   return true;
 });
 
+check('every query the search box suggests actually returns something', () => {
+  // WHY. The placeholder read "e.g. OLED, NVMe, tenkeyless". Those terms
+  // matched the LG television, the Samsung SSD and a keyboard — all three
+  // quarantined by the source-terms audit. Measured on production after the
+  // deploy: OLED 0 results, NVMe 0, tenkeyless 0. The search worked perfectly;
+  // it was the box's own advice that matched nothing, which is the same
+  // dishonesty as a decorative control and is not caught by testing search.
+  const source = read('src/app/products/ProductsBrowser.tsx');
+
+  // A hard-coded literal is the failure mode, so refuse one outright rather
+  // than checking whatever it happens to say today.
+  const literal = source.match(/placeholder="e\.g\.([^"]*)"/);
+  if (literal) {
+    return `the placeholder hard-codes examples ("e.g.${literal[1]}") — derive them from PRODUCTS instead`;
+  }
+
+  // And assert the derived hints really do match, so the deriving function
+  // cannot quietly start producing dead terms either.
+  const hints = [...new Set(PRODUCTS.map((p) => p.brand))].slice(0, 3);
+  const dead = hints.filter((h) => searchProducts(h).length === 0);
+  return dead.length === 0
+    ? true
+    : `the search box would suggest terms that match nothing: ${dead.join(', ')}`;
+});
+
 check('search matches whole words, not letters inside other words', () => {
   // ORIGINALLY: "actively cooled" contains the letters o-l-e-d, so a substring
   // search returned laptops for "OLED". That fixture died when the television

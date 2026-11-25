@@ -23,6 +23,25 @@ import { CATEGORIES, categoryBySlug, searchProducts, type Product } from '@/data
 
 const ALL = 'all';
 
+/**
+ * Example queries for the placeholder, DERIVED from what is published.
+ *
+ * WHY DERIVED. This said "e.g. OLED, NVMe, tenkeyless" — three terms that
+ * matched the LG television, the Samsung SSD and a keyboard. All three records
+ * were quarantined by the source-terms audit, so every suggestion the box
+ * offered returned zero results. Measured on production: OLED 0, NVMe 0,
+ * tenkeyless 0. A search box that invites a query matching nothing is a
+ * decorative control with extra steps, and a hard-coded hint goes stale the
+ * moment eligibility changes.
+ *
+ * Brands are used because a brand always matches at least its own product, and
+ * `searchProducts` matches brand names.
+ */
+function exampleQueries(products: readonly Product[]): string {
+  const brands = [...new Set(products.map((p) => p.brand))].slice(0, 3);
+  return brands.length > 0 ? `e.g. ${brands.join(', ')}` : 'Search by name, brand or model';
+}
+
 export function ProductsBrowser({ products }: { products: readonly Product[] }) {
   const [query, setQuery] = useState('');
   const [categorySlug, setCategorySlug] = useState<string>(ALL);
@@ -52,7 +71,7 @@ export function ProductsBrowser({ products }: { products: readonly Product[] }) 
               id="catalog-search"
               type="search"
               value={query}
-              placeholder="e.g. OLED, NVMe, tenkeyless"
+              placeholder={exampleQueries(products)}
               autoComplete="off"
               onChange={(event) => setQuery(event.target.value)}
             />
