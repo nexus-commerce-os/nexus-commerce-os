@@ -2,7 +2,7 @@
   "name": "@nexus/web",
   "version": "0.0.0",
   "private": true,
-  "description": "NEXUS shopper-facing Next.js PWA \u00e2\u20ac\u201d P0.1 scaffold (no features; implemented from P0.2).",
+  "description": "NEXUS shopper-facing Next.js PWA â€” P0.1 scaffold (no features; implemented from P0.2).",
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/release-gate.mjs && next build && node scripts/gate-catalog.mjs && node scripts/verify-headers.mjs && node scripts/verify-footer.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-merchants.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-catalog.mjs && node scripts/artifact-manifest.mjs write",
@@ -26,10 +26,11 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260730.1",
-    "wrangler": "^4.0.0",
+    "@playwright/test": "1.49.1",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "wrangler": "^4.0.0"
   }
 }
