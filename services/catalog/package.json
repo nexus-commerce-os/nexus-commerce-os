@@ -2,18 +2,25 @@
   "name": "@nexus/catalog",
   "version": "0.0.0",
   "private": true,
-  "description": "NEXUS Catalog & Offer module (NestJS/TS) — P0.1 scaffold. No catalog logic; implemented in P0.3.",
+  "description": "NEXUS Catalog & Offer module (TS) \u2014 P0.3: offer schema, authorized-feed adapter, validation guard, ZIP feed ingestion, reconciliation and Postgres persistence. No scheduler, no FTP retrieval and no API surface yet.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "echo \"no tests — scaffold\" && exit 0"
+    "test": "tsc -p tsconfig.json && node --test test/money.test.mjs test/cj-shopping-feed.test.mjs test/catalog-guard.test.mjs test/freshness.test.mjs test/archive.test.mjs test/import-feed.test.mjs test/import-real-feeds.test.mjs test/postgres-offer-store.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
-    "@nestjs/core": "^10.3.0"
+    "@nestjs/core": "^10.3.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^10.13.2",
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.20.0",
+    "testcontainers": "^10.13.2",
     "typescript": "^5.5.0"
   }
 }
