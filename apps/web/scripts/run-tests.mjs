@@ -61,6 +61,18 @@ if (!existsSync(workerEntry)) {
 ${compile.stdout}${compile.stderr}`);
   process.exit(1);
 }
+/*
+ * Mark the output as ESM explicitly.
+ *
+ * `apps/web/package.json` has no `"type": "module"`, so a `.js` file under it
+ * is CommonJS — and the emitted Worker is ESM. Node 22 and newer sniff the
+ * syntax and get away with it; Node 20, which CI stage 3 runs, does not, and
+ * fails with "Cannot use import statement outside a module". Writing the
+ * marker makes the answer the same on every version instead of depending on
+ * which Node happens to be installed.
+ */
+writeFileSync(join(workerOut, 'package.json'), JSON.stringify({ type: 'module' }));
+
 // The emitted import is extensionless; Node's ESM loader requires the .js.
 const emitted = readFileSync(workerEntry, 'utf8');
 writeFileSync(
