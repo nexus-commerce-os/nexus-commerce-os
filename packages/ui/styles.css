@@ -520,20 +520,43 @@ header.nav {
 @media (max-width: 520px) {
   /* Compact, NOT hidden.
      This rule used to be `display: none`, which removed the only call to
-     action above the fold from every phone. `.nav-links` already disappears
-     below 820px and there is no menu button to replace it, so under 520px the
-     header was a logo and a theme toggle: on the narrowest screens the site
-     offered no way to join the waitlist without scrolling, and the waitlist is
-     the one thing this site currently does.
-     Measured on the live page with this rule applied, at 375px and at 344px
-     (the narrowest the test viewport would go): the brand ends well clear of
-     the button, `scrollWidth` never exceeds `innerWidth`, and nothing wraps.
-     `white-space: nowrap` because "Join the waitlist" breaking across two
-     lines inside a 36px-tall button is worse than either alternative. */
+     action above the fold from every phone. Under 520px the header was a logo
+     and a theme toggle: on the narrowest screens the site offered no way to
+     join the waitlist without scrolling, and the waitlist is the one thing
+     this site currently does.
+
+     THE MEASUREMENT THAT USED TO BE HERE WAS TRUE AND IS NOT ANY MORE, and
+     the reason is worth keeping. It read: "at 375px and at 344px (the
+     narrowest the test viewport would go) the brand ends well clear of the
+     button and scrollWidth never exceeds innerWidth" — taken when the sentence
+     above it was literally true, that there was "no menu button to replace
+     it". A 44px menu button was then added to this same row, and the
+     measurement was never re-run. It had no room to spare.
+
+     Measured again in a real browser at the exact widths (Playwright, stage
+     3d): the row needs a CONSTANT 443px — brand 124 + theme 44 + toggle 44 +
+     button ~131 + three 24px gaps + padding — so the page scrolled sideways
+     at 320, 375, 390 and 412. 443px cannot be made to fit 320px by trimming
+     padding; something has to move. */
+  .nav-in {
+    /* Wrap rather than overflow. Nothing is hidden and no label is shortened:
+       below the width where the row fits, the button moves to a second line.
+       `flex-wrap` only acts when the row genuinely does not fit, so wider
+       phones keep the single-row header exactly as before. */
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 64px;
+    padding-block: 8px;
+    /* row-gap column-gap. 24px of gap three times over was 72px of the 443. */
+    gap: 8px 12px;
+  }
   .nav .btn-primary {
     padding: 7px 12px;
     font-size: 0.82rem;
+    /* Still nowrap: "Join the waitlist" breaking inside a 36px-tall button is
+       worse than either alternative. It now has a whole line to sit on. */
     white-space: nowrap;
+    margin-left: auto;
   }
 }
 

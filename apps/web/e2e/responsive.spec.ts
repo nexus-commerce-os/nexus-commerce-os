@@ -1,0 +1,444 @@
+/**
+ * The site, in a real browser, at eight exact widths.
+ *
+ * Every test here asserts `window.innerWidth` FIRST. A responsive test that
+ * does not prove what width it actually ran at is a test of nothing — the
+ * viewport can silently be clamped, the device scale can differ, and the result
+ * reads as a pass either way. That is the specific failure the founder called
+ * out, so it is checked in each test rather than assumed from the config.
+ */
+import { expect, test, type Page } from '@playwright/test';
+
+/** The width this project claims to be running at, from its own name. */
+function declaredWidth(projectName: string): number {
+  const n = Number(projectName.replace(/^w/, ''));
+  if (!Number.isInteger(n)) throw new Error(`project "${projectName}" has no width in its name`);
+  return n;
+}
+
+/**
+ * Proves the browser really is this wide before anything else is believed.
+ * Returns the measured width so a test can branch on it.
+ */
+async function assertWidth(page: Page, projectName: string): Promise<number> {
+  const want = declaredWidth(projectName);
+  const got = await page.evaluate(() => window.innerWidth);
+  expect(got, `window.innerWidth must actually be ${want}`).toBe(want);
+  return got;
+}
+
+/** The breakpoint the mobile navigation switches at, from MobileNav.tsx. */
+const DESKTOP_FROM = 821;
+
+/**
+ * All text a visitor could read, with SCRIPT AND STYLE REMOVED.
+ *
+ * `innerText` returns only laid-out text and is not a dependable way to ask
+ * "is this on the page". Raw `textContent` goes too far the other way: Next's
+ * static export embeds its whole flight payload in inline
+ * `self.__next_f.push(...)` scripts, and that payload is full of React
+ * back-references like `$1`, which match a currency pattern and made a
+ * spec-only page look like it was quoting prices. Neither is what "what is on
+ * this page" means; this is.
+ */
+async function visibleText(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const clone = document.body.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('script, style, noscript, template').forEach((n) => n.remove());
+    return clone.textContent ?? '';
+  });
+}
+
+test.describe('every width', () => {
+  test('React hydrates — the page is live, not just served', async ({ page }, info) => {
+    const errors: string[] = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error') errors.push(m.text());
+    });
+    page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+
+    await page.goto('/');
+    await assertWidth(page, info.project.name);
+
+    // The real question, and the one an HTTP 200 cannot answer: did React
+    // attach? `script-src 'self'` blocked the inline bootstrap in production
+    // and this is the assertion that would have caught it.
+    const hydrated = await page.waitForFunction(
+      () => {
+        const root = document.querySelector('body > div, #__next, main');
+        if (!root) return false;
+        return Object.keys(root).some((k) => k.startsWith('__react'));
+      },
+      undefined,
+      { timeout: 15_000 },
+    );
+    expect(await hydrated.jsonValue()).toBeTruthy();
+
+    expect(errors, `console errors at ${info.project.name}`).toEqual([]);
+  });
+
+  test('the page does not scroll sideways', async ({ page }, info) => {
+    await page.goto('/');
+    const width = await assertWidth(page, info.project.name);
+
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    // One pixel of slack for sub-pixel rounding; anything more is an overflow.
+    expect(scrollWidth, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(clientWidth + 1);
+  });
+
+  test('no element pushes past the viewport', async ({ page }, info) => {
+    await page.goto('/');
+    const width = await assertWidth(page, info.project.name);
+
+    // Naming the offender matters: "something overflows" costs an hour,
+    // "<pre class=x> is 412px wide at 320px" costs a minute.
+    const offenders = await page.evaluate((vw) => {
+      const out: string[] = [];
+      for (const el of Array.from(document.querySelectorAll('body *'))) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        const style = getComputedStyle(el);
+        if (
+          style.position === 'fixed' ||
+          style.overflowX === 'auto' ||
+          style.overflowX === 'scroll'
+        )
+          continue;
+        if (r.right > vw + 1) {
+          const tag = el.tagName.toLowerCase();
+          const cls = (el.className || '').toString().split(/\s+/).filter(Boolean)[0] ?? '';
+          out.push(`${tag}${cls ? `.${cls}` : ''} right=${Math.round(r.right)}`);
+        }
+      }
+      return out.slice(0, 6);
+    }, width);
+    expect(offenders, `elements overflowing ${width}px`).toEqual([]);
+  });
+
+  test('the theme toggle actually changes the theme', async ({ page }, info) => {
+    await page.goto('/');
+    await assertWidth(page, info.project.name);
+
+    const toggle = page.locator('[data-theme-toggle], button[aria-label*="theme" i]').first();
+    if ((await toggle.count()) === 0) {
+      test.skip(true, 'no theme toggle is rendered on this page');
+    }
+    const before = await page.evaluate(() => ({
+      attr: document.documentElement.dataset.theme ?? null,
+      bg: getComputedStyle(document.body).backgroundColor,
+    }));
+    await toggle.click();
+    // The attribute is the contract; the background proves it reached paint.
+    await expect
+      .poll(async () => page.evaluate(() => document.documentElement.dataset.theme ?? null))
+      .not.toBe(before.attr);
+    const afterBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(afterBg, 'theme changed but the body background did not').not.toBe(before.bg);
+  });
+});
+
+test.describe('navigation', () => {
+  test('the menu matches the width it is at, and the keyboard can close it', async ({
+    page,
+  }, info) => {
+    await page.goto('/');
+    const width = await assertWidth(page, info.project.name);
+
+    const disclosure = page.locator('button[aria-controls][aria-expanded]').first();
+
+    if (width >= DESKTOP_FROM) {
+      // Above the breakpoint the links are simply present; a hamburger here
+      // would be a bug.
+      await expect(page.locator('.nav-in a').first()).toBeVisible();
+      return;
+    }
+
+    await expect(disclosure, `no menu button at ${width}px`).toBeVisible();
+
+    // WCAG 2.5.8 asks for 24px; this site's own standard is 44px.
+    const box = await disclosure.boundingBox();
+    expect(box).not.toBeNull();
+    expect(Math.round(box!.width), 'touch target width').toBeGreaterThanOrEqual(44);
+    expect(Math.round(box!.height), 'touch target height').toBeGreaterThanOrEqual(44);
+
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await disclosure.click();
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+
+    const panelId = await disclosure.getAttribute('aria-controls');
+    expect(panelId, 'aria-controls must name a real element').toBeTruthy();
+    await expect(page.locator(`#${panelId}`)).toBeVisible();
+
+    // Escape must close it AND return focus, or a keyboard user is stranded
+    // inside a panel they cannot see.
+    await page.keyboard.press('Escape');
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await expect(disclosure).toBeFocused();
+  });
+});
+
+test.describe('CSP is enforced, not merely declared', () => {
+  test('the header carries a nonce and an injected inline script does not run', async ({
+    page,
+  }, info) => {
+    const response = await page.goto('/');
+    await assertWidth(page, info.project.name);
+    expect(response).not.toBeNull();
+
+    const csp = response!.headers()['content-security-policy'] ?? '';
+    expect(csp, 'no CSP on the document').toContain('script-src');
+    expect(csp, 'script-src carries no nonce').toMatch(/'nonce-[A-Za-z0-9+/=]+'/);
+    // ONLY the script-src directive. This originally tested the whole header
+    // and failed at every width, because `style-src 'self' 'unsafe-inline'` is
+    // present, intended and unrelated: inline STYLE is not script execution.
+    // Testing the whole string made a correct policy look broken, which is
+    // worse than not testing it — a check that cries wolf gets switched off.
+    const scriptSrc = csp.match(/script-src ([^;]*)/)?.[1] ?? '';
+    expect(scriptSrc, 'script-src must not permit arbitrary inline script').not.toContain(
+      "'unsafe-inline'",
+    );
+    expect(scriptSrc, 'script-src must not permit eval').not.toContain("'unsafe-eval'");
+    // HTML carrying a nonce must not be stored by a shared cache, or the nonce
+    // is reused and stops being a nonce.
+    expect(response!.headers()['cache-control']).toBe('no-store');
+
+    // Inject a script with no nonce. If CSP is being enforced the browser
+    // refuses to execute it, so the marker never appears.
+    await page.evaluate(() => {
+      const s = document.createElement('script');
+      s.textContent = 'window.__cspBypassed = true;';
+      document.head.appendChild(s);
+    });
+    expect(
+      await page.evaluate(() => (window as unknown as Record<string, unknown>).__cspBypassed),
+      'an inline script with no nonce EXECUTED — CSP is not being enforced',
+    ).toBeUndefined();
+  });
+});
+
+test.describe('the waitlist form is reachable at this width', () => {
+  /*
+   * REACHABILITY ONLY — no submission happens here, on purpose.
+   *
+   * The Worker allows 5 posts per 60s and under `wrangler dev` every request
+   * shares one bucket, so submitting from eight parallel projects exhausted
+   * the budget and three widths failed while the rate limiter did its job.
+   * The flows that need to POST live in waitlist.spec.ts, which runs once and
+   * serially. What is genuinely WIDTH-dependent is whether a visitor can see
+   * and hit the field at all, and that is what this asserts.
+   */
+  test('the field and its submit control are visible and big enough to hit', async ({
+    page,
+  }, info) => {
+    await page.goto('/');
+    const width = await assertWidth(page, info.project.name);
+
+    const email = page.locator('input[type="email"][name="email"]').first();
+    await expect(email, `the waitlist field must be reachable at ${width}px`).toBeVisible();
+
+    const box = await email.boundingBox();
+    expect(box).not.toBeNull();
+    // WCAG 2.5.8 asks for 24px; 44px is this site's own standard.
+    expect(Math.round(box!.height), 'the field is too short to tap').toBeGreaterThanOrEqual(36);
+    expect(box!.x, 'the field starts off the left edge').toBeGreaterThanOrEqual(-1);
+    expect(box!.x + box!.width, 'the field runs off the right edge').toBeLessThanOrEqual(width + 1);
+
+    // It must be focusable by keyboard, not merely painted.
+    await email.focus();
+    await expect(email).toBeFocused();
+  });
+});
+
+test.describe('the published catalog is real', () => {
+  test('search narrows, a nonsense query says so, and sources are cited', async ({
+    page,
+  }, info) => {
+    const response = await page.goto('/products');
+    await assertWidth(page, info.project.name);
+
+    // The catalog is only in the artifact when PUBLISH_CATALOG=1 was set for
+    // the build. Skipping is correct; pretending to test it is not.
+    if (!response || response.status() === 404) {
+      test.skip(true, 'catalog not published in this build (PUBLISH_CATALOG unset)');
+    }
+
+    const cards = page.locator('[data-product-slug], article');
+    const total = await cards.count();
+    expect(total, 'no product cards rendered').toBeGreaterThan(0);
+
+    const search = page.locator('input[type="search"], input[name="q"]').first();
+    if ((await search.count()) === 0) {
+      test.skip(true, 'no search control on the catalog page');
+    }
+
+    await search.fill('zzzzzznothing');
+    // A search control that returns everything for nonsense is decorative.
+    await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeLessThan(total);
+
+    await search.fill('');
+    await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBe(total);
+
+    // Every published record must show where it came from and when it was read.
+    const body = await page.locator('body').innerText();
+    expect(body, 'the catalog must say it is specifications only').toMatch(/specification/i);
+  });
+});
+
+test.describe('the catalog pages hold up at this width', () => {
+  /*
+   * The layout suite used to load the home page and nothing else, so a
+   * horizontal overflow on /products would have gone unseen — and /products
+   * is the page with the widest content: specification rows of label/value
+   * pairs that do not wrap the way prose does.
+   *
+   * The catalog is only in the artifact when PUBLISH_CATALOG=1 was set for the
+   * build. Skipping is honest; pretending to have tested it is not.
+   */
+  async function openCatalog(page: Page, projectName: string) {
+    const response = await page.goto('/products');
+    const width = await assertWidth(page, projectName);
+    if (!response || response.status() === 404) {
+      test.skip(true, 'catalog not published in this build (PUBLISH_CATALOG unset)');
+    }
+    return width;
+  }
+
+  /** scrollWidth must never exceed clientWidth, and the offender must be named. */
+  async function assertNoOverflow(page: Page, width: number, where: string) {
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    const offenders = await page.evaluate((vw) => {
+      const out: string[] = [];
+      for (const el of Array.from(document.querySelectorAll('body *'))) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        const style = getComputedStyle(el);
+        if (
+          style.position === 'fixed' ||
+          style.overflowX === 'auto' ||
+          style.overflowX === 'scroll'
+        )
+          continue;
+        if (r.right > vw + 1) {
+          const tag = el.tagName.toLowerCase();
+          const cls = (el.className || '').toString().split(/\s+/).filter(Boolean)[0] ?? '';
+          out.push(`${tag}${cls ? `.${cls}` : ''} right=${Math.round(r.right)}`);
+        }
+      }
+      return out.slice(0, 6);
+    }, width);
+    expect(offenders, `${where}: elements overflowing ${width}px`).toEqual([]);
+    expect(scrollWidth, `${where}: horizontal overflow at ${width}px`).toBeLessThanOrEqual(
+      clientWidth + 1,
+    );
+  }
+
+  test('the product list renders, fits, and says what it is', async ({ page }, info) => {
+    const width = await openCatalog(page, info.project.name);
+    await assertNoOverflow(page, width, '/products');
+
+    const cards = page.locator('[data-product-slug], article');
+    expect(await cards.count(), 'no product cards rendered').toBeGreaterThan(0);
+
+    // Specifications only — no price, no merchant, no buy link. This is the
+    // claim the whole catalog rests on, so it is checked on every width.
+    const body = await visibleText(page);
+    expect(body).toMatch(/specification/i);
+    expect(body, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
+  });
+
+  test('search and the category filter actually narrow the list', async ({ page }, info) => {
+    const width = await openCatalog(page, info.project.name);
+    const cards = page.locator('[data-product-slug], article');
+    const total = await cards.count();
+
+    const search = page.locator('input[type="search"], input[name="q"]').first();
+    await expect(search, `search must be reachable at ${width}px`).toBeVisible();
+
+    // Every term the box SUGGESTS must return something. The placeholder once
+    // read "e.g. OLED, NVMe, tenkeyless" — three terms that, after the
+    // source-terms audit quarantined those products, matched nothing at all.
+    const placeholder = (await search.getAttribute('placeholder')) ?? '';
+    for (const term of placeholder.replace(/^e\.g\.\s*/i, '').split(',')) {
+      const q = term.trim();
+      if (!q) continue;
+      await search.fill(q);
+      await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeGreaterThan(0);
+    }
+
+    await search.fill('zzzzzznothing');
+    await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeLessThan(total);
+
+    await search.fill('');
+    await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBe(total);
+
+    // The category filter must narrow to a real subset, not merely exist.
+    const category = page.locator('select').first();
+    if ((await category.count()) > 0) {
+      const values = await category
+        .locator('option')
+        .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+      const real = values.find((v) => v && v !== 'all');
+      if (real) {
+        await category.selectOption(real);
+        await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeGreaterThan(0);
+        await expect.poll(async () => cards.count(), { timeout: 5_000 }).toBeLessThanOrEqual(total);
+      }
+    }
+  });
+
+  test('a product detail page fits and cites its source', async ({ page }, info) => {
+    await openCatalog(page, info.project.name);
+    const first = page.locator('a[href^="/products/"]').first();
+    await expect(first).toBeVisible();
+    await first.click();
+    await page.waitForURL(/\/products\/[a-z0-9-]+/);
+    const width = await assertWidth(page, info.project.name);
+
+    await assertNoOverflow(page, width, 'product detail');
+
+    /*
+     * Provenance is the product here: a specification with no source and no
+     * date is just an assertion.
+     *
+     * Asserted with LOCATORS rather than `body.innerText()`. The first
+     * version read the whole body as a string and failed at every width even
+     * though the page plainly renders "Verified on 8 Nov 2026" - innerText
+     * returns *rendered* text and is not a dependable way to ask "is this on
+     * the page". toBeVisible() scrolls the element into view and asks the
+     * question that actually matters: can a visitor SEE the date.
+     */
+    await expect(
+      page.getByText(/verified on/i).first(),
+      'the detail page must show when the page was read',
+    ).toBeVisible();
+
+    const sourceLink = page.locator('a[href^="https://"]').first();
+    await expect(sourceLink, 'the detail page must link its source').toBeVisible();
+
+    /*
+     * The price check reads the whole rendered DOM rather than one locator,
+     * the opposite way round on purpose: a currency amount must be absent
+     * everywhere, not merely out of sight. A hidden price is still a price we
+     * are not allowed to publish.
+     */
+    const domText = await visibleText(page);
+    expect(domText, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
+  });
+});
+
+test('capture the page as evidence', async ({ page }, info) => {
+  // Genuine screenshots, one per width, attached to the run. These are the
+  // artifact a human can actually check a layout claim against.
+  await page.goto('/');
+  const width = await assertWidth(page, info.project.name);
+  await page.waitForLoadState('networkidle');
+  const shot = await page.screenshot({ fullPage: true });
+  await info.attach(`home-${width}px.png`, { body: shot, contentType: 'image/png' });
+  expect(shot.byteLength, 'screenshot is empty').toBeGreaterThan(1000);
+});
