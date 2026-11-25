@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned. The test task declares NEXUS_PG_TESTS/NEXUS_REDIS_TESTS/NEXUS_SMTP_TESTS/CI because turbo strips undeclared env vars, which once let the Postgres suites skip inside a green build.",
+  "//": "Turborepo task graph. Caching + topological ordering keep CI fast and reproducible. No task depends on network state; all inputs are pinned. The test task declares NEXUS_PG_TESTS/NEXUS_REDIS_TESTS/NEXUS_SMTP_TESTS/CI because turbo strips undeclared env vars, which once let the Postgres suites skip inside a green build. @nexus/shared#test overrides dependsOn to include its OWN build: the default ^build covers upstream packages only, so @nexus/shared#build (pulled in as a dependency of @nexus/web#test) ran CONCURRENTLY with @nexus/shared#test, and with two tsc processes writing the same dist/ the run imported half-written modules - a SyntaxError saying offer.js does not export validateOffer, from a file that plainly exports it. One writer at a time.",
   "globalDependencies": [".env.example", "tsconfig.base.json"],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".next/**", "!.next/cache/**"] },
@@ -9,6 +9,11 @@
     "format": { "cache": false },
     "test": {
       "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "env": ["NEXUS_PG_TESTS", "NEXUS_REDIS_TESTS", "NEXUS_SMTP_TESTS", "CI"]
+    },
+    "@nexus/shared#test": {
+      "dependsOn": ["^build", "build"],
       "outputs": ["coverage/**"],
       "env": ["NEXUS_PG_TESTS", "NEXUS_REDIS_TESTS", "NEXUS_SMTP_TESTS", "CI"]
     }
