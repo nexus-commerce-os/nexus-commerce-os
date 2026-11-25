@@ -57,6 +57,32 @@ export type Spec = {
   readonly value: string;
 };
 
+/**
+ * The verdict of the source-terms audit for one record's manufacturer site.
+ *
+ * WHY THIS IS A FIELD AND NOT A DOCUMENT. Public availability of a
+ * specification is not permission to republish it. Six of the nine source
+ * domains audited on 26 November 2026 have terms that, as written, restrict
+ * reproduction, commercial use or automated extraction of site content, with no
+ * carve-out for factual data; two could not be read at all. Recording the
+ * verdict next to the data is what lets the build refuse to publish a record
+ * nobody has cleared, instead of relying on someone remembering.
+ *
+ * `eligible`     no contractual restriction found on reproducing factual
+ *                specifications with attribution.
+ * `quarantined`  the terms restrict this use, OR they could not be read.
+ *                Unread is NOT permissive, so it lands here too.
+ */
+export type SourceTerms = {
+  readonly verdict: 'eligible' | 'quarantined';
+  /** The terms document actually read, or null when none could be reached. */
+  readonly termsUrl: string | null;
+  /** ISO date the terms were read. */
+  readonly auditedOn: string;
+  /** Why this verdict, in one line. Required — a verdict with no reason is a guess. */
+  readonly reason: string;
+};
+
 export type Product = {
   readonly slug: string;
   /** The manufacturer, as they write their own name. */
@@ -74,6 +100,11 @@ export type Product = {
   readonly sourceUrl: string;
   /** ISO date the page was read. Not the manufacturer's own publication date. */
   readonly verifiedOn: string;
+  /**
+   * The source-terms audit verdict. Not optional: a record with no verdict has
+   * not been cleared, and the build treats that as quarantined.
+   */
+  readonly sourceTerms: SourceTerms;
   /** Neutral description of what the thing is. No marketing adjectives. */
   readonly summary: string;
   readonly specs: readonly Spec[];
@@ -81,7 +112,13 @@ export type Product = {
   readonly notes?: readonly string[];
 };
 
-export const CATEGORIES: readonly Category[] = [
+/**
+ * Every category the catalog knows how to describe. NOT what is published —
+ * see CATEGORIES below, which is derived from what survived the source-terms
+ * audit, so a category whose only products are quarantined cannot render an
+ * empty grid.
+ */
+const DECLARED_CATEGORIES: readonly Category[] = [
   {
     slug: 'headphones',
     name: 'Headphones',
@@ -114,7 +151,17 @@ export const CATEGORIES: readonly Category[] = [
   },
 ];
 
-export const PRODUCTS: readonly Product[] = [
+/**
+ * Every record ever transcribed, eligible or not. This is the AUDIT TRAIL, not
+ * the published dataset: a quarantined record stays here with its verdict so
+ * the reason is preserved and a later permission can flip it, rather than
+ * being deleted and silently re-added by someone who did not know.
+ *
+ * Exported only so the build gate can check EVERY record for a verdict,
+ * including ones the publication filter would otherwise drop in silence.
+ * Application code must read PRODUCTS, never this.
+ */
+export const ALL_RECORDS: readonly Product[] = [
   // ======================= HEADPHONES =======================
   {
     slug: 'sennheiser-hd-600',
@@ -125,6 +172,13 @@ export const PRODUCTS: readonly Product[] = [
     provenance: 'manufacturer-specification',
     sourceUrl: 'https://us.sennheiser-hearing.com/products/hd-600',
     verifiedOn: '2026-11-08',
+    sourceTerms: {
+      verdict: 'eligible',
+      termsUrl: 'https://us.sennheiser-hearing.com/policies/terms-of-service',
+      auditedOn: '2026-11-26',
+      reason:
+        'No website terms of use exist; the only terms govern product sales and are silent on site content.',
+    },
     summary:
       'Open-back, circumaural wired headphones with a dynamic transducer and no active electronics.',
     specs: [
@@ -151,6 +205,13 @@ export const PRODUCTS: readonly Product[] = [
     sourceUrl:
       'https://www.bose.com/p/headphones/bose-quietcomfort-ultra-headphones/QCUH-HEADPHONEARN.html',
     verifiedOn: '2026-11-09',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: 'https://www.bose.com/legal/terms-of-use',
+      auditedOn: '2026-11-26',
+      reason:
+        'Bars copying for commercial purposes and expressly bars scrapers, robots and harvesting; no carve-out for factual data.',
+    },
     summary:
       'Around-ear wireless headphones with active noise cancelling and Bose’s spatial-audio mode.',
     specs: [
@@ -181,6 +242,13 @@ export const PRODUCTS: readonly Product[] = [
     provenance: 'manufacturer-specification',
     sourceUrl: 'https://www.lg.com/us/tvs/lg-oled65c4pua-oled-4k-tv',
     verifiedOn: '2026-11-09',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: 'https://www.lg.com/us/legal',
+      auditedOn: '2026-11-26',
+      reason:
+        'Bars reproduction with no commercial qualifier and expressly bars scrapers, crawlers and data-mining tools.',
+    },
     summary:
       'Self-emissive OLED television in the 65-inch class, with a 144Hz panel aimed at gaming as well as film.',
     specs: [
@@ -209,6 +277,13 @@ export const PRODUCTS: readonly Product[] = [
     sourceUrl:
       'https://www.samsung.com/us/computing/memory-storage/solid-state-drives/990-pro-pcie-4-0-nvme-ssd-2tb-mz-v9p2t0b-am/',
     verifiedOn: '2026-11-08',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: 'https://www.samsung.com/us/common/legal/',
+      auditedOn: '2026-11-26',
+      reason:
+        'Permits personal use only and bars copying for commercial purposes; this is a commercial site.',
+    },
     summary: 'Internal M.2 NVMe solid-state drive on the PCIe 4.0 interface, 2TB capacity.',
     specs: [
       { label: 'Interface', value: 'PCIe 4.0 NVMe™' },
@@ -232,6 +307,13 @@ export const PRODUCTS: readonly Product[] = [
     sourceUrl:
       'https://www.samsung.com/us/computing/memory-storage/portable-solid-state-drives/portable-ssd-t7-shield-usb-3-2-2tb-black-mu-pe2t0s-am/',
     verifiedOn: '2026-11-08',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: 'https://www.samsung.com/us/common/legal/',
+      auditedOn: '2026-11-26',
+      reason:
+        'Permits personal use only and bars copying for commercial purposes; this is a commercial site.',
+    },
     summary: 'External solid-state drive in a rubberised enclosure, connected over USB-C.',
     specs: [
       { label: 'Interface', value: 'USB 3.2 Gen 2' },
@@ -254,6 +336,13 @@ export const PRODUCTS: readonly Product[] = [
     provenance: 'manufacturer-specification',
     sourceUrl: 'https://www.crucial.com/ssd/p3-plus/ct1000p3pssd8',
     verifiedOn: '2026-11-09',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: null,
+      auditedOn: '2026-11-26',
+      reason:
+        'crucial.com rejects automated fetches, so its terms could not be read; Micron’s terms bar reproduction and commercial use. Unresolved.',
+    },
     summary: 'Internal M.2 2280 NVMe drive built by Micron, with Gen3 backward compatibility.',
     specs: [
       { label: 'Interface', value: 'Gen4 NVMe' },
@@ -279,6 +368,13 @@ export const PRODUCTS: readonly Product[] = [
     provenance: 'manufacturer-specification',
     sourceUrl: 'https://www.apple.com/macbook-air/specs/',
     verifiedOn: '2026-11-09',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: 'https://www.apple.com/legal/internet-services/terms/site.html',
+      auditedOn: '2026-11-26',
+      reason:
+        'Bars copying any part of the site for publication, distribution or commercial enterprise, and expressly bars page-scrape, robot and spider access.',
+    },
     summary: 'Thin-and-light 13.6-inch laptop on Apple silicon, with no discrete graphics.',
     specs: [
       { label: 'Chip', value: 'Apple M5 chip' },
@@ -314,6 +410,13 @@ export const PRODUCTS: readonly Product[] = [
     sourceUrl:
       'https://www.corsair.com/us/en/p/keyboards/ch-9109410-na/k70-rgb-pro-mechanical-gaming-keyboard-ch-9109410-na',
     verifiedOn: '2026-11-08',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: 'https://www.corsair.com/ww/en/s/terms-of-use',
+      auditedOn: '2026-11-26',
+      reason:
+        'States you may not build a business using the Content, defines Content to include data, and bars scraping and extraction methods.',
+    },
     summary: 'Full-size wired mechanical keyboard with per-key RGB and a detachable USB-C cable.',
     specs: [
       { label: 'Key switches', value: 'CHERRY MX Red' },
@@ -338,6 +441,13 @@ export const PRODUCTS: readonly Product[] = [
     provenance: 'manufacturer-specification',
     sourceUrl: 'https://www.daskeyboard.com/daskeyboard-4-professional/',
     verifiedOn: '2026-11-08',
+    sourceTerms: {
+      verdict: 'eligible',
+      termsUrl: null,
+      auditedOn: '2026-11-26',
+      reason:
+        'No terms of use page is reachable from the site; the footer carries a copyright notice only, which is a notice and not a restriction.',
+    },
     summary: 'Full-size wired mechanical keyboard with a machined volume knob and media controls.',
     specs: [
       { label: 'Layout', value: '104-key US layout, 105-key for UK, NO, and DE layouts' },
@@ -362,6 +472,13 @@ export const PRODUCTS: readonly Product[] = [
     provenance: 'manufacturer-specification',
     sourceUrl: 'https://www.keychron.com/products/keychron-k2-wireless-mechanical-keyboard',
     verifiedOn: '2026-11-09',
+    sourceTerms: {
+      verdict: 'quarantined',
+      termsUrl: null,
+      auditedOn: '2026-11-26',
+      reason:
+        'The terms body never loaded across three candidate URLs, so nothing was read. Unread is not permissive. Unresolved.',
+    },
     summary:
       'Compact 75% mechanical keyboard with hot-swappable switches, usable wired or over Bluetooth.',
     specs: [
@@ -386,6 +503,38 @@ export const PRODUCTS: readonly Product[] = [
 ];
 
 /** What the catalog says about price, everywhere. There is no verified price. */
+/*
+ * PUBLICATION IS GATED ON THE SOURCE-TERMS AUDIT.
+ *
+ * Six of the nine source domains audited on 26 November 2026 have terms that,
+ * as written, bar reproduction, commercial use or automated extraction of site
+ * content with no carve-out for factual data; two could not be read at all,
+ * and unread is not permissive. See docs/engineering/source-terms-audit.md.
+ *
+ * Filtering here rather than at the page level means there is ONE definition of
+ * what is published, and every consumer — pages, search, sitemap, the gate —
+ * gets the same answer. A quarantined record cannot be reached by guessing a
+ * URL, because its page is never generated.
+ */
+const isPublishable = (p: Product): boolean => p.sourceTerms?.verdict === 'eligible';
+
+/** The published dataset: eligible records only. */
+export const PRODUCTS: readonly Product[] = ALL_RECORDS.filter(isPublishable);
+
+/** Withheld records, kept with their verdicts so the decision is auditable. */
+export const QUARANTINED_PRODUCTS: readonly Product[] = ALL_RECORDS.filter(
+  (p) => !isPublishable(p),
+);
+
+/**
+ * Only categories that actually have something to show. A declared category
+ * with no eligible product would render an empty grid and a filter that never
+ * narrows anything — which is the decorative control we do not ship.
+ */
+export const CATEGORIES: readonly Category[] = DECLARED_CATEGORIES.filter((c) =>
+  PRODUCTS.some((p) => p.categorySlug === c.slug),
+);
+
 export const PRICE_STATUS = 'Price not verified';
 
 /** What the catalog says about stock, everywhere. There is no verified stock state. */
