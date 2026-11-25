@@ -1,9 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // NodeNext rather than the base's "Bundler": this package is compiled and
+    // run by Node directly (its tests run on the CI Node, which does not strip
+    // TypeScript), so the emitted ESM needs real .js specifiers.
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
-    "noEmit": true
+    "declaration": true,
+    "types": ["node"]
   },
   "include": ["src"]
 }
