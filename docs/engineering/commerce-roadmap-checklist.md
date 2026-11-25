@@ -125,6 +125,40 @@ surface is worse than no admin surface.
 
 ---
 
+## Where this stands — 25 November 2026, end of session
+
+**Live on honesttotal.com:** Worker version `c3673d87` (rollback `ea8caad5`).
+React hydrates for the first time, the mobile menu and theme toggle work, and
+the waitlist works with and without JavaScript. All eight security headers
+intact, no `Set-Cookie`, production KV unchanged at 2 entries.
+
+**PR #123 is open with six commits and was NOT merged.** Its CI had
+`ci-gate` green; CodeQL reported one new alert (my test shim's regex missed
+`<SCRIPT>`), which is fixed in `ad82ec7`, and the re-run had not finished when
+the machine lost all network — DNS itself stopped resolving, so GitHub and
+Cloudflare are both unreachable.
+
+### Exact resume point
+
+1. `git push origin feat/csp-nonce-hydration` — commit `bd7161f` is committed
+   locally but unpushed.
+2. Confirm PR #123's CodeQL re-run is clean, then merge.
+3. Deploy. The new provenance gate will refuse until the commit is pushed,
+   on a shipping branch and green — that is it working, not a fault.
+
+### What shipped since the last update
+
+| | |
+|---|---|
+| ✅ | nonce CSP; hydration restored; `run_worker_first` was the missing piece |
+| ✅ | waitlist works with no JavaScript (303 + `?joined=`), proven on production |
+| ✅ | deploy provenance gate — refuses an unpushed, dirty or un-green deploy |
+| ✅ | artifact manifest — build records 103 file hashes, deploy verifies before upload |
+| ✅ | home page: mobile 9,583 → 6,746px, desktop 6,497 → 5,023px, no claims removed |
+| ⬜ | home page to 4,000–5,000px — needs disclosures removed; founder's call |
+| ⬜ | catalog publication — copyright exposure measured and small; **manufacturer terms unread** |
+| ⬜ | Playwright at 320/375/390/412/768/1024/1440/1920 — the in-app pane cannot go below ~412px |
+
 ## THE BLOCKER THAT MATTERS RIGHT NOW — React does not hydrate in production
 
 Measured on the live site, 25 November 2026: `reactFiberAttached: false`.

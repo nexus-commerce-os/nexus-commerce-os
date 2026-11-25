@@ -43,6 +43,51 @@ checks passing:
 These are the reason this can be published without anxiety: the honest state is
 checked by a machine on every build, not maintained by remembering.
 
+## Source permission, looked at properly (25 November, second pass)
+
+The first pass of this audit said permission was fine because specifications
+are facts. That was too quick, and the founder was right to push on it:
+**public availability is not permission**, and these records transcribe each
+manufacturer's own wording, which is expression rather than fact.
+
+So the exposure was measured rather than argued about. What is actually
+reproduced, across all ten records:
+
+| | |
+|---|---|
+| spec label/value pairs | **56** |
+| median value length | **18 characters** (`300 Ω`, `260 g`, `dynamic, open`) |
+| longest value | **79 characters** |
+| values over 80 characters | **0** |
+| prose copied from a maker's page | **none** |
+| images | **none** — the gate fails the build if one appears |
+| `summary` field | **ours**, written neutrally (median 83 chars), not transcribed |
+
+That matters because the two things carry different risk. A short factual
+value — an impedance, a weight, a port list — is a fact, and facts are not
+copyrightable. Copied marketing prose would be expression, and there is none
+here: the longest single value in the entire catalog is 79 characters and
+reads like a parts list, because that is what it is.
+
+**What is still not established, and I will not pretend otherwise.** Nobody
+has read the ten manufacturers' terms of use. Several large retail and maker
+sites prohibit automated extraction or redistribution in their terms,
+independently of copyright, and a term of that kind can bind even where
+copyright does not reach. I am not in a position to give a legal opinion on
+whether those terms apply to a hand-transcribed factual table with
+attribution and a link back.
+
+So the honest position is: **the copyright exposure is small and measured;
+the contractual position is unchecked.** The remaining work is (a) reading
+the terms for the nine source domains, which is ordinary diligence, and
+(b) a lawyer's sign-off if the founder wants certainty rather than a
+reasonable position — which only the founder can obtain.
+
+Two cheap risk reductions are available immediately and need no one's
+permission: keep `noindex` on for this release, and keep every record's
+`sourceUrl` prominent on the page, so the catalog reads as a citation index
+pointing at the manufacturer rather than a substitute for their page.
+
 ## Recommendation
 
 1. **Publish the pages** — make `/products` and the 10 detail pages reachable.

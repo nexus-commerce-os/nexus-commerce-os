@@ -83,15 +83,27 @@ test('the deploy enforces the release gate before it builds anything', () => {
   );
 });
 
-test('a bare wrangler deploy still runs the gate', () => {
+test('a bare wrangler deploy still runs both gates', () => {
   // The [build] command in wrangler.toml is the only thing standing between
-  // `npx wrangler deploy` and production.
+  // `npx wrangler deploy` and production. It runs two checks now: the legal
+  // release gate, and the provenance gate added after production was deployed
+  // from an uncommitted working tree ahead of its own CI run.
   const toml = read('wrangler.toml');
+  const command = toml.match(/\[build\][\s\S]*?command\s*=\s*"([^"]+)"/)?.[1];
+  assert.ok(command, 'wrangler.toml must keep the [build] hook');
+  assert.match(command, /scripts\/release-gate\.mjs/, 'the release gate must still run');
   assert.match(
-    toml,
-    /\[build\][\s\S]*command\s*=\s*"node scripts\/release-gate\.mjs"/,
-    'wrangler.toml must keep the [build] hook that runs the release gate',
+    command,
+    /scripts\/verify-deploy-provenance\.mjs/,
+    'the provenance gate must run, or an uncommitted tree can reach production again',
   );
+});
+
+test('the deploy script also checks provenance before building', () => {
+  // Belt and braces: the [build] hook covers `npx wrangler deploy`, this
+  // covers `pnpm run deploy:cf`. Losing either one reopens a path.
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(pkg.scripts['deploy:cf'], /scripts\/verify-deploy-provenance\.mjs/);
 });
 
 test('CI and staging build the site the same way the deploy does', () => {
@@ -121,5 +133,29 @@ test('the catalog is withheld unless PUBLISH_CATALOG is explicitly set', () => {
   assert.ok(
     gate.includes('products.html') && gate.includes('products'),
     'the gate must target the catalog index and its product pages',
+  );
+});
+
+test('the build records what it produced, and the deploy checks it', () => {
+  // Build once, verify, deploy that exact set — the promotion step that was
+  // missing. Without the write there is nothing to compare against; without
+  // the verify nothing compares it, and the deploy is back to trusting that
+  // two builds of one commit produce the same bytes.
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(
+    pkg.scripts.build,
+    /artifact-manifest\.mjs write/,
+    'the build must record a manifest of what it produced',
+  );
+  assert.match(
+    pkg.scripts['deploy:cf'],
+    /artifact-manifest\.mjs verify/,
+    'the deploy must verify the artifact it is about to upload',
+  );
+  // Order matters: verifying before the build would check the previous one.
+  const deploy = pkg.scripts['deploy:cf'];
+  assert.ok(
+    deploy.indexOf('pnpm run build') < deploy.indexOf('artifact-manifest.mjs verify'),
+    'the verify must come after the build, or it checks a stale artifact',
   );
 });
