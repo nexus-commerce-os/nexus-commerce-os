@@ -1,0 +1,183 @@
+# =============================================================================
+# Scheduled feed synchronisation — the trigger `runCycle` never had.
+# -----------------------------------------------------------------------------
+# WHY GITHUB ACTIONS AND NOT A CLOUDFLARE CRON TRIGGER. The honest reason is
+# the database, not a preference. The catalogue store speaks PostgreSQL over
+# TCP; a Cloudflare Worker cannot open a TCP connection to Postgres without
+# Hyperdrive, which is a paid add-on, and no database is provisioned anywhere
+# yet. Actions gives a free scheduled Node runner that can run the real
+# pipeline against a real PostgreSQL today. When a durable database exists,
+# the trigger can move — `runSync` is a library and knows nothing about its
+# caller, which is the point.
+#
+# WHAT THIS PROVES TODAY, AND WHAT IT DOES NOT. It proves the whole chain:
+# schedule fires → source is due → feed retrieved → validated → normalised →
+# reconciled → persisted with price history → second run is correctly refused
+# as a duplicate. It does NOT yet update a public website, because nothing on
+# the release lineage reads this database. That is the next milestone and it
+# is not claimed here.
+#
+# The service container is ephemeral: it exists for the length of the job.
+# This is a DEMONSTRATION of scheduled execution, not a production catalogue.
+# =============================================================================
+name: feed-sync
+
+on:
+  schedule:
+    # Twice a day. Deliberately not hourly: a provider feed is a daily export
+    # and polling it more often is rude without being more correct.
+    - cron: '17 3,15 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Ignore schedules and sync every enabled source now'
+        type: boolean
+        default: false
+
+# Job leases, at the scheduler level: a cron firing while the previous run is
+# still going would otherwise start a second copy. The in-process guard
+# (a `started` row in the run ledger) is the second line, not the only one.
+concurrency:
+  group: feed-sync
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  sync:
+    name: Scheduled feed sync
+    runs-on: ubuntu-latest
+    # A bound on the whole job, above the in-process deadline. Two different
+    # guarantees: the deadline stops admitting new sources gracefully, this
+    # stops a hung runner costing an hour.
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:6567bca8d7bc8c82c5922425a0baee57be8402df92bae5eacad5f01ae9544daa
+        env:
+          POSTGRES_PASSWORD: sync
+          POSTGRES_DB: catalog
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HONESTTOTAL_PG_DSN: postgres://postgres:sync@127.0.0.1:5432/catalog
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      - uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the catalog service
+        run: pnpm --filter @nexus/catalog build
+
+      - name: Generate the SYNTHETIC demonstration feed
+        working-directory: services/catalog
+        # Fictional "Northwind Trading" products on example.invalid. No
+        # provider content is fetched, stored or published by this workflow.
+        run: node scripts/make-fixture.mjs fixtures/northwind-demo.zip 25
+
+      - name: A fixture source must be refused without an explicit opt-in
+        working-directory: services/catalog
+        # The guard is asserted before it is relied on. If fixtures could run
+        # by configuration alone, "demonstration only" would be a comment
+        # rather than a control.
+        run: |
+          set +e
+          node scripts/sync.mjs --config fixtures/feeds.json > refused.log 2>&1
+          code=$?
+          set -e
+          cat refused.log
+          if [ "$code" != "2" ]; then
+            echo "::error::a fixture source ran without --allow-fixtures (exit $code)"; exit 1
+          fi
+          grep -q "fixtures are not permitted" refused.log
+
+      - name: Cycle 1 — scheduled retrieval through to persistence
+        working-directory: services/catalog
+        run: node scripts/sync.mjs --config fixtures/feeds.json --allow-fixtures | tee cycle1.log
+
+      - name: Cycle 2 — the same bytes again must change nothing
+        working-directory: services/catalog
+        # Forced, so this tests IDEMPOTENCY rather than the schedule: without
+        # --force the source is simply not due and we would prove nothing.
+        run: node scripts/sync.mjs --config fixtures/feeds.json --allow-fixtures --force | tee cycle2.log
+
+      - name: A changed feed must update prices and keep history
+        working-directory: services/catalog
+        run: |
+          node scripts/make-fixture.mjs fixtures/northwind-demo.zip 25 --price-shift 150 --add 1
+          node scripts/sync.mjs --config fixtures/feeds.json --allow-fixtures --force | tee cycle3.log
+
+      - name: Assert what actually happened
+        working-directory: services/catalog
+        # The assertions are here rather than inside the command so a green
+        # job cannot mean "the process exited 0 having done nothing".
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const read = (f) => fs.readFileSync(f, "utf8").split("\n")
+              .filter(Boolean).filter((l) => l.startsWith("{"))
+              .map((l) => JSON.parse(l));
+            const source = (lines) => lines.find((l) => l.event === "sync.source");
+            const finish = (lines) => lines.find((l) => l.event === "sync.finish");
+
+            const c1 = read("cycle1.log"), c2 = read("cycle2.log"), c3 = read("cycle3.log");
+            const fail = (m) => { console.error("::error::" + m); process.exitCode = 1; };
+
+            const s1 = source(c1);
+            if (!s1 || s1.outcome !== "imported") fail("cycle 1 did not import: " + JSON.stringify(s1));
+            if (s1.added !== 25) fail("cycle 1 created " + s1.added + " products, expected 25");
+
+            const s2 = source(c2);
+            if (!s2 || s2.outcome !== "unchanged") fail("cycle 2 was not refused as unchanged: " + JSON.stringify(s2));
+
+            const s3 = source(c3);
+            if (!s3 || s3.outcome !== "imported") fail("cycle 3 did not import the changed feed");
+            if (s3.updated < 25) fail("cycle 3 updated " + s3.updated + " offers, expected at least 25");
+            if (s3.added !== 1) fail("cycle 3 added " + s3.added + " products, expected 1");
+
+            for (const [name, lines] of [["1", c1], ["2", c2], ["3", c3]]) {
+              const f = finish(lines);
+              if (!f) fail("cycle " + name + " produced no sync.finish line");
+              else if (f.failed !== 0) fail("cycle " + name + " reported " + f.failed + " failed sources");
+            }
+            if (process.exitCode) throw new Error("scheduled pipeline assertions failed");
+            console.log("scheduled pipeline: 25 created, re-run refused as unchanged, 25+ updated and 1 added on change");
+          '
+
+      - name: Price history must have accumulated
+        working-directory: services/catalog
+        # Straight from the database, not from a log line the job produced.
+        run: |
+          node -e '
+            const pg = require("pg");
+            (async () => {
+              const pool = new pg.Pool({ connectionString: process.env.HONESTTOTAL_PG_DSN });
+              const offers = await pool.query("select count(*)::int n from catalog.offer");
+              const history = await pool.query("select count(*)::int n from catalog.offer_price_history");
+              const runs = await pool.query("select status, count(*)::int n from catalog.import_run group by status order by status");
+              console.log("offers:", offers.rows[0].n, "price history rows:", history.rows[0].n);
+              console.table(runs.rows);
+              await pool.end();
+              if (offers.rows[0].n !== 26) { console.error("::error::expected 26 offers, got " + offers.rows[0].n); process.exit(1); }
+              if (history.rows[0].n < 26) { console.error("::error::price history did not accumulate"); process.exit(1); }
+            })().catch((e) => { console.error(e); process.exit(1); });
+          '
+
+      - name: Keep the structured logs
+        if: always()
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: feed-sync-logs
+          path: services/catalog/*.log
+          retention-days: 14

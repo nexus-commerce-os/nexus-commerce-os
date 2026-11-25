@@ -73,6 +73,15 @@ export interface SchedulerOptions {
   readonly concurrency?: number;
   /** A `started` run older than this is treated as abandoned. */
   readonly staleRunMinutes?: number;
+  /**
+   * Run every enabled source regardless of its schedule — manual sync.
+   *
+   * Deliberately bypasses `isDue` ONLY. An earlier attempt expressed this by
+   * moving the clock forward, which would also have made every feed look
+   * ancient and tripped the importer's staleness guard. Forcing a sync must
+   * not quietly disable a different safety check.
+   */
+  readonly force?: boolean;
   readonly retrieve?: typeof retrieveFeed;
   readonly retrieveOptions?: Omit<RetrieveOptions, 'previous' | 'now'>;
 }
@@ -173,8 +182,9 @@ export async function runCycle(
       const known = await state.get(source.id);
       const lastSuccess = known?.lastSuccessAt ?? (await lastSuccessFor(store, source));
 
-      if (!isDue(source, lastSuccess, now())) {
-        return done('skipped', source.enabled ? 'not due yet' : 'source is disabled');
+      if (!source.enabled) return done('skipped', 'source is disabled');
+      if (!options.force && !isDue(source, lastSuccess, now())) {
+        return done('skipped', 'not due yet');
       }
 
       if (await isAlreadyRunning(store, source, now(), staleRunMinutes)) {

@@ -61,3 +61,6 @@ stage-*-evidence.txt
 # --- Next.js generated ---
 next-env.d.ts
 **/next-env.d.ts
+
+# Generated demonstration fixtures (synthetic, rebuilt by CI)
+services/catalog/fixtures/*.zip

@@ -189,3 +189,12 @@ export {
   type SourceState,
   type SourceStateStore,
 } from './retrieval/scheduler';
+export {
+  runSync,
+  summarise,
+  validateSources,
+  type SourceHealth,
+  type SyncOptions,
+  type SyncResult,
+} from './retrieval/sync-command';
+export { isFixtureTransport } from './retrieval/feed-source';
