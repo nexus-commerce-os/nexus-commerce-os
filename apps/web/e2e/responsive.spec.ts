@@ -82,7 +82,11 @@ test.describe('every width', () => {
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;
         const style = getComputedStyle(el);
-        if (style.position === 'fixed' || style.overflowX === 'auto' || style.overflowX === 'scroll')
+        if (
+          style.position === 'fixed' ||
+          style.overflowX === 'auto' ||
+          style.overflowX === 'scroll'
+        )
           continue;
         if (r.right > vw + 1) {
           const tag = el.tagName.toLowerCase();
@@ -203,9 +207,7 @@ test.describe('the waitlist works without a mouse and without JavaScript', () =>
     await email.press('Enter');
 
     // The Worker answers a form post with a 303 back to /?joined=<outcome>.
-    await expect
-      .poll(() => page.url(), { timeout: 15_000 })
-      .toMatch(/[?&]joined=[a-z-]+/);
+    await expect.poll(() => page.url(), { timeout: 15_000 }).toMatch(/[?&]joined=[a-z-]+/);
   });
 });
 
