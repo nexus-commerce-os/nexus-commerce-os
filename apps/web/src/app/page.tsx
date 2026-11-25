@@ -52,6 +52,14 @@ export default function NexusLanding() {
   const [who, setWho] = useState('you');
   const [note, setNote] = useState(DEFAULT_NOTE);
   const [noteErr, setNoteErr] = useState(false);
+  /*
+   * `demoOpen` starts true so the server-rendered HTML carries the panel open;
+   * the effect below closes it on a narrow viewport once scripts run.
+   * `mounted` gates the toggle button for the same reason — a button that does
+   * nothing without JavaScript is worse than no button.
+   */
+  const [demoOpen, setDemoOpen] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -101,6 +109,19 @@ export default function NexusLanding() {
       setBusy(false);
     }
   };
+
+  /*
+   * Collapse the hero illustration on a phone, once.
+   *
+   * Separate from the big effect below so it runs on mount and does not get
+   * tangled in the observer teardown. `mounted` flips here too, which is what
+   * reveals the toggle button — both facts ("scripts are running" and "this is
+   * a narrow screen") are established in the same place.
+   */
+  useEffect(() => {
+    setMounted(true);
+    if (window.matchMedia('(max-width: 820px)').matches) setDemoOpen(false);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -296,8 +317,33 @@ export default function NexusLanding() {
              * we invented would be a fabricated claim attributed to a real
              * company — and we have no relationship with any of them to invoke.
              */}
+            {/*
+             * On a phone this illustration is 1,233px of the hero's 2,059px —
+             * more than half the first screen's height, for something the badge
+             * already calls an ILLUSTRATION and that `role="img"` already
+             * summarises in one aria-label. So on narrow screens it collapses
+             * behind a disclosure.
+             *
+             * It starts OPEN and JavaScript closes it, never the other way
+             * round: the static HTML a no-JS phone receives is therefore the
+             * panel in full, exactly as before, and the toggle only appears
+             * once `mounted` proves scripts are running. Shipping it closed by
+             * default would have hidden it permanently from anyone without JS.
+             */}
+            {mounted && (
+              <button
+                type="button"
+                className="demo-toggle"
+                aria-expanded={demoOpen}
+                aria-controls="hero-demo-panel"
+                onClick={() => setDemoOpen((open) => !open)}
+              >
+                {demoOpen ? 'Hide the example' : 'See an illustrated example'}
+              </button>
+            )}
             <div
-              className="demo-panel reveal"
+              id="hero-demo-panel"
+              className={`demo-panel reveal${demoOpen ? ' is-open' : ''}`}
               data-countup-root
               role="img"
               aria-label="Illustration of a price comparison: five merchants checked, best price 328 dollars, 47 dollars 12 cents below the typical price"

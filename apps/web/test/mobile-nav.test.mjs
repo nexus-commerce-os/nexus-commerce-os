@@ -77,3 +77,45 @@ test('the panel is opaque, so page text cannot show through it', () => {
     'the open panel must use the opaque --card surface',
   );
 });
+
+/* ------------------------------------------- hero illustration disclosure ---
+ * The panel must ship OPEN and be closed by JavaScript, never shipped closed.
+ * Inverting that is a one-character change that looks harmless and silently
+ * hides the illustration from every phone without scripts — and it is
+ * invisible on a desktop, where the panel is shown unconditionally.
+ */
+
+const home = read('src', 'app', 'page.tsx');
+
+test('the hero illustration ships open, so no-JS phones still receive it', () => {
+  assert.match(
+    home,
+    /useState\(true\);\n\s*const \[mounted, setMounted\] = useState\(false\)/,
+    'demoOpen must default to true and mounted to false',
+  );
+  assert.match(
+    home,
+    /if \(window\.matchMedia\('\(max-width: 820px\)'\)\.matches\) setDemoOpen\(false\)/,
+    'JavaScript is what closes it, and only on a narrow screen',
+  );
+});
+
+test('the toggle only renders once scripts have run', () => {
+  assert.match(home, /\{mounted && \(/, 'a button that does nothing without JS is worse than none');
+});
+
+test('the toggle is a real disclosure pointing at the panel', () => {
+  assert.match(home, /aria-expanded=\{demoOpen\}/);
+  assert.match(home, /aria-controls="hero-demo-panel"/);
+  assert.match(home, /id="hero-demo-panel"/);
+});
+
+test('the breakpoint matches the one that stacks the hero', () => {
+  // Above 820px the panel sits beside the copy and costs no vertical space,
+  // so collapsing it there would remove content for no gain.
+  assert.match(styles, /\.demo-toggle \{\s*display: none;/, 'hidden by default');
+  const narrow = styles.match(/@media \(max-width: 820px\) \{[\s\S]*?\n\}\n*$/);
+  assert.ok(narrow, 'the disclosure rules live in a max-width: 820px block');
+  assert.match(narrow[0], /\.demo-panel:not\(\.is-open\) \{\s*display: none;/);
+  assert.match(narrow[0], /min-height: 44px;/, 'the toggle keeps a 44px target');
+});
