@@ -23,7 +23,19 @@ export type FeedTransport =
    * that silently never runs.
    */
   | 'ftp'
-  | 'sftp';
+  | 'sftp'
+  /*
+   * A LOCAL FILE, FOR DEMONSTRATION AND TESTS ONLY.
+   *
+   * It exists because proving the scheduled pipeline end to end needs a source
+   * the runner can actually read, and the SSRF guard correctly refuses
+   * localhost — serving a fixture over http://127.0.0.1 to get around that
+   * guard would be defeating the control to demonstrate the feature.
+   *
+   * `retrieveFeed` refuses it unless the caller passes `allowFixtures: true`,
+   * so it cannot be reached by writing a config row alone.
+   */
+  | 'fixture';
 
 /** What the bytes are, once any container is removed. */
 export type FeedFormat = 'csv' | 'tsv' | 'xml' | 'json';
@@ -83,7 +95,12 @@ export function envCredentialResolver(env: NodeJS.ProcessEnv = process.env): Cre
 
 /** Transports that actually work today. */
 export function isImplemented(transport: FeedTransport): boolean {
-  return transport === 'https' || transport === 'api';
+  return transport === 'https' || transport === 'api' || transport === 'fixture';
+}
+
+/** Transports that must never run against production data. */
+export function isFixtureTransport(transport: FeedTransport): boolean {
+  return transport === 'fixture';
 }
 
 export class UnsupportedTransportError extends Error {
@@ -100,6 +117,11 @@ export class UnsupportedTransportError extends Error {
 /** Validation errors, collected rather than thrown one at a time. */
 export function validateFeedSource(source: FeedSource): readonly string[] {
   const problems: string[] = [];
+  if (isFixtureTransport(source.transport) && source.enabled && !source.id.startsWith('fixture-')) {
+    // A fixture must announce itself in its own id, so it is obvious in a log
+    // line, a dashboard row and a database dump which rows are not real.
+    problems.push('a fixture source id must start with "fixture-"');
+  }
   if (!source.id.trim()) problems.push('id is empty');
   if (!source.merchantId.trim()) problems.push('merchantId is empty');
   if (!Number.isFinite(source.schedule.everyMinutes) || source.schedule.everyMinutes < 1) {

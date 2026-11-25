@@ -32,6 +32,7 @@ import {
 } from './limits';
 import {
   UnsupportedTransportError,
+  isFixtureTransport,
   isImplemented,
   type CredentialResolver,
   type FeedSource,
@@ -89,6 +90,13 @@ export interface RetrieveOptions {
   /** Injected in tests so backoff does not actually sleep. */
   readonly sleepImpl?: (ms: number) => Promise<void>;
   readonly maxRedirects?: number;
+  /**
+   * Permits the `fixture` transport, which reads a local file.
+   *
+   * Off by default and never set by production configuration: a demonstration
+   * path that a config row alone can reach is a production path.
+   */
+  readonly allowFixtures?: boolean;
 }
 
 const DEFAULTS = {
@@ -276,6 +284,50 @@ export async function retrieveFeed(
   const maxAttempts = options.maxAttempts ?? DEFAULTS.maxAttempts;
   const doSleep = options.sleepImpl ?? sleep;
   const previous = options.previous;
+
+  if (isFixtureTransport(source.transport)) {
+    if (!options.allowFixtures) {
+      return {
+        status: 'failed',
+        reason:
+          'the fixture transport reads a local file and is refused unless the caller ' +
+          'explicitly passes allowFixtures. It is for demonstrations and tests, never production.',
+        retryable: false,
+        fetchedAt: now().toISOString(),
+        attempts: 0,
+      };
+    }
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const { createHash } = await import('node:crypto');
+      const raw = await readFile(source.url.replace(/^file:\/\//, ''));
+      const body = await expandIfCompressed(raw, limits);
+      const sha256 = createHash('sha256').update(body).digest('hex');
+      if (previous?.sha256 === sha256) {
+        return {
+          status: 'unchanged',
+          validators: { sha256 },
+          fetchedAt: now().toISOString(),
+          attempts: 1,
+        };
+      }
+      return {
+        status: 'fetched',
+        body,
+        validators: { sha256 },
+        fetchedAt: now().toISOString(),
+        attempts: 1,
+      };
+    } catch (error) {
+      return {
+        status: 'failed',
+        reason: `fixture unreadable: ${error instanceof Error ? error.message : String(error)}`,
+        retryable: false,
+        fetchedAt: now().toISOString(),
+        attempts: 1,
+      };
+    }
+  }
 
   if (!isImplemented(source.transport)) {
     const error = new UnsupportedTransportError(source.transport);
