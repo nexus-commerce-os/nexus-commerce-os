@@ -177,3 +177,15 @@ export {
   type RetrievalOutcome,
   type RetrieveOptions,
 } from './retrieval/retrieve';
+export {
+  InMemorySourceState,
+  isAlreadyRunning,
+  lastSuccessFor,
+  runCycle,
+  sourceFeedKey,
+  type CycleReport,
+  type SchedulerOptions,
+  type SourceOutcome,
+  type SourceState,
+  type SourceStateStore,
+} from './retrieval/scheduler';
