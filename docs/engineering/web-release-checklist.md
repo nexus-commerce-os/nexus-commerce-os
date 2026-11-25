@@ -105,6 +105,39 @@ all of them are easy to break while nearby.
 - **`_headers` does not apply to responses the Worker generates.** Anything
   added to `/api/*` needs its headers set in `worker/index.ts`.
 
+## 6b. Running the test suites locally
+
+`pnpm -s test` runs every workspace. Two of them need things this repo does not
+start for you, and a failure there is not a failure of the website.
+
+| suite | needs | without it |
+|---|---|---|
+| `@nexus/auth` | Postgres and Redis reachable on the ports in its test config | `rate-limit.guard` tests time out after 5s; the two `postgres-*` suites report `0 test` |
+| everything else | nothing | passes offline |
+
+So a clean local run of the WEB surface is:
+
+```
+pnpm --filter @nexus/web build     # release-gate, gate-catalog, verify-* all run here
+pnpm --filter @nexus/web lint
+pnpm --filter @nexus/web typecheck
+```
+
+CI runs all of it, including `@nexus/auth`, with the services available. If a
+suite fails locally and passes in CI, check this table before looking for a
+bug.
+
+**If eslint dies with `Cannot set properties of undefined (setting 'defaultMeta')`**
+it is not a lint error. `@eslint/eslintrc` depends on `ajv@^6`; if an
+interrupted or `--ignore-scripts` install leaves that link missing, Node walks
+up and finds the hoisted `ajv@8`, whose API differs. Repair it with:
+
+```
+pnpm install --force
+```
+
+Nothing in the repository needs changing; the lockfile already pins both.
+
 ## 7. What has been proven, and how
 
 Header behaviour is no longer an assumption. On 22 November 2026 the real
