@@ -142,6 +142,37 @@ const json = (body: unknown, status: number, extra?: Record<string, string>): Re
     headers: { ...SECURITY_HEADERS, ...extra },
   });
 
+/** Outcomes a no-JavaScript visitor can be told about, in the URL. */
+type FormOutcome = 'ok' | 'already' | 'invalid' | 'slow-down' | 'error';
+
+/**
+ * Sends a form-posting browser back to the waitlist with the result in the
+ * query string.
+ *
+ * The destination is built from THIS worker's own origin and a fixed path —
+ * never from the Referer, never from a form field. A redirect target taken
+ * from the request is how an endpoint becomes an open redirect, and a signup
+ * form is a perfectly good place to put one by accident.
+ *
+ * 303 rather than 302: it forces the follow-up to be a GET, so a refresh
+ * cannot resubmit the address.
+ */
+function redirectBack(request: Request, outcome: FormOutcome): Response {
+  const target = new URL('/', request.url);
+  target.search = `joined=${outcome}`;
+  target.hash = 'cta';
+  /*
+   * Built through `json()` so there is still exactly ONE place in this file
+   * that constructs a Response and therefore exactly one place that can forget
+   * a security header — the rule `verify-headers.mjs` enforces. A browser
+   * following a 303 ignores the body, so the JSON payload costs nothing and
+   * keeps a curl user informed.
+   */
+  return json({ ok: outcome === 'ok' || outcome === 'already', outcome }, 303, {
+    location: target.toString(),
+  });
+}
+
 async function handleWaitlist(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return json({ ok: false, error: 'Method not allowed — use POST.' }, 405);
@@ -155,23 +186,56 @@ async function handleWaitlist(request: Request, env: Env): Promise<Response> {
    */
   const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
   if (overRateLimit(ip, Date.now())) {
+    if ((request.headers.get('content-type') ?? '').includes('application/x-www-form-urlencoded')) {
+      return redirectBack(request, 'slow-down');
+    }
     return json({ ok: false, error: 'Too many attempts — please wait a minute.' }, 429, {
       'retry-after': String(WINDOW_MS / 1000),
     });
   }
 
-  let body: { email?: unknown };
-  try {
-    body = (await request.json()) as { email?: unknown };
-  } catch {
-    return json({ ok: false, error: 'Invalid request body.' }, 400);
+  /*
+   * Two callers, one endpoint.
+   *
+   * The hydrated page sends JSON and reads the JSON back. A BROWSER WITH NO
+   * WORKING JAVASCRIPT sends `application/x-www-form-urlencoded`, because the
+   * form now carries a real `action` and `method` — and it cannot read JSON,
+   * so it gets a redirect it can actually follow.
+   *
+   * This is not hypothetical resilience. The live site's CSP blocked Next's
+   * inline bootstrap scripts, React never hydrated, and the form had no
+   * action, no method and no field name: every address anyone typed was
+   * discarded in silence. A signup path that depends on hydration is a signup
+   * path with a single point of failure, so this one no longer does.
+   */
+  const contentType = request.headers.get('content-type') ?? '';
+  const isFormPost = contentType.includes('application/x-www-form-urlencoded');
+
+  let email = '';
+  if (isFormPost) {
+    try {
+      const form = await request.formData();
+      const value = form.get('email');
+      email = typeof value === 'string' ? value.trim() : '';
+    } catch {
+      return redirectBack(request, 'invalid');
+    }
+  } else {
+    let body: { email?: unknown };
+    try {
+      body = (await request.json()) as { email?: unknown };
+    } catch {
+      return json({ ok: false, error: 'Invalid request body.' }, 400);
+    }
+    email = typeof body.email === 'string' ? body.email.trim() : '';
   }
 
   // Re-validated here even though the form validates too: the browser check is
   // a courtesy to the visitor, not a control. Anything can post to this path.
-  const email = typeof body.email === 'string' ? body.email.trim() : '';
   if (!EMAIL_RE.test(email)) {
-    return json({ ok: false, error: 'Please enter a valid email address.' }, 422);
+    return isFormPost
+      ? redirectBack(request, 'invalid')
+      : json({ ok: false, error: 'Please enter a valid email address.' }, 422);
   }
 
   try {
@@ -180,6 +244,7 @@ async function handleWaitlist(request: Request, env: Env): Promise<Response> {
       source: 'web',
       createdAt: new Date().toISOString(),
     });
+    if (isFormPost) return redirectBack(request, result.status === 'duplicate' ? 'already' : 'ok');
     return json(
       {
         ok: true,
@@ -192,6 +257,7 @@ async function handleWaitlist(request: Request, env: Env): Promise<Response> {
   } catch {
     // The address is deliberately absent from this response and from any log
     // line: a failed write must not turn into a PII leak.
+    if (isFormPost) return redirectBack(request, 'error');
     return json({ ok: false, error: 'Could not save right now — please try again.' }, 502);
   }
 }

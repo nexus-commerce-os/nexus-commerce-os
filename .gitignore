@@ -73,3 +73,6 @@ next-env.d.ts
 # A staging wrangler config in a checkout is a config somebody can deploy by
 # accident. It is written in CI and lives for the length of one job.
 apps/web/wrangler.staging.toml
+
+# Compiled Worker used only by apps/web tests (see scripts/run-tests.mjs).
+.worker-test/

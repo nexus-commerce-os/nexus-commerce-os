@@ -121,6 +121,32 @@ export default function NexusLanding() {
   useEffect(() => {
     setMounted(true);
     if (window.matchMedia('(max-width: 820px)').matches) setDemoOpen(false);
+
+    /*
+     * A visitor whose browser ran no JavaScript posted the form natively and
+     * was sent back here with the outcome in the query string. If scripts are
+     * working by the time they return — a different page load — show them the
+     * same sentence the fetch path would have shown, and clean the parameter
+     * out of the URL so a refresh does not repeat it.
+     *
+     * Read from `location.search` rather than a router hook because this page
+     * is a static export: there is no server to read a search param for us.
+     */
+    const outcome = new URLSearchParams(window.location.search).get('joined');
+    if (!outcome) return;
+    const said: Record<string, [string, boolean]> = {
+      ok: ["You're on the list.", false],
+      already: ["You're already on the list.", false],
+      invalid: ['Please enter a valid email address.', true],
+      'slow-down': ['Too many attempts — please wait a minute.', true],
+      error: ['Could not save right now — please try again.', true],
+    };
+    const [message, isError] = said[outcome] ?? ['', false];
+    if (!message) return;
+    setNote(message);
+    setNoteErr(isError);
+    if (!isError) setSubmitted(true);
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
   }, []);
 
   useEffect(() => {
@@ -758,10 +784,29 @@ export default function NexusLanding() {
                 </p>
               ) : (
                 <>
-                  <form className="wl" onSubmit={onSubmit} noValidate>
+                  {/*
+                   * `action`, `method` and the field `name` are what make this
+                   * form work WITHOUT JavaScript. They are not decoration:
+                   * without them, a browser that never hydrated submitted
+                   * nothing anywhere, and the address was lost in silence.
+                   * That is what the live site did, because its CSP blocked
+                   * Next's inline bootstrap scripts and React never ran.
+                   *
+                   * When React IS running, `onSubmit` calls preventDefault and
+                   * the fetch path behaves exactly as before. The native post
+                   * is the floor, not the normal case.
+                   */}
+                  <form
+                    className="wl"
+                    action="/api/waitlist"
+                    method="post"
+                    onSubmit={onSubmit}
+                    noValidate
+                  >
                     <input
                       className="wl-input"
                       type="email"
+                      name="email"
                       required
                       placeholder="you@email.com"
                       aria-label="Email address"

@@ -116,6 +116,7 @@ surface is worse than no admin surface.
 | ✅ | mobile header keeps the primary call to action | measured at 375px and 344px |
 | ✅ | **mobile navigation** | PR #121: a 44x44 disclosure button injected once from `layout.tsx`, Escape closes and returns focus, measured at 375/768/1024 |
 | ⬜ | shorten the home page | **measured at 768px wide, section by section** — hero 2,234px · proof-strip 384 · how 771 · ranking 983 · savings 727 · agent 970 · trust 856 · (unnamed) 544 · faq 671 · cta 511 = 8,651px of sections. The two biggest wins, in order: the hero (2,234px, most of it a mock illustration) and "For developers" (`#agent`, 970px) which is a developer pitch sitting in the middle of a shopper's page and belongs on its own route. |
+| ⬜ | publish the spec catalog | audited and publishable (`catalog-publication-audit.md`), but **blocked on hydration**: its search is a React control, and shipping it broken would be a decorative search box. The founder has also asked for the manufacturers' own source terms to be checked before publication — facts are not copyrightable, but these records transcribe the maker's exact wording, and that has not been verified against their terms yet. |
 | ⬜ | search-first discovery surface | **blocked on honesty, not on engineering.** The catalog is withheld (all 11 URLs are a real 404), so a prominent search box on the home page would be a control that searches nothing — which the founder's own instruction forbids. The buildable honest version is a search over the pages that DO exist (guides, FAQ, how-we-rank, commission-blind, verified-savings); that is real and worth doing. A product search ships when there is a product corpus. |
 | ⬜ | category navigation | — |
 | ⬜ | comparison layout | domain side is done and tested (`rankByTotal`, `allInPrice`, `comparableTotal` in `@nexus/shared`); the UI waits on a real corpus for the same reason as search |
@@ -123,6 +124,52 @@ surface is worse than no admin surface.
 | ⬜ | empty states | — |
 
 ---
+
+## THE BLOCKER THAT MATTERS RIGHT NOW — React does not hydrate in production
+
+Measured on the live site, 25 November 2026: `reactFiberAttached: false`.
+
+`script-src 'self'` in `apps/web/public/_headers` blocks Next's inline
+bootstrap scripts (`self.__next_f.push(...)`), which is how a static export
+starts React. The browser console says so on every page load. Consequences, in
+order of how much they cost:
+
+1. **The waitlist lost every signup.** The form had no `action`, no `method`
+   and no field `name`, because React's `onSubmit` was the only path. Fixed in
+   PR #122 — a native post now works with no JavaScript at all — but the fix
+   is a floor, not a repair of hydration.
+2. The theme toggle, the mobile menu and the hero disclosure do nothing.
+3. **It also blocks publishing the catalog.** `/products` search is a React
+   control; shipping it while hydration is broken would put a search box on
+   the site that searches nothing — the exact thing the founder forbade.
+
+So this one header gates most of the remaining customer-facing work.
+
+### The options, measured
+
+| | approach | cost |
+|---|---|---|
+| **A** | `script-src 'self' 'unsafe-inline'` | Gives up inline-injection protection. Keeps the part that matters here: no external script origin is permitted, so the privacy notice's "no third-party anything" stays enforced. The site renders no user content, sets no cookie and has no login. |
+| **B** | Per-request nonce injected by the Worker with `HTMLRewriter` | Strictly stronger, no weakening. Costs HTML edge-caching (the nonce must not be reused, so HTML becomes `no-store`) and needs a small, non-weakening change to the `new Response(` guard in `verify-headers.mjs`, which was written when the Worker only emitted JSON. |
+| ~~C~~ | Hash-pin every inline script | **Measured and rejected.** 144 unique inline scripts across 27 pages, only 3 shared, because each page's flight payload embeds that page's own content — a ~7.8KB header that breaks whenever any copy changes. |
+
+A is prepared and held at `scratchpad/csp-hydration-fix.patch`, together with
+the build check that would have caught this: it scans every built page and
+fails when the CSP does not permit that page's own inline scripts. Run against
+the old build it found **364 blocked scripts**; with the fix, 38 pages clean.
+
+**This is the founder's decision, not an engineering one** — it changes the
+security posture of a live site, and the automated safety control in this
+session blocked the change for exactly that reason. Nothing here is shipped
+until that call is made.
+
+### Why nothing caught it
+
+Every existing check passed: the headers were present, the CSP was not
+weakened, the pages built, the links worked. The one question nobody asked was
+whether the policy permits the page's **own** scripts — and the Worker, which
+decides whether a signup is kept, was the only part of the app with no test at
+all. Both gaps are now closed.
 
 ## Blocked on something engineering cannot fix
 
