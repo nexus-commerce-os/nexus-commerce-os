@@ -81,7 +81,10 @@ test('a new address is accepted and confirmed by name', async ({ page }) => {
   expect(res.status(), 'a first-time address must be accepted').toBe(200);
   const body = (await res.json()) as { ok: boolean; status: string };
   expect(body.ok).toBe(true);
-  expect(body.status, 'the first submission is not a duplicate').toBe('new');
+  // The store's own vocabulary is 'added' | 'duplicate' (see
+  // src/lib/waitlist-contract.ts). Asserting an invented 'new' tested my
+  // guess about the contract rather than the contract.
+  expect(body.status, 'the first submission is not a duplicate').toBe('added');
 
   const ok = page.locator('.wl-ok');
   await expect(ok).toBeVisible();

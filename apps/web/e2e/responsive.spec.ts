@@ -383,15 +383,32 @@ test.describe('the catalog pages hold up at this width', () => {
 
     await assertNoOverflow(page, width, 'product detail');
 
-    // Provenance is the product here: a spec with no source and no date is
-    // just an assertion.
-    const body = await page.locator('body').innerText();
-    expect(body, 'the detail page must cite a verification date').toMatch(
-      /(verified|checked|read)/i,
-    );
+    /*
+     * Provenance is the product here: a specification with no source and no
+     * date is just an assertion.
+     *
+     * Asserted with LOCATORS rather than `body.innerText()`. The first
+     * version read the whole body as a string and failed at every width even
+     * though the page plainly renders "Verified on 8 Nov 2026" - innerText
+     * returns *rendered* text and is not a dependable way to ask "is this on
+     * the page". toBeVisible() scrolls the element into view and asks the
+     * question that actually matters: can a visitor SEE the date.
+     */
+    await expect(
+      page.getByText(/verified on/i).first(),
+      'the detail page must show when the page was read',
+    ).toBeVisible();
+
     const sourceLink = page.locator('a[href^="https://"]').first();
-    expect(await sourceLink.count(), 'the detail page must link its source').toBeGreaterThan(0);
-    expect(body, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
+    await expect(sourceLink, 'the detail page must link its source').toBeVisible();
+
+    /*
+     * The price check uses textContent, the opposite way round on purpose: a
+     * currency amount must be absent from the DOM ENTIRELY, not merely out of
+     * sight. A hidden price is still a price we are not allowed to publish.
+     */
+    const domText = (await page.locator('body').textContent()) ?? '';
+    expect(domText, 'a currency amount appeared on a spec-only page').not.toMatch(/[$£€]\s?\d/);
   });
 });
 
