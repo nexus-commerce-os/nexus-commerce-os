@@ -1,0 +1,125 @@
+/*
+ * The deploy must not be able to skip the checks that make the artifact safe.
+ *
+ * WHY THIS FILE EXISTS. `gate-catalog.mjs` was added to the `build` script and
+ * the catalog shipped anyway, because `deploy:cf` ran `next build` directly and
+ * never called `build`. The same was true, and had always been true, of
+ * `verify-headers`, `verify-footer`, `verify-merchants` and `verify-catalog`:
+ * the deploy path was the least checked path, and Vercel's preview builds were
+ * quietly covering for it until they were switched off.
+ *
+ * A guard wired into a script the deploy does not call is not a guard. These
+ * tests assert the wiring itself, so the next person to "simplify" the deploy
+ * command finds out here rather than in production.
+ */
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { test } from 'node:test';
+
+const WEB = join(dirname(), '..');
+function dirname() {
+  return fileURLToPath(new URL('.', import.meta.url));
+}
+const read = (rel) => readFileSync(join(WEB, rel), 'utf8');
+const pkg = JSON.parse(read('package.json'));
+const REPO = join(WEB, '..', '..');
+const workflow = (name) => readFileSync(join(REPO, '.github', 'workflows', name), 'utf8');
+
+/** Every check that must run before anything is uploaded. */
+const MANDATORY = [
+  'scripts/gate-catalog.mjs',
+  'scripts/verify-headers.mjs',
+  'scripts/verify-footer.mjs',
+  'scripts/verify-merchants.mjs',
+  'scripts/verify-catalog.mjs',
+];
+
+test('the build runs every mandatory artifact check, after next build', () => {
+  const build = pkg.scripts.build;
+  const buildIdx = build.indexOf('next build');
+  assert.ok(buildIdx >= 0, '`build` must actually build');
+
+  for (const script of MANDATORY) {
+    const at = build.indexOf(script);
+    assert.ok(at >= 0, `\`build\` does not run ${script}`);
+    assert.ok(
+      at > buildIdx,
+      `${script} runs before \`next build\` — it inspects out/, so it would check nothing`,
+    );
+  }
+});
+
+test('the deploy runs the build, not a bare next build', () => {
+  const deploy = pkg.scripts['deploy:cf'];
+  assert.ok(deploy, 'deploy:cf is missing');
+
+  assert.ok(
+    /pnpm run build/.test(deploy),
+    'deploy:cf must run `pnpm run build`. Calling `next build` directly skips ' +
+      MANDATORY.join(', ') +
+      ' — which is exactly how the unpublished catalog reached production.',
+  );
+
+  // Belt and braces: even if the wording above changes, no check may be absent
+  // from the deploy's transitive command.
+  const effective = deploy.replace('pnpm run build', pkg.scripts.build);
+  for (const script of MANDATORY) {
+    assert.ok(effective.includes(script), `the deploy path does not reach ${script}`);
+  }
+});
+
+test('the deploy enforces the release gate before it builds anything', () => {
+  const deploy = pkg.scripts['deploy:cf'];
+  assert.match(
+    deploy,
+    /release-gate\.mjs --enforce/,
+    'deploy:cf must run the release gate in enforcing mode',
+  );
+  assert.ok(
+    deploy.indexOf('release-gate.mjs --enforce') < deploy.indexOf('build'),
+    'the gate must run before the build, so a blocked release costs nothing',
+  );
+});
+
+test('a bare wrangler deploy still runs the gate', () => {
+  // The [build] command in wrangler.toml is the only thing standing between
+  // `npx wrangler deploy` and production.
+  const toml = read('wrangler.toml');
+  assert.match(
+    toml,
+    /\[build\][\s\S]*command\s*=\s*"node scripts\/release-gate\.mjs"/,
+    'wrangler.toml must keep the [build] hook that runs the release gate',
+  );
+});
+
+test('CI and staging build the site the same way the deploy does', () => {
+  // One canonical pipeline: if these drift, something is verified that is not
+  // what ships, which is worse than not verifying at all.
+  const ci = workflow('ci.yml');
+  assert.match(
+    ci,
+    /pnpm --filter @nexus\/web build/,
+    'ci.yml must build the web app with the same command',
+  );
+  const staging = workflow('staging-verify.yml');
+  assert.match(
+    staging,
+    /pnpm --filter @nexus\/web build/,
+    'staging-verify.yml must build the web app with the same command',
+  );
+});
+
+test('the catalog is withheld unless PUBLISH_CATALOG is explicitly set', () => {
+  const gate = read('scripts/gate-catalog.mjs');
+  assert.match(
+    gate,
+    /process\.env\.PUBLISH_CATALOG === '1'/,
+    'publishing must require an exact opt-in, not any truthy value',
+  );
+  assert.ok(
+    gate.includes('products.html') && gate.includes('products'),
+    'the gate must target the catalog index and its product pages',
+  );
+});
