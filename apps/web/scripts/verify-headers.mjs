@@ -124,13 +124,70 @@ const bareResponses = worker
   .map((line, i) => [i + 1, line])
   .filter(([, line]) => /new Response\(/.test(line) && !/SECURITY_HEADERS/.test(line));
 
-// The helper itself is the single legitimate `new Response(`.
-const helperLine = worker.split(/\r?\n/).findIndex((l) => /const json = /.test(l)) + 1;
-const stray = bareResponses.filter(([n]) => n < helperLine || n > helperLine + 6);
+/*
+ * TWO places legitimately build a Response, and both must keep their headers.
+ *
+ *   json()       — the Worker's own JSON answers, carrying SECURITY_HEADERS.
+ *   serveAsset() — an asset re-emitted with a per-response CSP nonce. It does
+ *                  NOT use SECURITY_HEADERS and must not: those are the API's
+ *                  (`default-src 'none'`) and would break every page. It
+ *                  copies the asset's own headers instead, so `public/_headers`
+ *                  stays the one place the page policy is written.
+ *
+ * Admitting a second path is only safe if that path is checked, so it is —
+ * below, and more closely than the line-position rule ever checked json().
+ */
+const workerLines = worker.split(/\r?\n/);
+const windowAfter = (pattern, span) => {
+  const at = workerLines.findIndex((l) => pattern.test(l));
+  return at === -1 ? null : [at + 1, at + 1 + span];
+};
+const allowedWindows = [
+  windowAfter(/const json = /, 6),
+  windowAfter(/async function serveAsset\(/, 80),
+].filter(Boolean);
+
+const stray = bareResponses.filter(
+  ([n]) => !allowedWindows.some(([from, to]) => n >= from && n <= to),
+);
 for (const [n] of stray) {
   failures.push(
-    `worker/index.ts:${n} builds a Response outside json() — it would carry no security headers`,
+    `worker/index.ts:${n} builds a Response outside json() or serveAsset() — it would carry no security headers`,
   );
+}
+
+/*
+ * The nonce path, asserted rather than trusted. Each of these is a way a
+ * nonce could look present and be worthless.
+ */
+if (/async function serveAsset\(/.test(worker)) {
+  const nonceChecks = [
+    [/crypto\.getRandomValues\(/, 'the nonce must come from the platform CSPRNG, not Math.random'],
+    [
+      /new Headers\(asset\.headers\)/,
+      "the asset's own headers must be carried over, or the page loses everything _headers set",
+    ],
+    [
+      /headers\.set\('cache-control', 'no-store'\)/,
+      'HTML carrying a nonce must not be stored by a shared cache — a reused nonce is not a nonce',
+    ],
+    [
+      /getAttribute\('src'\) !== null\) return/,
+      "a script with src is already covered by 'self' and must not also be given a nonce",
+    ],
+    [/EXECUTABLE_TYPES/, 'only executable script types should receive the grant'],
+    [/script-src \$\{sources\.trim\(\)\} 'nonce-/, 'the nonce must be ADDED to script-src, not replace it'],
+  ];
+  for (const [pattern, why] of nonceChecks) {
+    if (!pattern.test(worker)) failures.push(`nonce CSP: ${why}`);
+  }
+  // Comments stripped first: the file EXPLAINS why it does not use
+  // 'unsafe-inline', and a check that cannot tell prose from code would fire
+  // on the explanation and teach everyone to delete the explanation.
+  const workerCode = worker.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  if (/'unsafe-inline'/.test(workerCode)) {
+    failures.push("worker/index.ts reintroduces 'unsafe-inline' — the nonce exists to avoid it");
+  }
 }
 
 // ---------------------------------------------------------------------------

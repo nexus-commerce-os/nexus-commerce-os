@@ -262,11 +262,101 @@ async function handleWaitlist(request: Request, env: Env): Promise<Response> {
   }
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * Nonce-based CSP for HTML
+ * ---------------------------------------------------------------------------
+ *
+ * WHY. `script-src 'self'` blocked Next's inline bootstrap scripts
+ * (`self.__next_f.push(...)`), so React never hydrated on the live site —
+ * measured 25 November 2026 as `reactFiberAttached: false`. Nothing
+ * interactive worked, and the waitlist form lost every address typed into it.
+ *
+ * WHY NOT HASHES, which would have kept HTML cacheable. Measured on the real
+ * build: 99 unique executable inline scripts across 27 pages, only 3 common
+ * to all of them, because each page's flight payload embeds that page's own
+ * content. One global policy listing all 99 is ~7.2KB AND authorises every
+ * page's scripts on every other page — a weakening dressed as strictness.
+ * Per-path rules are ~535 bytes each and would keep caching, but they depend
+ * on `_headers` semantics for a repeated header name: if both `/*` and the
+ * page set a CSP the browser enforces the intersection and the site breaks
+ * again, and any page without a rule silently gets no CSP at all. Two silent
+ * failure modes on the header whose last silent failure cost every signup.
+ *
+ * WHY NOT 'unsafe-inline'. It would authorise any injected inline script.
+ *
+ * So: a fresh nonce per response, granted ONLY to inline scripts that are
+ * already in the document when it leaves here. Nothing user-controlled
+ * reaches this HTML — it is a static export — but the grant is still kept to
+ * the narrowest set that works, rather than to every <script> on the page.
+ */
+
+/** 128 bits from the platform CSPRNG, base64 — fresh for every response. */
+function makeNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/** Scripts the browser will actually execute. Anything else needs no grant. */
+const EXECUTABLE_TYPES = new Set(['', 'text/javascript', 'module', 'application/javascript']);
+
+/**
+ * Serves an asset, adding a per-response nonce when it is HTML.
+ *
+ * Only the CSP's `script-src` is touched; every other directive, and every
+ * other security header, is whatever `public/_headers` already set, so that
+ * file stays the single place the policy is written.
+ */
+async function serveAsset(request: Request, env: Env): Promise<Response> {
+  const asset = await env.ASSETS.fetch(request);
+  const type = asset.headers.get('content-type') ?? '';
+  if (!type.includes('text/html')) return asset;
+
+  const nonce = makeNonce();
+  const headers = new Headers(asset.headers);
+
+  const csp = headers.get('content-security-policy');
+  if (csp) {
+    headers.set(
+      'content-security-policy',
+      csp.replace(
+        /script-src ([^;]*)/i,
+        (_m, sources: string) => `script-src ${sources.trim()} 'nonce-${nonce}'`,
+      ),
+    );
+  }
+
+  /*
+   * A nonce that is reused is not a nonce. HTML must therefore not be stored
+   * by a shared cache or replayed from the browser's. Static JS, CSS, fonts
+   * and images are untouched above and keep their caching — they are the
+   * bytes that actually benefit from it.
+   */
+  headers.set('cache-control', 'no-store');
+
+  const rewritten = new HTMLRewriter()
+    .on('script', {
+      element(element) {
+        // An external script is already covered by 'self'; granting it a
+        // nonce would widen the grant for nothing.
+        if (element.getAttribute('src') !== null) return;
+        const scriptType = (element.getAttribute('type') ?? '').toLowerCase();
+        if (!EXECUTABLE_TYPES.has(scriptType)) return;
+        element.setAttribute('nonce', nonce);
+      },
+    })
+    .transform(asset);
+
+  return new Response(rewritten.body, { status: asset.status, headers });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
 
     if (pathname === '/api/waitlist') return handleWaitlist(request, env);
-    return env.ASSETS.fetch(request);
+    return serveAsset(request, env);
   },
 };

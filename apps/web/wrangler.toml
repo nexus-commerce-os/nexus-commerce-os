@@ -56,6 +56,21 @@ binding = "ASSETS"
 # Unknown paths serve Next's exported 404 page rather than a bare Worker error.
 not_found_handling = "404-page"
 
+# Run the Worker BEFORE the asset service for documents, so it can stamp a
+# per-response CSP nonce on the HTML (worker/index.ts, serveAsset).
+#
+# Without this the Worker is never invoked for a path that matches an asset —
+# Cloudflare answers from the asset service directly — which is why the API
+# route worked (no asset matches /api/waitlist) while the HTML never reached
+# our code at all. Measured after the first nonce deploy: the CSP came back
+# with no nonce and `CF-Cache-Status: HIT`, proving the Worker had not run.
+#
+# `/_next/*` is excluded deliberately. Those are the hashed, immutable JS and
+# CSS bundles: they need no nonce, they are the bytes that benefit most from
+# edge caching, and sending every one of them through a Worker would spend CPU
+# to change nothing.
+run_worker_first = ["/*", "!/_next/*"]
+
 [[kv_namespaces]]
 binding = "WAITLIST"
 id = "12a90ce4e895472399c8cd741e5623ad"
