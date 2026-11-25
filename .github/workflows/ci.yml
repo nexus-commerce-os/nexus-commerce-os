@@ -209,6 +209,54 @@ jobs:
           done
 
   # ---------------------------------------------------------------------------
+  # 3c. WEB BUILD — the public site, and the four checks that only run with it.
+  #
+  # Nothing in CI built apps/web. Vercel did, as a side effect of its preview
+  # deployments, and when those were switched off to stop an accidental second
+  # production site the build went with them. That quietly took four guards
+  # with it, because they run inside `pnpm --filter @nexus/web build`:
+  #
+  #   release-gate      refuses to ship legal pages with placeholders
+  #   gate-catalog      keeps the unpublished catalog out of the artifact
+  #   verify-headers    the security headers are in out/, and the CSP is intact
+  #   verify-footer     every public page reaches the legal pages
+  #   verify-merchants  no affiliate link is enabled
+  #   verify-catalog    no price, merchant or stock is ever claimed
+  #
+  # Lint and typecheck cannot catch any of those: they are statements about the
+  # BUILT artifact. This job runs the same command the deploy runs, minus the
+  # deploy, so the thing that ships is the thing that was checked.
+  # ---------------------------------------------------------------------------
+  web-build:
+    name: 3c · Web build and artifact checks
+    needs: [lint]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      - uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the site exactly as the deploy does
+        run: pnpm --filter @nexus/web build
+      - name: The artifact must not contain the unpublished catalog
+        # gate-catalog already asserts this and fails the build if it cannot
+        # remove them. Checked again here from the outside, because a guard
+        # that only verifies itself is worth less than one that is verified.
+        run: |
+          set -euo pipefail
+          fail=0
+          if [ -e apps/web/out/products.html ]; then echo "::error::out/products.html was shipped"; fail=1; fi
+          if [ -e apps/web/out/products ]; then echo "::error::out/products/ was shipped"; fail=1; fi
+          [ "$fail" = "0" ] || exit 1
+          echo "  catalog absent from the artifact, as intended"
+          echo "  pages built: $(find apps/web/out -name '*.html' | wc -l)"
+
+  # ---------------------------------------------------------------------------
   # 4. SAST — CodeQL + Semgrep. High/critical finding blocks (NFR-SEC-01, docs/08 §5.5).
   # ---------------------------------------------------------------------------
   sast:
@@ -743,6 +791,7 @@ jobs:
       - lint
       - unit-tests
       - go-tests
+      - web-build
       - sast
       - secrets-scan
       - dependency-scan

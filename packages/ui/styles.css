@@ -2665,6 +2665,25 @@ summary:hover {
   letter-spacing: -0.01em;
   font-weight: 700;
 }
+/* Touch targets on the catalog cards.
+ *
+ * Measured at 375px on the built site: both links in a card rendered 21px
+ * high. WCAG 2.5.8 (AA) asks for 24px, and exempts links that sit INLINE in a
+ * sentence -- neither of these does. The card title is a heading, and "View
+ * product details" is the only thing in its paragraph, so both are standalone
+ * controls that happened to be the height of their text.
+ *
+ * inline-flex with a min-height rather than padding: padding would move the
+ * text and reflow the card, and the point is to enlarge the target without
+ * redesigning anything. The links still look identical; they are simply
+ * 24px tall to a finger.
+ */
+.pc-title a,
+.pc-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
 .pc-facts {
   margin: 0;
   display: grid;

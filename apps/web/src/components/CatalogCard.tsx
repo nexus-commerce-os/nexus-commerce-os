@@ -84,7 +84,7 @@ export function CatalogCard({ product, category }: CatalogCardProps) {
         </p>
 
         <p style={{ marginBottom: 0 }}>
-          <Link href={`/products/${product.slug}`}>
+          <Link className="pc-link" href={`/products/${product.slug}`}>
             View product details<span className="sr-only"> for {displayName(product)}</span>
           </Link>
         </p>
