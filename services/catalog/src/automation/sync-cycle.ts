@@ -24,6 +24,7 @@
  * results, and the cliff guard refuses a collapse whatever caused it.
  */
 import { runCycle, type CycleReport, type SchedulerOptions } from '../retrieval/scheduler';
+import { GenerationPublisher, type PruneOutcome } from '../publication/publisher';
 import { D1OfferStore } from '../store/d1/d1-offer-store';
 import type { D1Like } from '../store/d1/d1-client';
 import { CatalogD1 } from './catalog-store';
@@ -63,6 +64,8 @@ export interface SyncCycleResult {
   readonly budget: BudgetVerdict;
   readonly retrieval: CycleReport | null;
   readonly publication: PublishCatalogueResult | null;
+  /** What retention removed, or null when it did not run. */
+  readonly pruned: PruneOutcome | null;
   readonly cost: {
     readonly rowsWritten: number;
     readonly rowsRead: number;
@@ -116,6 +119,7 @@ export async function runSyncCycle(
       },
       retrieval: extra.retrieval ?? null,
       publication: extra.publication ?? null,
+      pruned: extra.pruned ?? null,
       cost,
     };
   };
@@ -202,13 +206,41 @@ export async function runSyncCycle(
     );
   }
 
+  /*
+   * ── 5. retention ──
+   *
+   * `prune` existed and nothing called it, which is the same mistake the cron
+   * was: a cleanup nobody invokes is not bounded retention. Measured on
+   * staging, candidate rows accumulated at roughly 21 per cycle and simply
+   * stayed.
+   *
+   * Only after a SUCCESSFUL publication, so a refused generation is not
+   * tidied away before anybody has looked at why it was refused. Bounded by
+   * `maxDeletes`, and the remaining cycle allowance, because cleanup that can
+   * consume the daily write budget is not cleanup.
+   */
+  let pruned: Awaited<ReturnType<GenerationPublisher['prune']>> | null = null;
+  if (publication.outcome !== null && !meter.exhausted) {
+    try {
+      pruned = await new GenerationPublisher(metered).prune({
+        keep: 5,
+        maxDeletes: Math.min(2_000, meter.remaining),
+      });
+    } catch (error) {
+      // A failed cleanup must not fail a successful publication. The
+      // catalogue is live and correct; the history is merely longer.
+      pruned = null;
+      console.warn(`prune failed, which is not fatal: ${(error as Error).message}`);
+    }
+  }
+
   const detail = publication.rejected
     ? `publication refused: ${publication.rejected.code}`
     : publication.skipped
       ? `publication skipped: ${publication.skipped}`
       : null;
 
-  return finish('ran', detail, { budget: verdict, retrieval, publication }, meter);
+  return finish('ran', detail, { budget: verdict, retrieval, publication, pruned }, meter);
 }
 
 /* ─────────────────────────── the quota table ─────────────────────────── */

@@ -49,4 +49,4 @@ enabled = true
 # The cycle is idempotent and its id is derived from the instant, so a cron
 # that fires twice updates one row rather than running twice.
 [triggers]
-crons = ["* * * * *"]  # TEMPORARY: proving the cron actually fires
+crons = ["17 2,14 * * *"]

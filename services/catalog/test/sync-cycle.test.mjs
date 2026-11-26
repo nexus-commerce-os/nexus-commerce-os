@@ -493,6 +493,45 @@ test("Cloudflare's own figure is stored beside the estimate, never instead of it
   assert.equal(usage.authoritativeWrites - usage.estimatedWrites, 366);
 });
 
+test('RETENTION RUNS, because a cleanup nobody calls is not bounded retention', async () => {
+  /*
+   * `prune` existed and nothing invoked it — the same mistake the cron was.
+   * Measured on staging: candidate rows accumulated at about 21 a cycle and
+   * simply stayed. Eight cycles here, keeping five generations.
+   */
+  const { db } = await world();
+  for (let i = 0; i < 8; i += 1) {
+    await runSyncCycle(db, {
+      now: new Date(NOW.getTime() + i * 3_600_000),
+      trigger: 'scheduled',
+      scheduler: { retrieve: fixtureRetrieve({ 'src-0': archiveOf(4) }) },
+    });
+  }
+
+  const generations = await db
+    .prepare('SELECT COUNT(*) AS n FROM catalog_publication_generation')
+    .first();
+  assert.ok(
+    generations.n <= 6,
+    `history should be bounded near the five kept generations, found ${generations.n}`,
+  );
+  // And the catalogue is untouched by the tidying.
+  const live = await new PublicCatalogue(db).summary();
+  assert.equal(live.products, 4);
+});
+
+test('retention does not run after a REFUSED publication', async () => {
+  // A refused generation must still be there to look at. Tidying it away
+  // before anybody has asked why it was refused is the wrong default.
+  const { db } = await world();
+  const result = await runSyncCycle(db, {
+    now: NOW,
+    trigger: 'scheduled',
+    scheduler: { retrieve: fixtureRetrieve({}) }, // every source fails
+  });
+  assert.equal(result.pruned, null);
+});
+
 test('FREE_TIER is the documented allowance, not an invented one', () => {
   assert.equal(FREE_TIER.dailyWrites, 100_000);
   assert.ok(FREE_TIER.reserve > 0 && FREE_TIER.reserve < FREE_TIER.dailyWrites);
