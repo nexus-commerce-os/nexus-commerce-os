@@ -271,6 +271,7 @@ export class GenerationPublisher {
         publishedCount: await this.publishedCount(),
         opened: 0,
         closed: 0,
+        refreshed: 0,
         unchanged: 0,
         previousGeneration: live,
         alreadyLive: true,
@@ -304,6 +305,7 @@ export class GenerationPublisher {
         publishedCount: await this.publishedCount(),
         opened: 0,
         closed: 0,
+        refreshed: 0,
         unchanged: 0,
         previousGeneration: live,
         alreadyLive: false,
@@ -357,11 +359,36 @@ export class GenerationPublisher {
     // ── phase 3: the commit. Three statements, one batch. ──
     await this.commit(generation, eligibleCount, live, options);
 
+    /*
+     * ── phase 4: freshness, AFTER the pointer has moved ──
+     *
+     * These rows are already live, so this is the one write here that a
+     * visitor sees immediately — which is why it runs last. A generation the
+     * validator rejects never reaches this line, so a refused publication
+     * leaves the live catalogue completely untouched, timestamps included.
+     *
+     * An interruption here leaves a stale timestamp on an otherwise correct
+     * catalogue, and the next cycle fixes it. That is the cheapest failure
+     * mode available: the alternative is versioning every row every cycle.
+     */
+    await this.flush(
+      diff.toRefresh.map((row) =>
+        this.db
+          .prepare(
+            `UPDATE catalog_published_product
+                SET data_verified_at = ?
+              WHERE product_id = ? AND last_generation IS NULL`,
+          )
+          .bind(row.dataVerifiedAt, row.productId),
+      ),
+    );
+
     return {
       generation,
       publishedCount: diff.toOpen.length + diff.unchanged,
       opened: diff.toOpen.length,
       closed: diff.toClose.length,
+      refreshed: diff.toRefresh.length,
       unchanged: diff.unchanged,
       previousGeneration: live,
       alreadyLive: false,
@@ -694,6 +721,8 @@ export class GenerationPublisher {
   private async diff(generation: number): Promise<{
     toOpen: readonly PublicationCandidate[];
     toClose: readonly string[];
+    /** Live rows whose content is unchanged but whose freshness moved. */
+    toRefresh: readonly { productId: string; dataVerifiedAt: string }[];
     unchanged: number;
   }> {
     const candidates = await this.db
@@ -732,6 +761,7 @@ export class GenerationPublisher {
 
     const toOpen: PublicationCandidate[] = [];
     const toClose: string[] = [];
+    const toRefresh: { productId: string; dataVerifiedAt: string }[] = [];
     let unchanged = 0;
 
     for (const row of candidates.results) {
@@ -747,13 +777,19 @@ export class GenerationPublisher {
         toOpen.push(candidate);
       } else {
         unchanged += 1;
+        if (String(existing.data_verified_at) !== candidate.dataVerifiedAt) {
+          toRefresh.push({
+            productId: candidate.productId,
+            dataVerifiedAt: candidate.dataVerifiedAt,
+          });
+        }
       }
     }
 
     // Whatever is left was published and is not eligible now.
     for (const productId of published.keys()) toClose.push(productId);
 
-    return { toOpen, toClose, unchanged };
+    return { toOpen, toClose, toRefresh, unchanged };
   }
 
   private openStatements(
@@ -887,13 +923,26 @@ function toCandidate(row: Record<string, unknown>): PublicationCandidate {
  * entire catalogue on the next deploy.
  */
 function differs(existing: Record<string, unknown>, candidate: PublicationCandidate): boolean {
+  /*
+   * data_verified_at IS DELIBERATELY NOT COMPARED.
+   *
+   * It moves every single cycle — it is the newest `last_seen_at` among the
+   * product's offers, and re-reading a feed updates that even when nothing
+   * about the product changed. Treating it as content therefore closed and
+   * reopened EVERY published row on EVERY cycle, which destroys the one
+   * property the whole interval design exists for. Measured: cycle 3 of the
+   * end-to-end test reported 13 rows opened where 1 product was new.
+   *
+   * So freshness is an UPDATE to the live row, applied after the commit, and
+   * content changes are what version it. Rollback does not need a history of
+   * freshness; it needs the catalogue that was served.
+   */
   const minor = existing.from_price_minor;
   return (
     String(existing.slug) !== candidate.slug ||
     String(existing.title) !== candidate.title ||
     text(existing.brand) !== candidate.brand ||
     text(existing.category_slug) !== candidate.categorySlug ||
-    String(existing.data_verified_at) !== candidate.dataVerifiedAt ||
     String(existing.search_text) !== candidate.searchText ||
     (minor === null || minor === undefined ? null : exactInteger(minor, 'from_price_minor')) !==
       (candidate.fromPrice ? candidate.fromPrice.amountMinor : null) ||

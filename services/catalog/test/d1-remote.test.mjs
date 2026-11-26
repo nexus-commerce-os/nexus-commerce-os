@@ -25,6 +25,7 @@ import {
   GenerationPublisher,
   GenerationRejectedError,
   importFeedArchive,
+  publishCatalogue,
 } from '../dist/index.js';
 import { d1Schema } from './helpers/sqlite-d1.mjs';
 import {
@@ -97,6 +98,7 @@ const offer = (over = {}) => ({
   shippingDestination: null,
   feesVerified: false,
   feesTotal: null,
+  productType: 'Home > Drinkware',
   snapshotAt: '2026-11-26T12:00:00.000Z',
   sourceFeed: 'test:feed',
   firstSeenRun: 'run-1',
@@ -649,5 +651,131 @@ test(
 
     await pub.rollbackTo(g1, { at: '2026-11-26T14:00:00.000Z', decidedBy: 'test:operator' });
     assert.deepEqual(await publicCatalogue(), before, 'byte for byte what was live before');
+  },
+);
+
+// ──────────── the whole pipeline, on the real platform ────────────
+
+test(
+  'END TO END ON REAL D1: three cycles, feed bytes to a public catalogue',
+  { skip },
+  async () => {
+    /*
+     * The same three cycles automation.test.mjs runs on SQLite, run against
+     * Cloudflare. Deliberately small — four products rather than twenty-five —
+     * because the remote harness sends one HTTP request per statement, and the
+     * thing being proved here is that the platform behaves, not that the
+     * arithmetic scales.
+     */
+    await resetPublication();
+    await db.exec(
+      [
+        'DELETE FROM catalog_product_offer;',
+        'DELETE FROM catalog_publication_decision;',
+        'DELETE FROM catalog_offer_price_history;',
+        'DELETE FROM catalog_merchant_offer;',
+        'DELETE FROM catalog_import_run;',
+        'DELETE FROM catalog_merchant;',
+      ].join('\n'),
+    );
+    await db
+      .prepare(
+        "INSERT INTO catalog_merchant (id, name, network, relationship) VALUES (?, ?, 'test', 'approved')",
+      )
+      .bind(MERCHANT, 'Northwind Trading')
+      .run();
+
+    const meter = new UsageMeter();
+    const measured = createRemoteD1(config, databaseId, meter);
+    const store = new D1OfferStore(measured);
+    const feed = (n, price, stamp) =>
+      zipOf(
+        buildFeed(
+          Array.from({ length: n }, (_, i) =>
+            product({
+              id: `NW-${i + 1}`,
+              title: `Northwind Item ${i + 1}`,
+              price: `${i + 1 === n ? price : '19.99'} USD`,
+              salePrice: '',
+              gtin: gtin12(String(10000000000 + i + 1)),
+              mpn: `NW-MPN-${i + 1}`,
+              lastUpdated: stamp,
+              productType: 'Home > Drinkware',
+            }),
+          ),
+        ),
+      );
+
+    // ── cycle 1: create and publish ──
+    const first = await importFeedArchive(feed(4, '19.99', '2026-11-26T11:31:41.000Z'), store, {
+      merchantId: MERCHANT,
+      sourceFeed: 'test:feed',
+      now: new Date('2026-11-26T12:00:00.000Z'),
+    });
+    assert.equal(first.applied, true, `import did not apply: ${JSON.stringify(first.run)}`);
+
+    const published = await publishCatalogue(measured, {
+      now: new Date('2026-11-26T12:05:00.000Z'),
+    });
+    assert.equal(published.rejected, null);
+    assert.equal(published.counts.eligible, 4);
+    assert.equal(published.outcome.opened, 4);
+
+    const live1 = await publicCatalogue();
+    assert.equal(live1.length, 4, 'four products are public on Cloudflare');
+    const row1 = await db
+      .prepare(
+        `SELECT category_slug, brand FROM catalog_published_product
+        WHERE last_generation IS NULL LIMIT 1`,
+      )
+      .first();
+    assert.equal(row1.category_slug, 'home/drinkware', 'classified from the stated path');
+    assert.equal(row1.brand, 'Northwind Trading');
+
+    // ── cycle 2: the identical feed ──
+    const before = await db.prepare('SELECT COUNT(*) AS n FROM catalog_published_product').first();
+    const again = await importFeedArchive(feed(4, '19.99', '2026-11-26T11:31:41.000Z'), store, {
+      merchantId: MERCHANT,
+      sourceFeed: 'test:feed',
+      now: new Date('2026-11-26T13:00:00.000Z'),
+    });
+    assert.equal(again.run.status, 'skipped_duplicate');
+
+    const second = await publishCatalogue(measured, { now: new Date('2026-11-26T13:05:00.000Z') });
+    assert.equal(second.outcome.opened, 0);
+    assert.equal(second.outcome.closed, 0);
+    assert.equal(second.outcome.unchanged, 4);
+    const after = await db.prepare('SELECT COUNT(*) AS n FROM catalog_published_product').first();
+    assert.equal(after.n, before.n, 'not one published row was rewritten');
+
+    // ── cycle 3: one new product, one price change ──
+    const third = await importFeedArchive(feed(5, '12.49', '2026-11-27T11:31:41.000Z'), store, {
+      merchantId: MERCHANT,
+      sourceFeed: 'test:feed',
+      now: new Date('2026-11-27T12:00:00.000Z'),
+    });
+    assert.equal(third.applied, true);
+    assert.equal(third.reconciliation.added.length, 1, 'one new offer');
+    assert.equal(third.reconciliation.removed.length, 0, 'and nothing retired');
+
+    const final = await publishCatalogue(measured, { now: new Date('2026-11-27T12:05:00.000Z') });
+    assert.equal(final.rejected, null);
+    assert.equal(final.outcome.opened, 1, 'the new product, and only it');
+    assert.equal(final.outcome.unchanged, 4);
+    assert.equal(final.outcome.refreshed, 4, 'the other four had freshness updated in place');
+
+    const live3 = await publicCatalogue();
+    assert.equal(live3.length, 5, 'five products are public, with no deploy between cycles');
+
+    const moved = await db
+      .prepare('SELECT list_price_minor FROM catalog_merchant_offer WHERE merchant_offer_id = ?')
+      .bind('NW-5')
+      .first();
+    assert.equal(moved.list_price_minor, 1249, 'and the price change is in Cloudflare');
+
+    console.log(
+      `      measured: three full cycles over 4->5 products cost ` +
+        `rows_written=${meter.rowsWritten}, rows_read=${meter.rowsRead}, requests=${meter.requests}`,
+    );
   },
 );

@@ -142,6 +142,25 @@ rollback. `keep` must be at least 1 — keeping none would delete rollback — a
 budget is not cleanup. The live generation is never touched, and neither is any
 generation an interval row still references.
 
+## Freshness is an update, not a new version
+
+`data_verified_at` is the newest `last_seen_at` among a product's offers, so it
+moves on **every cycle** whether or not the product changed. Counting it as
+content closed and reopened every published row every cycle, which destroys the
+one property the interval design exists for. It was found by the end-to-end
+test reporting **13 rows opened where 1 product was new**.
+
+So freshness is a narrow `UPDATE` to the live row, applied **after** the
+pointer has moved, and content changes are what version a row. A generation the
+validator rejects never reaches that step, so a refused publication leaves the
+live catalogue untouched, timestamps included. An interruption there leaves a
+stale timestamp on an otherwise correct catalogue and the next cycle fixes it —
+the cheapest failure mode available, against the alternative of rewriting every
+row every cycle.
+
+Rollback does not need a history of freshness. It needs the catalogue that was
+served.
+
 ## Known scaling boundary, measured
 
 Staging candidates costs writes even when nothing is published: republishing
@@ -164,6 +183,8 @@ catalogue size it would be optimising something that costs 26 writes a day.
 |---|---|
 | `test/publication.test.mjs` | 23 tests on a real SQL engine: the rules, the diff, crashes immediately before and after the commit, the half-landed commit, abandon, rollback, rollback-then-publish, retention |
 | `test/d1-remote.test.mjs` | the same design against **real Cloudflare D1**: that `publication_one_building` is a real mutex, that `published_product_open` is a real invariant, that an unchanged republication writes nothing, that a failed feed cannot empty the catalogue, and that rollback restores byte for byte |
+| `test/automation.test.mjs` | the whole pipeline on a real SQL engine: three cycles, the pause, the approval gate, a failed feed, a cliff, a dry run, a stuck generation, an unmigrated database, idempotence, and rollback-then-continue |
+| `test/d1-remote.test.mjs` (end to end) | the same three cycles against **real Cloudflare D1**, feed bytes to a public catalogue: 380 rows written, 149 requests |
 
 ## Applied
 

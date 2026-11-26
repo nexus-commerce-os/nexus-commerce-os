@@ -58,6 +58,7 @@ const offer = (over = {}) => ({
   shippingDestination: over.shippingDestination ?? null,
   feesVerified: over.feesVerified ?? false,
   feesTotal: over.feesTotal ?? null,
+  productType: over.productType === undefined ? 'Home > Drinkware' : over.productType,
   snapshotAt: over.snapshotAt ?? AT,
   sourceFeed: 'test:feed',
   firstSeenRun: 'run-1',

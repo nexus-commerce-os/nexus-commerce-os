@@ -52,6 +52,8 @@ export interface StoredOffer {
   readonly shippingDestination: string | null;
   readonly feesVerified: boolean;
   readonly feesTotal: Money | null;
+  /** The merchant's own category path, verbatim. Classification reads this. */
+  readonly productType: string | null;
   readonly snapshotAt: string;
   readonly sourceFeed: string;
   readonly firstSeenRun: string;
@@ -212,6 +214,7 @@ export function toStoredOffer(
       offer.shipping.kind === 'VERIFIED' ? offer.shipping.destinationCountry : null,
     feesVerified: offer.mandatoryFees.kind === 'VERIFIED',
     feesTotal: offer.mandatoryFees.kind === 'VERIFIED' ? offer.mandatoryFees.total : null,
+    productType: offer.productType,
     snapshotAt: offer.snapshotAt,
     sourceFeed: offer.sourceFeed,
     firstSeenRun: previous?.firstSeenRun ?? run.id,

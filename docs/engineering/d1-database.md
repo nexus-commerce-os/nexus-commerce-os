@@ -176,9 +176,15 @@ adapter:
 
 | cycle | `rows_written` |
 |---|---|
-| 25 new offers (first import) | **282** (~11.3 per offer: offer row + indexes, price-history row + index, ledger) |
+| 25 new offers (first import) | **307** (~12.3 per offer: offer row + indexes, price-history row + index, ledger) |
 | the identical feed again | **6** — refused on the content hash before any catalogue write |
-| one price change + one new offer | **147** |
+| one price change + one new offer | **173** |
+| three full cycles, feed bytes to a published catalogue, 4 then 5 products | **380** (243 rows read, 149 HTTP requests) |
+
+The first figure was 282 before migration `0004` added `product_type` and its
+partial index; that index is why it moved. The number is re-measured by the
+test rather than pinned, so an index change shows up as a changed log line
+instead of a failure.
 
 The free tier allows 100,000 writes per day. At ~11 writes per new offer, a
 full first import of a 225-offer merchant feed costs roughly 2,500 — about 2.5%

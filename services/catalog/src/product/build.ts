@@ -71,7 +71,13 @@ export interface BuildProductsInput {
    * accidentally default it to "all".
    */
   readonly approvedMerchants: ReadonlySet<string>;
-  /** `PRODUCT_TYPE` per offer id, when the feed stated one. */
+  /**
+   * `PRODUCT_TYPE` per offer id, overriding what the offers carry.
+   *
+   * Normally unnecessary: `StoredOffer.productType` holds the merchant's own
+   * path, so classification needs no side table. This remains for callers
+   * reclassifying from a source other than the stored row.
+   */
   readonly productTypeByOfferId?: ReadonlyMap<string, string>;
   /**
    * An explicit variant group per offer id, when a feed states one.
@@ -138,7 +144,13 @@ export function buildProducts(input: BuildProductsInput): BuildProductsResult {
     )[0];
 
     const ranking = rankOffers(fresh);
-    const productType = findFirst(input.productTypeByOfferId, group.offerIds);
+    // The representative's own stated path first, then any other offer's, then
+    // the override map. A merchant who states nothing must not silently adopt
+    // another merchant's categorisation unless nobody in the group stated one.
+    const productType =
+      findFirst(input.productTypeByOfferId, group.offerIds) ??
+      representative.productType ??
+      firstStatedProductType(pool);
     const classification = classifyFromProductType(productType);
     const variantGroupId = findFirst(input.variantGroupByOfferId, group.offerIds) ?? null;
 
@@ -211,6 +223,13 @@ function findFirst(
   for (const id of offerIds) {
     const value = source.get(id);
     if (value !== undefined && value.trim() !== '') return value;
+  }
+  return null;
+}
+
+function firstStatedProductType(offers: readonly StoredOffer[]): string | null {
+  for (const offer of offers) {
+    if (offer.productType !== null && offer.productType.trim() !== '') return offer.productType;
   }
   return null;
 }

@@ -48,7 +48,7 @@ import {
 } from './d1-client';
 
 /** Columns written per offer. Decides how many rows fit in one statement. */
-const OFFER_COLUMNS = 27;
+const OFFER_COLUMNS = 28;
 const HISTORY_COLUMNS = 8;
 const QUARANTINE_COLUMNS = 7;
 
@@ -111,6 +111,8 @@ function toStoredOffer(row: Row): StoredOffer {
             amountMinor: exactInteger(row.fees_total_minor, 'fees_total_minor'),
             currency: String(row.currency),
           },
+    productType:
+      row.product_type === null || row.product_type === undefined ? null : String(row.product_type),
     snapshotAt: str(row.snapshot_at),
     sourceFeed: str(row.source_feed),
     firstSeenRun: str(row.first_seen_run),
@@ -177,9 +179,10 @@ class D1Writer implements OfferWriter {
            product_url, image_url, tracking_url,
            shipping_verified, shipping_cost_minor, shipping_destination,
            fees_verified, fees_total_minor,
+           product_type,
            snapshot_at, source_feed, first_seen_run, last_seen_run, last_seen_at,
            state, inactive_since
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT (merchant_id, merchant_offer_id) DO UPDATE SET
            gtin = excluded.gtin,
            mpn = excluded.mpn,
@@ -196,6 +199,7 @@ class D1Writer implements OfferWriter {
            source_feed = excluded.source_feed,
            last_seen_run = excluded.last_seen_run,
            last_seen_at = excluded.last_seen_at,
+           product_type = excluded.product_type,
            state = excluded.state,
            inactive_since = excluded.inactive_since`,
       )
@@ -221,6 +225,7 @@ class D1Writer implements OfferWriter {
         offer.shippingDestination,
         toInt(offer.feesVerified),
         offer.feesTotal ? offer.feesTotal.amountMinor : null,
+        offer.productType,
         offer.snapshotAt,
         offer.sourceFeed,
         offer.firstSeenRun,

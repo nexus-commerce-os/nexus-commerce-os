@@ -64,6 +64,15 @@ export interface Offer {
   readonly imageUrl: string;
   readonly shipping: ShippingCost;
   readonly mandatoryFees: MandatoryFees;
+  /**
+   * The merchant's own category path, verbatim — `Home > Drinkware`.
+   *
+   * Carried rather than resolved here, because classification is a separate
+   * decision and this is the only place the provider's own words exist. Null
+   * when the feed stated none, which is a finding and not a gap to fill: a
+   * product filed under a category nobody stated is a claim about the product.
+   */
+  readonly productType: string | null;
   /** ISO-8601 instant this record was last true according to the provider. */
   readonly snapshotAt: string;
   /** Provenance label for the feed this came from. Carries no credentials. */

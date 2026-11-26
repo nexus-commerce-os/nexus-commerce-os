@@ -278,9 +278,23 @@ export {
   type UnmatchedOffer,
   type UnmatchedReason,
 } from './product/match';
+export { rankOffers, storedAsOffer, type OfferRanking, type RankedOffer } from './product/ranking';
+
+/*
+ * AUTOMATIC PUBLICATION. Offers already in the database become a public
+ * catalogue with no per-product approval — and the pause, the approval gate
+ * and the generation validator are what make that safe rather than reckless.
+ */
 export {
-  rankOffers,
-  storedAsOffer,
-  type OfferRanking,
-  type RankedOffer,
-} from './product/ranking';
+  PUBLICATION_RULES_VERSION,
+  publishCatalogue,
+  type PublishCatalogueOptions,
+  type PublishCatalogueResult,
+  type PublishSkipReason,
+} from './automation/publish-catalogue';
+export {
+  CatalogD1,
+  productIdOf,
+  type AutomationConfig,
+  type MerchantRow,
+} from './automation/catalog-store';

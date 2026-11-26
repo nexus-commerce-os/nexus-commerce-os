@@ -50,6 +50,7 @@ const offer = (over = {}) => ({
   shippingDestination: null,
   feesVerified: false,
   feesTotal: null,
+  productType: 'Home > Drinkware',
   snapshotAt: '2026-11-26T12:00:00.000Z',
   sourceFeed: 'test:feed',
   firstSeenRun: 'run-1',

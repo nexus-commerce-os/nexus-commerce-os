@@ -78,6 +78,7 @@ interface OfferRow {
   shipping_destination: string | null;
   fees_verified: boolean;
   fees_total_minor: string | null;
+  product_type: string | null;
   snapshot_at: Date;
   source_feed: string;
   first_seen_run: string;
@@ -167,6 +168,7 @@ function toStored(row: OfferRow): StoredOffer {
     shippingDestination: row.shipping_destination,
     feesVerified: row.fees_verified,
     feesTotal: row.fees_total_minor === null ? null : money(row.fees_total_minor, row.currency),
+    productType: row.product_type,
     snapshotAt: iso(row.snapshot_at),
     sourceFeed: row.source_feed,
     firstSeenRun: row.first_seen_run,
@@ -226,14 +228,15 @@ export class PostgresOfferWriter implements OfferWriter {
          id, merchant_id, merchant_offer_id, gtin, mpn, brand, title,
          list_price_minor, sale_price_minor, currency, availability, condition,
          product_url, image_url, shipping_verified, shipping_cost_minor, shipping_destination, fees_verified, fees_total_minor,
+         product_type,
          snapshot_at, source_feed, first_seen_run, last_seen_run, last_seen_at,
          state, inactive_since
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7,
          $8, $9, $10, $11, $12,
          $13, $14, $15, $16, $17, $18, $19,
-         $20, $21, $22, $23, $24,
-         $25, $26
+         $20, $21, $22, $23, $24, $25,
+         $26, $27
        )
        ON CONFLICT (merchant_id, merchant_offer_id) DO UPDATE SET
          gtin              = EXCLUDED.gtin,
@@ -252,6 +255,7 @@ export class PostgresOfferWriter implements OfferWriter {
          shipping_destination = EXCLUDED.shipping_destination,
          fees_verified     = EXCLUDED.fees_verified,
          fees_total_minor  = EXCLUDED.fees_total_minor,
+         product_type      = EXCLUDED.product_type,
          snapshot_at       = EXCLUDED.snapshot_at,
          source_feed       = EXCLUDED.source_feed,
          last_seen_run     = EXCLUDED.last_seen_run,
@@ -278,6 +282,7 @@ export class PostgresOfferWriter implements OfferWriter {
         offer.shippingDestination,
         offer.feesVerified,
         offer.feesTotal?.amountMinor ?? null,
+        offer.productType,
         offer.snapshotAt,
         offer.sourceFeed,
         offer.firstSeenRun,

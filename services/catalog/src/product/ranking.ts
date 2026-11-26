@@ -72,6 +72,7 @@ export function storedAsOffer(stored: StoredOffer): Offer {
     imageUrl: stored.imageUrl,
     shipping,
     mandatoryFees,
+    productType: stored.productType,
     snapshotAt: stored.snapshotAt,
     sourceFeed: stored.sourceFeed,
   };
