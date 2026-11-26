@@ -12,12 +12,41 @@
  * request before a page is served, so it is the only place an admin check can
  * actually be enforced rather than drawn.
  *
- * THE ITERATION COUNT IS A HARD LIMIT, NOT A PREFERENCE. Cloudflare Workers
- * cap PBKDF2 at 100,000 iterations. Asking for more does not make a slower
- * hash — it makes `deriveBits` throw, at sign-in, in production, for every
- * user at once. That exact mistake took a different production login down with
- * 210,000 iterations. The constant below is the ceiling, and the test asserts
- * it, because the obvious "security improvement" here is an outage.
+ * THE ITERATION COUNT IS A HARD LIMIT — AND IT IS NOT ENOUGH ON ITS OWN.
+ *
+ * Cloudflare Workers cap PBKDF2 at 100,000 iterations; asking for more makes
+ * `deriveBits` throw at sign-in, in production, for every user at once (that
+ * exact mistake, at 210,000, took a different production login down).
+ *
+ * But a platform ceiling does not make a weak hash strong. OWASP's current
+ * recommendation for PBKDF2-HMAC-SHA256 is **600,000 iterations**. 100,000 is
+ * one sixth of that, so PBKDF2 ON WORKERS CANNOT MEET CURRENT GUIDANCE, and
+ * saying "it is the maximum the platform allows" would be answering a
+ * different question than the one that matters.
+ *
+ * Argon2id and scrypt — the two OWASP prefers — are not in WebCrypto and would
+ * need WASM in the request path. So the gap is closed the way OWASP itself
+ * describes: with a PEPPER.
+ *
+ *   stored = PBKDF2( HMAC-SHA256(password, PEPPER), salt, 100_000 )
+ *
+ * The pepper is a secret held OUTSIDE the database — a Worker secret, never in
+ * D1, never in a backup, never in this repository. Iteration count exists to
+ * slow an OFFLINE attack on a stolen hash; a pepper removes that attack
+ * entirely, because a stolen database contains nothing crackable without a key
+ * the database never held. OWASP: a pepper "prevents an attacker from being
+ * able to crack any of the hashes if they only have access to the database."
+ *
+ * WHAT A PEPPER DOES NOT DO, so this is not oversold: it does not help if the
+ * attacker also has the Worker's secrets, and it cannot be rotated without
+ * every user setting a new password. Both are written down in
+ * `docs/engineering/admin-auth.md` rather than discovered later.
+ *
+ * The long-term answer is to stop storing passwords at all — managed identity
+ * or passkeys. Cloudflare Access would be the natural fit, but whether it is
+ * on the free plan could NOT be verified from Cloudflare's own documentation,
+ * and an authentication decision is not something to make on an assumption.
+ * That evaluation is recorded, unresolved, in the same document.
  */
 
 /** Everything an actor may be allowed to do. Deliberately fine-grained. */
@@ -88,6 +117,42 @@ const fromB64 = (value: string): Uint8Array => {
   return out;
 };
 
+/**
+ * HMAC-SHA256 the password under the pepper before it ever reaches PBKDF2.
+ *
+ * This is the step that makes a stolen database useless on its own: without
+ * the key, no candidate password can be tested against a stored hash.
+ */
+async function applyPepper(password: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(password));
+  return toB64(new Uint8Array(mac));
+}
+
+/**
+ * Refuses a pepper that is not actually a secret.
+ *
+ * An absent or short value would let everything keep working while providing
+ * none of the protection the design depends on — the worst kind of failure,
+ * because nothing looks wrong.
+ */
+export function assertUsablePepper(secret: string | undefined): string {
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'ADMIN_PASSWORD_PEPPER is missing or shorter than 32 characters. It is the ' +
+        'control that makes a stolen password database uncrackable, so running ' +
+        'without it is not a degraded mode — it is a different threat model.',
+    );
+  }
+  return secret;
+}
+
 async function deriveKey(
   password: string,
   salt: Uint8Array,
@@ -115,14 +180,24 @@ async function deriveKey(
 }
 
 /** `pbkdf2$sha256$<iterations>$<salt>$<hash>` — self-describing, so the cost can change later. */
-export async function hashPassword(password: string): Promise<string> {
+/**
+ * The scheme id says `pbkdf2-hmac`, not `pbkdf2`, deliberately.
+ *
+ * A hash made WITHOUT a pepper must never be mistaken for one made with it. A
+ * verifier that silently accepted both would let a single legacy row reinstate
+ * the offline attack the pepper exists to remove.
+ */
+export const SCHEME = 'pbkdf2-hmac';
+
+export async function hashPassword(password: string, secret: string): Promise<string> {
   if (password.length < 12) {
     // Enforced here rather than in a form, because the form is not the control.
     throw new Error('an administrative password must be at least 12 characters');
   }
+  assertUsablePepper(secret);
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const hash = await deriveKey(password, salt, PBKDF2_ITERATIONS);
-  return `pbkdf2$sha256$${PBKDF2_ITERATIONS}$${toB64(salt)}$${toB64(hash)}`;
+  const hash = await deriveKey(await applyPepper(password, secret), salt, PBKDF2_ITERATIONS);
+  return `${SCHEME}$sha256$${PBKDF2_ITERATIONS}$${toB64(salt)}$${toB64(hash)}`;
 }
 
 /** Compares without leaking, through timing, how much of the value matched. */
@@ -135,9 +210,16 @@ export function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  stored: string,
+  secret: string,
+): Promise<boolean> {
+  assertUsablePepper(secret);
   const parts = stored.split('$');
-  if (parts.length !== 5 || parts[0] !== 'pbkdf2' || parts[1] !== 'sha256') return false;
+  // Only the peppered scheme is accepted. An un-peppered `pbkdf2$...` row is
+  // refused rather than verified — see the note on SCHEME.
+  if (parts.length !== 5 || parts[0] !== SCHEME || parts[1] !== 'sha256') return false;
   const iterations = Number(parts[2]);
   if (!Number.isInteger(iterations) || iterations < 1 || iterations > MAX_PBKDF2_ITERATIONS) {
     return false;
@@ -150,7 +232,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
   } catch {
     return false;
   }
-  const actual = await deriveKey(password, salt, iterations);
+  const actual = await deriveKey(await applyPepper(password, secret), salt, iterations);
   return timingSafeEqual(actual, expected);
 }
 

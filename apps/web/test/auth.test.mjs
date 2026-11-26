@@ -21,6 +21,8 @@ const auth = await import(
 
 const {
   MAX_PBKDF2_ITERATIONS,
+  SCHEME,
+  assertUsablePepper,
   PBKDF2_ITERATIONS,
   SESSION_COOKIE,
   authorise,
@@ -88,15 +90,67 @@ test('PBKDF2 iterations stay at or below the Workers limit', () => {
     PBKDF2_ITERATIONS <= MAX_PBKDF2_ITERATIONS,
     `${PBKDF2_ITERATIONS} iterations will throw in a Worker`,
   );
+  // And the honest corollary: this is BELOW OWASP's 600,000 for
+  // PBKDF2-HMAC-SHA256, which is exactly why the pepper is not optional.
+  assert.ok(
+    PBKDF2_ITERATIONS < 600_000,
+    'if this ever passes, revisit whether the pepper is still load-bearing',
+  );
+});
+
+/** A test pepper. Real ones live in a Worker secret and never in a repository. */
+const PEPPER = 'test-pepper-0123456789abcdef0123456789abcdef';
+const OTHER_PEPPER = 'different-pepper-9876543210fedcba9876543210';
+
+test('the pepper is required, and a weak one is refused', () => {
+  /*
+   * OWASP's current recommendation for PBKDF2-HMAC-SHA256 is 600,000
+   * iterations. Workers cap it at 100,000, so PBKDF2 here CANNOT meet that
+   * guidance and the platform ceiling is not an excuse. The pepper is what
+   * closes the gap: iteration count slows an OFFLINE attack on a stolen hash,
+   * and a pepper removes that attack entirely, because the database never
+   * held the key.
+   *
+   * So an absent or trivial pepper must fail loudly. Letting it through would
+   * leave everything working while providing none of the protection.
+   */
+  assert.throws(() => assertUsablePepper(undefined), /missing or shorter/);
+  assert.throws(() => assertUsablePepper(''), /missing or shorter/);
+  assert.throws(() => assertUsablePepper('short'), /missing or shorter/);
+  assert.equal(assertUsablePepper(PEPPER), PEPPER);
+});
+
+test('a stolen database is useless without the pepper', async () => {
+  // The whole point. An attacker holding the hash AND the right password
+  // still cannot verify it, because the key was never in the database.
+  const stored = await hashPassword('correct horse battery', PEPPER);
+  assert.equal(await verifyPassword('correct horse battery', stored, PEPPER), true);
+  assert.equal(
+    await verifyPassword('correct horse battery', stored, OTHER_PEPPER),
+    false,
+    'the correct password verified under the WRONG pepper - the pepper is not being applied',
+  );
+});
+
+test('an un-peppered legacy hash is refused, not quietly accepted', async () => {
+  // Accepting both schemes would let one legacy row reinstate the offline
+  // attack the pepper removes.
+  const legacy = `pbkdf2$sha256$100000$${btoa('salt')}$${btoa('hash')}`;
+  assert.equal(await verifyPassword('whatever', legacy, PEPPER), false);
+});
+
+test('the stored scheme announces that a pepper was used', async () => {
+  const stored = await hashPassword('correct horse battery', PEPPER);
+  assert.ok(stored.startsWith(`${SCHEME}$`), `expected ${SCHEME}, got ${stored.split('$')[0]}`);
 });
 
 test('a password hash is self-describing and carries a unique salt', async () => {
-  const a = await hashPassword('correct horse battery');
-  const b = await hashPassword('correct horse battery');
+  const a = await hashPassword('correct horse battery', PEPPER);
+  const b = await hashPassword('correct horse battery', PEPPER);
   assert.notEqual(a, b, 'the same password must not produce the same hash');
 
   const [scheme, digest, iterations, salt, hash] = a.split('$');
-  assert.equal(scheme, 'pbkdf2');
+  assert.equal(scheme, SCHEME);
   assert.equal(digest, 'sha256');
   assert.equal(Number(iterations), PBKDF2_ITERATIONS);
   assert.ok(salt.length > 0 && hash.length > 0);
@@ -105,16 +159,16 @@ test('a password hash is self-describing and carries a unique salt', async () =>
 });
 
 test('the right password verifies and the wrong one does not', async () => {
-  const stored = await hashPassword('correct horse battery');
-  assert.equal(await verifyPassword('correct horse battery', stored), true);
-  assert.equal(await verifyPassword('correct horse batterz', stored), false);
-  assert.equal(await verifyPassword('', stored), false);
+  const stored = await hashPassword('correct horse battery', PEPPER);
+  assert.equal(await verifyPassword('correct horse battery', stored, PEPPER), true);
+  assert.equal(await verifyPassword('correct horse batterz', stored, PEPPER), false);
+  assert.equal(await verifyPassword('', stored, PEPPER), false);
 });
 
 test('a short administrative password is refused at the hashing boundary', async () => {
   // Enforced here rather than in a form, because the form is not the control:
   // anything can call this.
-  await assert.rejects(() => hashPassword('short'), /at least 12 characters/);
+  await assert.rejects(() => hashPassword('short', PEPPER), /at least 12 characters/);
 });
 
 test('a malformed stored hash is refused rather than throwing', async () => {
@@ -125,14 +179,14 @@ test('a malformed stored hash is refused rather than throwing', async () => {
     'md5$x$1$a$b',
     'pbkdf2$sha1$1$a$b',
   ]) {
-    assert.equal(await verifyPassword('whatever', bad), false, `accepted ${bad}`);
+    assert.equal(await verifyPassword('whatever', bad, PEPPER), false, `accepted ${bad}`);
   }
 });
 
 test('a stored hash claiming more than the limit is refused, not attempted', async () => {
   // Otherwise a crafted row turns a sign-in into a thrown exception.
-  const stored = `pbkdf2$sha256$999999$${btoa('salt')}$${btoa('hash')}`;
-  assert.equal(await verifyPassword('whatever', stored), false);
+  const stored = `${SCHEME}$sha256$999999$${btoa('salt')}$${btoa('hash')}`;
+  assert.equal(await verifyPassword('whatever', stored, PEPPER), false);
 });
 
 test('the comparison does not leak length through an early return', () => {
