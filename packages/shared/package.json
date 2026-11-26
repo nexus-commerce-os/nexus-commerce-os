@@ -13,6 +13,7 @@
     "test": "tsc -p tsconfig.json && node --test test/access-jwt.test.mjs"
   },
   "devDependencies": {
+    "@types/node": "^20.14.0",
     "typescript": "^5.5.0"
   }
 }

@@ -17,12 +17,26 @@
  * NOTHING HERE WRITES. The only write path on this Worker is the waitlist, and
  * it is untouched.
  */
+/*
+ * THE READ MODULE ONLY, not the package's worker entry.
+ *
+ * `dist/worker.js` re-exports the ingestion pipeline, which reaches
+ * `publication/fingerprint` and `node:crypto` — and this Worker has no
+ * `nodejs_compat` flag, so the runtime refused to start at all:
+ * "Dynamic require of node:crypto is not supported". Caught by Playwright
+ * before it reached the live site.
+ *
+ * Importing the read path directly is the right answer rather than a
+ * workaround. The public site has no business bundling the importer: it is a
+ * smaller bundle, it pulls in no Node builtins, and code that cannot be
+ * reached cannot be a vulnerability.
+ */
 import type {
   ListQuery,
   ProductDetail,
   PublishedProduct,
-} from '../../../services/catalog/dist/worker.js';
-import { PublicCatalogue } from '../../../services/catalog/dist/worker.js';
+} from '../../../services/catalog/dist/public/read.js';
+import { PublicCatalogue } from '../../../services/catalog/dist/public/read.js';
 
 /*
  * The adapter's own D1 shape, imported rather than restated.
@@ -32,7 +46,7 @@ import { PublicCatalogue } from '../../../services/catalog/dist/worker.js';
  * Importing the interface means a change to it is a compile error here rather
  * than a runtime surprise on the live site.
  */
-import type { D1Like } from '../../../services/catalog/dist/worker.js';
+import type { D1Like } from '../../../services/catalog/dist/store/d1/d1-client.js';
 
 export interface CatalogEnv {
   readonly CATALOG?: D1Database;
