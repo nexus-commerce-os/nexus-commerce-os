@@ -158,12 +158,16 @@ jobs:
       - name: Price history must have accumulated
         working-directory: services/catalog
         # Straight from the database, not from a log line the job produced.
+        # The table is `merchant_offer`: the first version of this queried
+        # `catalog.offer`, which does not exist, and failed the job AFTER the
+        # pipeline had already succeeded. Reading the database directly is
+        # still right — it just has to use the schema's real names.
         run: |
           node -e '
             const pg = require("pg");
             (async () => {
               const pool = new pg.Pool({ connectionString: process.env.HONESTTOTAL_PG_DSN });
-              const offers = await pool.query("select count(*)::int n from catalog.offer");
+              const offers = await pool.query("select count(*)::int n from catalog.merchant_offer");
               const history = await pool.query("select count(*)::int n from catalog.offer_price_history");
               const runs = await pool.query("select status, count(*)::int n from catalog.import_run group by status order by status");
               console.log("offers:", offers.rows[0].n, "price history rows:", history.rows[0].n);
