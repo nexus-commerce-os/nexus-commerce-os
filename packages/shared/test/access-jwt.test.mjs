@@ -415,6 +415,24 @@ test('the assertion is read from the header, then the cookie', async () => {
   );
 });
 
+test('a pathological run of slashes does not stall the verifier', () => {
+  /*
+   * CodeQL flagged the trailing-slash strip as js/polynomial-redos in three
+   * places, and was right about the one that matters: payload.iss comes from
+   * the token. The signature is checked first, so only Cloudflare can reach
+   * it today — a reason to fix it calmly, not a reason to leave a quadratic
+   * scan sitting on a trust boundary that could move.
+   *
+   * 200k slashes: a linear scan is instant, a backtracking one is not.
+   */
+  const pathological = `https://example.cloudflareaccess.com${'/'.repeat(200_000)}`;
+  const started = Date.now();
+  assert.equal(expectedIssuer(pathological), 'https://example.cloudflareaccess.com');
+  assert.equal(certsUrl(pathological), 'https://example.cloudflareaccess.com/cdn-cgi/access/certs');
+  const elapsed = Date.now() - started;
+  assert.ok(elapsed < 1000, `took ${elapsed}ms, which is not a linear scan`);
+});
+
 test('the certs URL and issuer are derived the same way, with or without a scheme', () => {
   assert.equal(
     certsUrl('example.cloudflareaccess.com'),

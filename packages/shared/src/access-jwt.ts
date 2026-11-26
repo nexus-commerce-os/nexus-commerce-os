@@ -95,14 +95,34 @@ const DEFAULT_CLOCK_TOLERANCE = 30;
 /** Only RS256. An allow-list, because the alternative is an attacker's choice. */
 const PERMITTED_ALGORITHMS = new Set(['RS256']);
 
+/*
+ * Strips trailing slashes WITHOUT a regular expression.
+ *
+ * The obvious `value.replace(/\/+$/, '')` reads better and is
+ * quadratic: the engine retries the pattern from every position, so a
+ * string of N slashes costs O(N^2). CodeQL flagged all three uses as
+ * js/polynomial-redos, and it was right about the one that matters —
+ * `payload.iss` comes from the token.
+ *
+ * The signature is verified before that line runs, so only Cloudflare can
+ * reach it today. "Only a trusted party can trigger it" is a reason to fix
+ * it calmly rather than a reason not to: a trust boundary can move, and a
+ * backwards scan is both faster and simpler than the pattern it replaces.
+ */
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47 /* '/' */) end -= 1;
+  return value.slice(0, end);
+}
+
 export function certsUrl(teamDomain: string): string {
   const base = teamDomain.startsWith('http') ? teamDomain : `https://${teamDomain}`;
-  return `${base.replace(/\/+$/, '')}/cdn-cgi/access/certs`;
+  return `${stripTrailingSlashes(base)}/cdn-cgi/access/certs`;
 }
 
 export function expectedIssuer(teamDomain: string): string {
   const base = teamDomain.startsWith('http') ? teamDomain : `https://${teamDomain}`;
-  return base.replace(/\/+$/, '');
+  return stripTrailingSlashes(base);
 }
 
 /* ─────────────────────────── the key set ─────────────────────────── */
@@ -323,7 +343,7 @@ export async function verifyAccessToken(
 
   // ── claims, only after the signature ──
 
-  const issuer = typeof payload.iss === 'string' ? payload.iss.replace(/\/+$/, '') : '';
+  const issuer = typeof payload.iss === 'string' ? stripTrailingSlashes(payload.iss) : '';
   if (issuer !== expectedIssuer(options.config.teamDomain)) {
     throw new AccessVerificationError(
       'wrong_issuer',

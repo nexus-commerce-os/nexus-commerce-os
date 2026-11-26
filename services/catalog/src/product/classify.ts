@@ -24,13 +24,19 @@ export interface Classification {
 
 /** `Home > Drinkware > Travel Mugs` → a slug per level, root first. */
 export function slugifyCategory(name: string): string {
-  return name
-    .normalize('NFKD')
-    .replace(/\p{M}+/gu, '')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return (
+    name
+      .normalize('NFKD')
+      .replace(/\p{M}+/gu, '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      // This global replace collapses each run of non-alphanumerics to ONE '-',
+      // so the anchored trim below can never meet a long run and cannot
+      // backtrack. Stated because the same shape WAS a real polynomial-ReDoS in
+      // access-jwt.ts, where nothing collapsed the input first.
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  );
 }
 
 /**
