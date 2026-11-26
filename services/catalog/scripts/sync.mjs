@@ -18,6 +18,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(`--${name}`);
@@ -58,7 +59,14 @@ let closeStore = async () => {};
 if (dsn) {
   const pg = await import('pg');
   const pool = new pg.default.Pool({ connectionString: dsn, max: 4 });
-  await new CatalogMigrationRunner(pool).apply();
+  // `migrate()`, and the migrations directory is required — the runner does
+  // not guess where the SQL lives. The first version of this called a method
+  // that does not exist; CI caught it on the first scheduled run, which is
+  // exactly what the assertions around the command are for.
+  const migrationsDir = fileURLToPath(new URL('../migrations/', import.meta.url));
+  const applied = await new CatalogMigrationRunner(pool, migrationsDir).migrate();
+  process.stdout.write(`${JSON.stringify({ event: 'sync.migrate', applied })}
+`);
   store = new PostgresOfferStore(pool);
   closeStore = () => pool.end();
   process.stdout.write(
