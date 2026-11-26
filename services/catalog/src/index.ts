@@ -296,8 +296,10 @@ export {
   CatalogD1,
   productIdOf,
   type AutomationConfig,
+  type CatalogEnvironment,
   type MerchantRow,
 } from './automation/catalog-store';
+export { catalogueFingerprint } from './publication/fingerprint';
 
 /*
  * THE PUBLIC READ PATH. The only code allowed to answer "what is published?",
@@ -328,7 +330,11 @@ export {
   type SyncCycleOptions,
   type SyncCycleResult,
 } from './automation/sync-cycle';
-export { D1FeedSourceStore, type FeedSourceRow } from './automation/feed-source-store';
+export {
+  D1FeedSourceStore,
+  isFixtureSource,
+  type FeedSourceRow,
+} from './automation/feed-source-store';
 export {
   CycleMeter,
   FREE_TIER,

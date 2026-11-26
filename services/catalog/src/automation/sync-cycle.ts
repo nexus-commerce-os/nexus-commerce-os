@@ -144,7 +144,7 @@ export async function runSyncCycle(
 
   let runnable: readonly FeedSourceRow[];
   try {
-    runnable = await sources.runnable();
+    runnable = await sources.runnable(config.environment);
   } catch (error) {
     return finish('failed', `could not read the feed sources: ${(error as Error).message}`, {
       budget: verdict,
@@ -153,6 +153,14 @@ export async function runSyncCycle(
 
   // ── 3. retrieve and import ──
   let retrieval: CycleReport | null = null;
+  /*
+   * Said out loud in the cycle log rather than left as a silent filter. An
+   * operator who configured a fixture source in production and saw nothing
+   * happen would reasonably conclude the scheduler was broken.
+   */
+  const withheldFixtures =
+    config.environment === 'production' ? (await sources.fixtureSources()).length : 0;
+
   if (runnable.length > 0) {
     retrieval = await runCycle(runnable, store, sources, {
       ...options.scheduler,
@@ -234,11 +242,16 @@ export async function runSyncCycle(
     }
   }
 
-  const detail = publication.rejected
+  const fixtureNote =
+    withheldFixtures > 0
+      ? `${withheldFixtures} fixture source(s) were refused because this database says environment=production`
+      : null;
+  const publicationNote = publication.rejected
     ? `publication refused: ${publication.rejected.code}`
     : publication.skipped
       ? `publication skipped: ${publication.skipped}`
       : null;
+  const detail = [fixtureNote, publicationNote].filter((part) => part !== null).join('; ') || null;
 
   return finish('ran', detail, { budget: verdict, retrieval, publication, pruned }, meter);
 }

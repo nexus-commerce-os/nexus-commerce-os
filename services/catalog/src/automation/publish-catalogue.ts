@@ -27,6 +27,7 @@ import {
   type PublishOutcome,
   type ValidationLimits,
 } from '../publication/generation';
+import { catalogueFingerprint } from '../publication/fingerprint';
 import { GenerationPublisher } from '../publication/publisher';
 import type { D1Like } from '../store/d1/d1-client';
 import { CatalogD1, productIdOf } from './catalog-store';
@@ -41,7 +42,11 @@ import { CatalogD1, productIdOf } from './catalog-store';
 export const PUBLICATION_RULES_VERSION = '2026-11-26.1';
 
 export type PublishSkipReason =
-  'automation_paused' | 'auto_publish_disabled' | 'generation_in_progress';
+  | 'automation_paused'
+  | 'auto_publish_disabled'
+  | 'generation_in_progress'
+  /** The complete eligible catalogue is byte-for-byte what is already live. */
+  | 'catalogue_unchanged';
 
 export interface PublishCatalogueOptions {
   readonly now: Date;
@@ -73,6 +78,8 @@ export interface PublishCatalogueResult {
   /** Set when the generation was built but the validator refused it. */
   readonly rejected: { readonly code: string; readonly detail: string } | null;
   readonly products: readonly ProductDraft[];
+  /** The digest of the eligible catalogue this run computed. */
+  readonly fingerprint: string | null;
 }
 
 export async function publishCatalogue(
@@ -105,6 +112,7 @@ export async function publishCatalogue(
       outcome: null,
       rejected: null,
       products: [],
+      fingerprint: null,
     };
   }
 
@@ -128,6 +136,7 @@ export async function publishCatalogue(
       outcome: null,
       rejected: null,
       products: [],
+      fingerprint: null,
     };
   }
 
@@ -154,6 +163,27 @@ export async function publishCatalogue(
 
   const counts = { ...built.counts, decisionsRecorded };
 
+  /*
+   * THE CANDIDATES ARE BUILT BEFORE THE DECISION TO PUBLISH, so the
+   * fingerprint reflects the full eligibility pipeline — freshness expiry,
+   * merchant approval, ambiguity, the rules version — rather than the feed.
+   * None of those checks is skipped; only the writes are.
+   */
+  const candidates: PublicationCandidate[] = built.products.map((product) => ({
+    productId: productIdOf(product),
+    slug: product.slug,
+    title: product.title,
+    brand: product.brand,
+    categorySlug: product.categorySlug,
+    dataVerifiedAt: product.dataVerifiedAt,
+    searchText: product.searchText,
+    fromPrice: product.fromPrice,
+    offerCount: product.offerIds.length,
+    eligible: product.eligible,
+    reasonCode: product.reasonCode,
+  }));
+  const fingerprint = catalogueFingerprint(candidates, PUBLICATION_RULES_VERSION);
+
   if (!config.autoPublish || options.dryRun === true) {
     return {
       ran: true,
@@ -167,6 +197,35 @@ export async function publishCatalogue(
       outcome: null,
       rejected: null,
       products: built.products,
+      fingerprint,
+    };
+  }
+
+  /*
+   * NOTHING TO DO.
+   *
+   * The eligible catalogue is identical to the one already live, so a new
+   * generation would stage the same candidates, open nothing, close nothing
+   * and move the pointer from one identical catalogue to another. Measured
+   * before this existed: about 300 row writes per cycle to achieve that.
+   *
+   * The decisions were still recorded above, and every eligibility check still
+   * ran — this skips the WRITES, not the CHECKS.
+   */
+  const live = await publisher.liveFingerprint();
+  if (live !== null && live === fingerprint) {
+    return {
+      ran: true,
+      skipped: 'catalogue_unchanged',
+      skippedDetail:
+        'the complete eligible catalogue is identical to the live generation, including freshness, ' +
+        'merchant approval and the rules version; no generation was created',
+      counts,
+      generation: null,
+      outcome: null,
+      rejected: null,
+      products: built.products,
+      fingerprint,
     };
   }
 
@@ -184,24 +243,11 @@ export async function publishCatalogue(
         outcome: null,
         rejected: null,
         products: built.products,
+        fingerprint,
       };
     }
     throw error;
   }
-
-  const candidates: PublicationCandidate[] = built.products.map((product) => ({
-    productId: productIdOf(product),
-    slug: product.slug,
-    title: product.title,
-    brand: product.brand,
-    categorySlug: product.categorySlug,
-    dataVerifiedAt: product.dataVerifiedAt,
-    searchText: product.searchText,
-    fromPrice: product.fromPrice,
-    offerCount: product.offerIds.length,
-    eligible: product.eligible,
-    reasonCode: product.reasonCode,
-  }));
 
   await publisher.stageCandidates(generation, candidates);
 
@@ -211,6 +257,10 @@ export async function publishCatalogue(
       limits: options.limits,
       decidedBy: options.decidedBy,
     });
+    // Recorded only on success. A generation that was refused must not leave a
+    // fingerprint behind, or the next identical cycle would skip publication
+    // on the strength of a publication that never happened.
+    await publisher.setFingerprint(generation, fingerprint);
     return {
       ran: true,
       skipped: null,
@@ -220,6 +270,7 @@ export async function publishCatalogue(
       outcome,
       rejected: null,
       products: built.products,
+      fingerprint,
     };
   } catch (error) {
     if (error instanceof GenerationRejectedError) {
@@ -241,6 +292,7 @@ export async function publishCatalogue(
         outcome: null,
         rejected: { code: error.code, detail: error.message },
         products: built.products,
+        fingerprint,
       };
     }
     throw error;
