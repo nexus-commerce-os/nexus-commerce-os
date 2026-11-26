@@ -236,3 +236,51 @@ export {
   type PublishOutcome,
   type ValidationLimits,
 } from './publication/generation';
+
+/*
+ * PRODUCT INTELLIGENCE. Offers in, publication candidates out. Identity comes
+ * from a manufacturer's identifier or not at all; ambiguity is quarantined
+ * rather than resolved. Delivered cost and ranking eligibility are the ones
+ * already defined in offer.ts, reused rather than redefined.
+ */
+export {
+  ELIGIBLE,
+  buildProducts,
+  productSlug,
+  type BuildProductsInput,
+  type BuildProductsResult,
+  type IneligibleReason,
+  type ProductDraft,
+} from './product/build';
+export {
+  normaliseBrand,
+  normaliseMpn,
+  productIdentity,
+  secondaryBrandMpnKey,
+  toGtin14,
+  type IdentityBasis,
+  type MatchConfidence,
+  type ProductIdentity,
+} from './product/identity';
+export {
+  classifyFromProductType,
+  normaliseSpecification,
+  slugifyCategory,
+  type Category,
+  type Classification,
+  type NormalisedSpecification,
+} from './product/classify';
+export {
+  matchOffers,
+  type MatchResult,
+  type MatchableOffer,
+  type ProductGroup,
+  type UnmatchedOffer,
+  type UnmatchedReason,
+} from './product/match';
+export {
+  rankOffers,
+  storedAsOffer,
+  type OfferRanking,
+  type RankedOffer,
+} from './product/ranking';

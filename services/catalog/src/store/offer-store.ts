@@ -34,7 +34,24 @@ export interface StoredOffer {
   readonly productUrl: string;
   readonly imageUrl: string;
   readonly shippingVerified: boolean;
+  /*
+   * THE AMOUNTS, not just the flags.
+   *
+   * These were absent, and the adapters bound NULL for them unconditionally.
+   * The schema carries CHECK (shipping_verified = 0 OR (shipping_cost_minor IS
+   * NOT NULL AND shipping_destination IS NOT NULL)), so the first merchant
+   * whose feed actually stated a shipping price would have failed the import
+   * on a constraint violation — and until then, delivered cost could never be
+   * anything but UNAVAILABLE, because the number was thrown away on the way in.
+   *
+   * NULL only when the matching `*Verified` flag is false. The CHECKs in the
+   * migration enforce that pairing in both directions, so a half-known cost
+   * stays impossible to store.
+   */
+  readonly shippingCost: Money | null;
+  readonly shippingDestination: string | null;
   readonly feesVerified: boolean;
+  readonly feesTotal: Money | null;
   readonly snapshotAt: string;
   readonly sourceFeed: string;
   readonly firstSeenRun: string;
@@ -190,7 +207,11 @@ export function toStoredOffer(
     productUrl: offer.productUrl,
     imageUrl: offer.imageUrl,
     shippingVerified: offer.shipping.kind === 'VERIFIED',
+    shippingCost: offer.shipping.kind === 'VERIFIED' ? offer.shipping.cost : null,
+    shippingDestination:
+      offer.shipping.kind === 'VERIFIED' ? offer.shipping.destinationCountry : null,
     feesVerified: offer.mandatoryFees.kind === 'VERIFIED',
+    feesTotal: offer.mandatoryFees.kind === 'VERIFIED' ? offer.mandatoryFees.total : null,
     snapshotAt: offer.snapshotAt,
     sourceFeed: offer.sourceFeed,
     firstSeenRun: previous?.firstSeenRun ?? run.id,

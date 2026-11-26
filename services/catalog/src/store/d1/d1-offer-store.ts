@@ -92,7 +92,25 @@ function toStoredOffer(row: Row): StoredOffer {
     productUrl: str(row.product_url),
     imageUrl: str(row.image_url),
     shippingVerified: fromInt(row.shipping_verified),
+    shippingCost:
+      row.shipping_cost_minor === null || row.shipping_cost_minor === undefined
+        ? null
+        : {
+            amountMinor: exactInteger(row.shipping_cost_minor, 'shipping_cost_minor'),
+            currency: String(row.currency),
+          },
+    shippingDestination:
+      row.shipping_destination === null || row.shipping_destination === undefined
+        ? null
+        : String(row.shipping_destination),
     feesVerified: fromInt(row.fees_verified),
+    feesTotal:
+      row.fees_total_minor === null || row.fees_total_minor === undefined
+        ? null
+        : {
+            amountMinor: exactInteger(row.fees_total_minor, 'fees_total_minor'),
+            currency: String(row.currency),
+          },
     snapshotAt: str(row.snapshot_at),
     sourceFeed: str(row.source_feed),
     firstSeenRun: str(row.first_seen_run),
@@ -199,10 +217,10 @@ class D1Writer implements OfferWriter {
         // The tracking wrapper is stored but is never part of identity.
         offer.productUrl,
         toInt(offer.shippingVerified),
-        null,
-        null,
+        offer.shippingCost ? offer.shippingCost.amountMinor : null,
+        offer.shippingDestination,
         toInt(offer.feesVerified),
-        null,
+        offer.feesTotal ? offer.feesTotal.amountMinor : null,
         offer.snapshotAt,
         offer.sourceFeed,
         offer.firstSeenRun,

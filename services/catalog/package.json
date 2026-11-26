@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "tsc -p tsconfig.json && node --test test/money.test.mjs test/cj-shopping-feed.test.mjs test/catalog-guard.test.mjs test/freshness.test.mjs test/archive.test.mjs test/import-feed.test.mjs test/import-real-feeds.test.mjs test/retrieval.test.mjs test/scheduler.test.mjs test/sync-command.test.mjs test/store-contract.test.mjs test/publication.test.mjs test/postgres-offer-store.test.mjs test/d1-remote.test.mjs"
+    "test": "tsc -p tsconfig.json && node --test test/money.test.mjs test/cj-shopping-feed.test.mjs test/catalog-guard.test.mjs test/freshness.test.mjs test/archive.test.mjs test/import-feed.test.mjs test/import-real-feeds.test.mjs test/retrieval.test.mjs test/scheduler.test.mjs test/sync-command.test.mjs test/store-contract.test.mjs test/product.test.mjs test/publication.test.mjs test/postgres-offer-store.test.mjs test/d1-remote.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",

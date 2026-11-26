@@ -16,14 +16,22 @@
  *      psql — cannot record a verified delivered cost without both a figure
  *      and a destination.
  *
- * WHAT IT REFUSES TO WRITE. `tracking_url`, `shipping_cost_minor`,
- * `shipping_destination` and `fees_total_minor` are left NULL by every path in
- * this file. They are not oversights: nothing in the CJ shopping feed states a
- * shipping cost or a mandatory fee (measured 0 of 225 rows, seven consecutive
- * exports), and `product_url` already holds the tracking wrapper the feed does
- * supply. Writing a zero into a cost column is how a site starts claiming a
- * total it cannot stand behind, so these stay null until a provider states
- * them and the CHECKs above make a half-filled claim impossible.
+ * WHAT IT NEVER INVENTS. `shipping_cost_minor`, `shipping_destination` and
+ * `fees_total_minor` hold a figure only when a provider stated one. Nothing in
+ * the CJ shopping feed does (measured 0 of 225 rows, seven consecutive
+ * exports), so in practice they are still NULL for every offer in the
+ * catalogue today. Writing a zero into a cost column is how a site starts
+ * claiming a total it cannot stand behind.
+ *
+ * They are nonetheless CARRIED rather than discarded, which they were not
+ * until now. The old behaviour bound NULL unconditionally, which did two
+ * things: it made a verified delivered cost impossible to compute even in
+ * principle, because the number was dropped on the way in; and it meant the
+ * first merchant whose feed DID state a shipping price would fail the import
+ * on `CHECK (shipping_verified = 0 OR shipping_cost_minor IS NOT NULL)` rather
+ * than store the fact. The CHECKs still make a half-filled claim impossible in
+ * both directions. `tracking_url` genuinely is left NULL, because
+ * `product_url` already holds the wrapper the feed supplies.
  *
  * MONEY crosses the boundary as integer minor units in a `bigint`, and comes
  * back as a string because that is what node-postgres does with int8 — parsed
@@ -66,7 +74,10 @@ interface OfferRow {
   product_url: string;
   image_url: string;
   shipping_verified: boolean;
+  shipping_cost_minor: string | null;
+  shipping_destination: string | null;
   fees_verified: boolean;
+  fees_total_minor: string | null;
   snapshot_at: Date;
   source_feed: string;
   first_seen_run: string;
@@ -151,7 +162,11 @@ function toStored(row: OfferRow): StoredOffer {
     productUrl: row.product_url,
     imageUrl: row.image_url,
     shippingVerified: row.shipping_verified,
+    shippingCost:
+      row.shipping_cost_minor === null ? null : money(row.shipping_cost_minor, row.currency),
+    shippingDestination: row.shipping_destination,
     feesVerified: row.fees_verified,
+    feesTotal: row.fees_total_minor === null ? null : money(row.fees_total_minor, row.currency),
     snapshotAt: iso(row.snapshot_at),
     sourceFeed: row.source_feed,
     firstSeenRun: row.first_seen_run,
@@ -210,15 +225,15 @@ export class PostgresOfferWriter implements OfferWriter {
       `INSERT INTO catalog.merchant_offer (
          id, merchant_id, merchant_offer_id, gtin, mpn, brand, title,
          list_price_minor, sale_price_minor, currency, availability, condition,
-         product_url, image_url, shipping_verified, fees_verified,
+         product_url, image_url, shipping_verified, shipping_cost_minor, shipping_destination, fees_verified, fees_total_minor,
          snapshot_at, source_feed, first_seen_run, last_seen_run, last_seen_at,
          state, inactive_since
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7,
          $8, $9, $10, $11, $12,
-         $13, $14, $15, $16,
-         $17, $18, $19, $20, $21,
-         $22, $23
+         $13, $14, $15, $16, $17, $18, $19,
+         $20, $21, $22, $23, $24,
+         $25, $26
        )
        ON CONFLICT (merchant_id, merchant_offer_id) DO UPDATE SET
          gtin              = EXCLUDED.gtin,
@@ -233,7 +248,10 @@ export class PostgresOfferWriter implements OfferWriter {
          product_url       = EXCLUDED.product_url,
          image_url         = EXCLUDED.image_url,
          shipping_verified = EXCLUDED.shipping_verified,
+         shipping_cost_minor  = EXCLUDED.shipping_cost_minor,
+         shipping_destination = EXCLUDED.shipping_destination,
          fees_verified     = EXCLUDED.fees_verified,
+         fees_total_minor  = EXCLUDED.fees_total_minor,
          snapshot_at       = EXCLUDED.snapshot_at,
          source_feed       = EXCLUDED.source_feed,
          last_seen_run     = EXCLUDED.last_seen_run,
@@ -256,7 +274,10 @@ export class PostgresOfferWriter implements OfferWriter {
         offer.productUrl,
         offer.imageUrl,
         offer.shippingVerified,
+        offer.shippingCost?.amountMinor ?? null,
+        offer.shippingDestination,
         offer.feesVerified,
+        offer.feesTotal?.amountMinor ?? null,
         offer.snapshotAt,
         offer.sourceFeed,
         offer.firstSeenRun,
