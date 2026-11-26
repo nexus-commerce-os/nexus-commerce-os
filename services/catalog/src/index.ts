@@ -213,3 +213,26 @@ export {
   type D1PreparedStatement,
   type D1Result,
 } from './store/d1/d1-client';
+
+/*
+ * PUBLICATION. The one atomic step between a computed catalogue and a visible
+ * one. `applyRun` is not atomic on D1; this is why that is survivable.
+ */
+export { GenerationPublisher, type PruneOptions, type PruneOutcome } from './publication/publisher';
+export {
+  ConcurrentPublicationError,
+  // Not DEFAULT_LIMITS: retrieval/limits.ts already owns that name for feed
+  // SIZE caps, and two unrelated "default limits" in one namespace is how a
+  // caller ends up guarding a catalogue with a byte count.
+  DEFAULT_PUBLICATION_LIMITS,
+  GenerationRejectedError,
+  PointerMovedError,
+  validateGeneration,
+  type Generation,
+  type GenerationRejectionCode,
+  type GenerationShape,
+  type GenerationStatus,
+  type PublicationCandidate,
+  type PublishOutcome,
+  type ValidationLimits,
+} from './publication/generation';

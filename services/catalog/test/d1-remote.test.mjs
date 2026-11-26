@@ -19,7 +19,13 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 
-import { D1OfferStore, DuplicateApplyError, importFeedArchive } from '../dist/index.js';
+import {
+  D1OfferStore,
+  DuplicateApplyError,
+  GenerationPublisher,
+  GenerationRejectedError,
+  importFeedArchive,
+} from '../dist/index.js';
 import { d1Schema } from './helpers/sqlite-d1.mjs';
 import {
   D1HttpError,
@@ -454,3 +460,191 @@ test('an import interrupted mid-write converges when it is run again', { skip },
     .all();
   assert.equal(offers.results[0].n, 10, 'and converges on the full catalogue, with no duplicates');
 });
+
+// ───────────────── publication, on the real platform ─────────────────
+
+/*
+ * publication.test.mjs proves the LOGIC on SQLite. What it cannot prove is
+ * that D1's partial indexes behave as the design depends on them to — and the
+ * whole concurrency story rests on exactly that: `publication_one_building` is
+ * the mutex, and `published_product_open` is what guarantees one live row per
+ * product. If either is a no-op on Cloudflare, the design has no mutex and no
+ * invariant.
+ */
+
+async function resetPublication() {
+  await db.exec(
+    [
+      'DELETE FROM catalog_published_product;',
+      'DELETE FROM catalog_publication_candidate;',
+      'UPDATE catalog_publication_pointer SET live_generation = NULL WHERE id = 1;',
+      'DELETE FROM catalog_publication_generation;',
+      'DELETE FROM catalog_product;',
+    ].join('\n'),
+  );
+}
+
+async function makeProduct(id, slug) {
+  await db
+    .prepare(
+      `INSERT INTO catalog_product (id, slug, title, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .bind(id, slug, `Product ${slug}`, '2026-11-26T12:00:00.000Z', '2026-11-26T12:00:00.000Z')
+    .run();
+  return id;
+}
+
+const pubCandidate = (productId, over = {}) => ({
+  productId,
+  slug: over.slug ?? `slug-${productId}`,
+  title: over.title ?? `Title ${productId}`,
+  brand: 'Northwind',
+  categorySlug: 'drinkware',
+  dataVerifiedAt: '2026-11-26T12:00:00.000Z',
+  searchText: `title ${productId}`,
+  fromPrice: over.fromPrice === undefined ? { amountMinor: 1999, currency: 'USD' } : over.fromPrice,
+  offerCount: 1,
+  eligible: over.eligible ?? true,
+  reasonCode: 'eligible',
+});
+
+/** What a visitor would see: resolve the pointer, then filter by interval. */
+async function publicCatalogue() {
+  const row = await db
+    .prepare('SELECT live_generation FROM catalog_publication_pointer WHERE id = 1')
+    .first();
+  const live = row?.live_generation;
+  if (live === null || live === undefined) return [];
+  const out = await db
+    .prepare(
+      `SELECT slug, title, from_price_minor FROM catalog_published_product
+        WHERE first_generation <= ?
+          AND (last_generation IS NULL OR last_generation >= ?)
+        ORDER BY slug`,
+    )
+    .bind(live, live)
+    .all();
+  return out.results;
+}
+
+test('publication_one_building is a real mutex on D1, not a comment', { skip }, async () => {
+  await resetPublication();
+  const pub = new GenerationPublisher(db);
+  await pub.beginGeneration({ at: '2026-11-26T12:00:00.000Z' });
+  await assert.rejects(
+    () => pub.beginGeneration({ at: '2026-11-26T12:00:00.000Z' }),
+    /already being built/,
+    'the partial unique index over status = building has to refuse the second one',
+  );
+});
+
+test('published_product_open is a real invariant on D1', { skip }, async () => {
+  await resetPublication();
+  const pub = new GenerationPublisher(db);
+  const id = await makeProduct('p-open', 'open');
+  const g = await pub.beginGeneration({ at: '2026-11-26T12:00:00.000Z' });
+  await pub.stageCandidates(g, [pubCandidate(id, { slug: 'open' })]);
+  await pub.publish(g, { at: '2026-11-26T12:00:00.000Z' });
+
+  // A second OPEN row for the same product, inserted behind the publisher's
+  // back. Only the partial index can stop this.
+  await assert.rejects(
+    () =>
+      db
+        .prepare(
+          `INSERT INTO catalog_published_product
+             (product_id, first_generation, last_generation, published_at, slug, title,
+              data_verified_at, search_text)
+           VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
+        )
+        .bind(id, g, '2026-11-26T13:00:00.000Z', 'open-again', 't', '2026-11-26T12:00:00.000Z', 't')
+        .run(),
+    /UNIQUE constraint failed/,
+  );
+});
+
+test('the pointer move is what makes a catalogue public, on real D1', { skip }, async () => {
+  await resetPublication();
+  const meter = new UsageMeter();
+  const measured = createRemoteD1(config, databaseId, meter);
+  const pub = new GenerationPublisher(measured);
+
+  const ids = [];
+  for (let i = 0; i < 5; i += 1) ids.push(await makeProduct(`p-${i}`, `s-${i}`));
+  const rows = ids.map((id, i) => pubCandidate(id, { slug: `s-${i}` }));
+
+  const g1 = await pub.beginGeneration({ at: '2026-11-26T12:00:00.000Z' });
+  await pub.stageCandidates(g1, rows);
+  assert.deepEqual(await publicCatalogue(), [], 'staged and invisible');
+
+  await pub.publish(g1, { at: '2026-11-26T12:00:00.000Z' });
+  assert.equal((await publicCatalogue()).length, 5, 'and public the moment the pointer moved');
+  const firstCost = meter.rowsWritten;
+
+  // Cycle 2: the identical catalogue. The interval design exists so this
+  // writes nothing, and on Cloudflare that is a measurement, not a claim.
+  const before = await db.prepare('SELECT COUNT(*) AS n FROM catalog_published_product').first();
+  meter.rowsWritten = 0;
+  const g2 = await pub.beginGeneration({ at: '2026-11-26T13:00:00.000Z' });
+  await pub.stageCandidates(g2, rows);
+  const second = await pub.publish(g2, { at: '2026-11-26T13:00:00.000Z' });
+  const after = await db.prepare('SELECT COUNT(*) AS n FROM catalog_published_product').first();
+
+  assert.equal(second.unchanged, 5);
+  assert.equal(second.opened, 0);
+  assert.equal(after.n, before.n, 'not one published row was rewritten');
+  console.log(
+    `      measured: first publication of 5 products cost rows_written=${firstCost}; ` +
+      `an unchanged republication cost ${meter.rowsWritten}`,
+  );
+});
+
+test('a failed feed cannot empty the live catalogue, on real D1', { skip }, async () => {
+  const pub = new GenerationPublisher(db);
+  const liveBefore = await pub.liveGeneration();
+  const countBefore = (await publicCatalogue()).length;
+  assert.ok(countBefore > 0, 'this test needs a published catalogue to protect');
+
+  const empty = await pub.beginGeneration({ at: '2026-11-26T14:00:00.000Z' });
+  await assert.rejects(
+    () => pub.publish(empty, { at: '2026-11-26T14:00:00.000Z' }),
+    (error) => {
+      assert.ok(error instanceof GenerationRejectedError);
+      assert.equal(error.code, 'empty_catalogue');
+      return true;
+    },
+  );
+  assert.equal((await publicCatalogue()).length, countBefore);
+  assert.equal(await pub.liveGeneration(), liveBefore);
+  await pub.abandon(empty, { at: '2026-11-26T14:00:00.000Z', detail: 'test cleanup' });
+});
+
+test(
+  'rollback restores the previous catalogue on real D1, without rebuilding it',
+  { skip },
+  async () => {
+    await resetPublication();
+    const pub = new GenerationPublisher(db);
+    const kept = await makeProduct('p-kept', 'kept');
+    const added = await makeProduct('p-added', 'added');
+
+    const g1 = await pub.beginGeneration({ at: '2026-11-26T12:00:00.000Z' });
+    await pub.stageCandidates(g1, [
+      pubCandidate(kept, { slug: 'kept', fromPrice: { amountMinor: 1999, currency: 'USD' } }),
+    ]);
+    await pub.publish(g1, { at: '2026-11-26T12:00:00.000Z' });
+    const before = await publicCatalogue();
+
+    const g2 = await pub.beginGeneration({ at: '2026-11-26T13:00:00.000Z' });
+    await pub.stageCandidates(g2, [
+      pubCandidate(kept, { slug: 'kept', fromPrice: { amountMinor: 999, currency: 'USD' } }),
+      pubCandidate(added, { slug: 'added' }),
+    ]);
+    await pub.publish(g2, { at: '2026-11-26T13:00:00.000Z' });
+    assert.equal((await publicCatalogue()).length, 2);
+
+    await pub.rollbackTo(g1, { at: '2026-11-26T14:00:00.000Z', decidedBy: 'test:operator' });
+    assert.deepEqual(await publicCatalogue(), before, 'byte for byte what was live before');
+  },
+);
