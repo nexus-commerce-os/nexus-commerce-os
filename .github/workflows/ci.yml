@@ -608,7 +608,7 @@ jobs:
       - name: ECR login
         if: steps.detect.outputs.exists == 'true'
         # why: obtain a short-lived registry token via the assumed role (no persisted docker creds).
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
       - name: Setup Buildx
         if: steps.detect.outputs.exists == 'true'
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
