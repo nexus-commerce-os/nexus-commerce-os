@@ -1,0 +1,26 @@
+{
+  "_comment": "SYNTHETIC DEMONSTRATION SOURCES ONLY. See README.md. A fixture source needs --allow-fixtures and an id starting with 'fixture-'.",
+  "sources": [
+    {
+      "id": "fixture-northwind-demo",
+      "merchantId": "northwind-demo",
+      "transport": "fixture",
+      "url": "northwind-demo.zip",
+      "format": "csv",
+      "schedule": { "everyMinutes": 60 },
+      "credentialRef": null,
+      "enabled": true
+    },
+    {
+      "id": "soundcore-cj-shopping",
+      "merchantId": "soundcore",
+      "transport": "https",
+      "url": "https://datatransfer.cj.com/datatransfer/files/placeholder.zip",
+      "format": "csv",
+      "schedule": { "everyMinutes": 720 },
+      "credentialRef": "CJ_FEED_KEY",
+      "auth": { "kind": "bearer" },
+      "enabled": false
+    }
+  ]
+}

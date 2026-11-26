@@ -1,13 +1,347 @@
-// services/catalog — Catalog & Offer (NestJS/TS)
-// P0.1 SCAFFOLD — intent declaration only. NO implementation.
+// services/catalog — Catalog & Offer (TypeScript)
 //
-// This module will (P0.3 — Commerce Foundation) own:
-//   • the canonical offer/product schema (money as integer minor-units, NFR-CONS-01)
-//   • read-optimized catalog projections for Search + Price Intelligence (CQRS)
-//   • consumption of authorized, license-tagged `offer.upserted` events (ADR-0001)
+// P0.3 increment 1: the canonical offer schema, the authorized-feed adapter,
+// and the validation guard that stands between them. Still NO ingestion
+// scheduler, no persistence, no API surface, and nothing wired into the web
+// app — those are later increments.
 //
-// Legitimacy boundary: offers enter ONLY via the authorized feed-ingestion adapter;
-// no scraping, no provider SDK in the core module (ADR-0010).
+// Legitimacy boundary unchanged (ADR-0001, ADR-0010): offers enter only through
+// an authorized feed adapter, never by scraping, and this module holds no
+// provider credentials. Money is integer minor-units throughout (NFR-CONS-01).
 //
-// Intentionally exports nothing: there is no catalog logic in the scaffold.
-export {};
+// The invariant worth knowing before using any of this: shipping that the
+// provider did not state stays MISSING. It is never zero, and an offer whose
+// delivered cost is unknown is never eligible for delivered-price ranking.
+
+export {
+  addMoney,
+  minMoney,
+  minorUnitExponent,
+  parseBareAmount,
+  parseFeedMoney,
+  type Money,
+  type MoneyParseFailure,
+  type MoneyParseResult,
+} from './money';
+
+export {
+  deliveredCost,
+  deliveredPriceRankingEligibility,
+  itemPrice,
+  missingShipping,
+  verifiedShipping,
+  type Availability,
+  type DeliveredCost,
+  type DeliveredCostComponent,
+  type ItemCondition,
+  type MandatoryFees,
+  type Offer,
+  type RankingEligibility,
+  type ShippingCost,
+} from './offer';
+
+export {
+  parseShoppingFeed,
+  SHOPPING_FEED_NO_FEE_COLUMN,
+  type LogicalField,
+  type MalformedReason,
+  type MalformedRow,
+  type ParseOptions,
+  type RawShoppingRow,
+  type ShoppingFeedParse,
+} from './feed/cj-shopping-feed';
+
+export {
+  assessFeedFreshness,
+  assessFeedWindow,
+  describeFreshness,
+  feedExportedAt,
+  feedExportWindow,
+  isReleasable,
+  MAX_CLOCK_SKEW_MS,
+  MAX_EXPORT_SPREAD_MS,
+  MAX_FEED_AGE_MS,
+  type FeedExportWindow,
+  type FeedFreshness,
+} from './freshness';
+
+export {
+  buildCatalog,
+  isHttpsUrl,
+  isValidGtin,
+  type CatalogBuild,
+  type CatalogSource,
+  type RejectedRow,
+  type RejectionReason,
+} from './catalog-guard';
+
+export {
+  readDelimitedPayload,
+  readZipMembers,
+  isSafeEntryName,
+  ArchiveError,
+  MAX_ARCHIVE_BYTES,
+  MAX_COMPRESSION_RATIO,
+  MAX_ENTRY_BYTES,
+  type ArchiveFailure,
+  type ArchiveMember,
+  type DelimitedPayload,
+} from './feed/archive';
+
+export {
+  DuplicateApplyError,
+  toStoredOffer,
+  type ImportRun,
+  type ImportStatus,
+  type OfferState,
+  type OfferStore,
+  type OfferWriter,
+  type PriceChangeKind,
+  type PriceHistoryEntry,
+  type QuarantineEntry,
+  type StoredOffer,
+} from './store/offer-store';
+
+export {
+  driverErrorOf,
+  safeFailureReason,
+  PG_CHECK_VIOLATION,
+  PG_IN_FAILED_TRANSACTION,
+  PG_UNIQUE_VIOLATION,
+  type DriverError,
+} from './store/failure-reason';
+
+export { InMemoryOfferStore } from './store/in-memory-offer-store';
+
+/*
+ * The Postgres adapter. Exported from the package root like every other
+ * adapter, and safe to import anywhere: `pg` appears in these modules only in
+ * `import type` position, so nothing here pulls a driver into a bundle that
+ * does not construct a Pool itself.
+ */
+export { withTransaction, type SqlExecutor } from './store/postgres/connection';
+
+export { CatalogMigrationRunner, type AppliedMigration } from './store/postgres/migration-runner';
+
+export { PostgresOfferStore, PostgresOfferWriter } from './store/postgres/postgres-offer-store';
+
+export {
+  reconcile,
+  priceChangeKind,
+  type OfferChange,
+  type Reconciliation,
+} from './sync/reconcile';
+
+export { importFeedArchive, type ImportOptions, type ImportResult } from './sync/import-feed';
+
+/*
+ * RETRIEVAL — going and getting the feed, which this package previously could
+ * not do. An archive was handed to it; it fetched nothing. Everything here
+ * exists to produce the Buffer `importFeedArchive` already knew how to use,
+ * safely and on a schedule, from a source we do not control.
+ */
+export {
+  assertFetchableUrl,
+  isPublicAddress,
+  redactUrl,
+  UnsafeFeedUrlError,
+} from './retrieval/url-guard';
+export {
+  DEFAULT_LIMITS,
+  FeedTooLargeError,
+  expandIfCompressed,
+  gunzipWithLimit,
+  isGzip,
+  isZip,
+  readWithLimit,
+  type SizeLimits,
+} from './retrieval/limits';
+export {
+  envCredentialResolver,
+  isDue,
+  isImplemented,
+  UnsupportedTransportError,
+  validateFeedSource,
+  type CredentialResolver,
+  type FeedAuth,
+  type FeedFormat,
+  type FeedSchedule,
+  type FeedSource,
+  type FeedTransport,
+} from './retrieval/feed-source';
+export {
+  backoffMs,
+  parseRetryAfter,
+  retrieveFeed,
+  type FeedValidators,
+  type RetrievalOutcome,
+  type RetrieveOptions,
+} from './retrieval/retrieve';
+export {
+  InMemorySourceState,
+  isAlreadyRunning,
+  lastSuccessFor,
+  runCycle,
+  sourceFeedKey,
+  type CycleReport,
+  type SchedulerOptions,
+  type SourceOutcome,
+  type SourceState,
+  type SourceStateStore,
+} from './retrieval/scheduler';
+export {
+  runSync,
+  summarise,
+  validateSources,
+  type SourceHealth,
+  type SyncOptions,
+  type SyncResult,
+} from './retrieval/sync-command';
+export { isFixtureTransport } from './retrieval/feed-source';
+
+/*
+ * D1 — the second storage engine. The Postgres implementation stays; both
+ * satisfy the same OfferStore contract and the same suite runs against each.
+ */
+export { D1OfferStore } from './store/d1/d1-offer-store';
+export {
+  MAX_BOUND_PARAMS,
+  chunkForBinding,
+  exactInteger,
+  rowsPerStatement,
+  type D1Like,
+  type D1PreparedStatement,
+  type D1Result,
+} from './store/d1/d1-client';
+
+/*
+ * PUBLICATION. The one atomic step between a computed catalogue and a visible
+ * one. `applyRun` is not atomic on D1; this is why that is survivable.
+ */
+export { GenerationPublisher, type PruneOptions, type PruneOutcome } from './publication/publisher';
+export {
+  ConcurrentPublicationError,
+  // Not DEFAULT_LIMITS: retrieval/limits.ts already owns that name for feed
+  // SIZE caps, and two unrelated "default limits" in one namespace is how a
+  // caller ends up guarding a catalogue with a byte count.
+  DEFAULT_PUBLICATION_LIMITS,
+  GenerationRejectedError,
+  PointerMovedError,
+  validateGeneration,
+  type Generation,
+  type GenerationRejectionCode,
+  type GenerationShape,
+  type GenerationStatus,
+  type PublicationCandidate,
+  type PublishOutcome,
+  type ValidationLimits,
+} from './publication/generation';
+
+/*
+ * PRODUCT INTELLIGENCE. Offers in, publication candidates out. Identity comes
+ * from a manufacturer's identifier or not at all; ambiguity is quarantined
+ * rather than resolved. Delivered cost and ranking eligibility are the ones
+ * already defined in offer.ts, reused rather than redefined.
+ */
+export {
+  ELIGIBLE,
+  buildProducts,
+  productSlug,
+  type BuildProductsInput,
+  type BuildProductsResult,
+  type IneligibleReason,
+  type ProductDraft,
+} from './product/build';
+export {
+  normaliseBrand,
+  normaliseMpn,
+  productIdentity,
+  secondaryBrandMpnKey,
+  toGtin14,
+  type IdentityBasis,
+  type MatchConfidence,
+  type ProductIdentity,
+} from './product/identity';
+export {
+  classifyFromProductType,
+  normaliseSpecification,
+  slugifyCategory,
+  type Category,
+  type Classification,
+  type NormalisedSpecification,
+} from './product/classify';
+export {
+  matchOffers,
+  type MatchResult,
+  type MatchableOffer,
+  type ProductGroup,
+  type UnmatchedOffer,
+  type UnmatchedReason,
+} from './product/match';
+export { rankOffers, storedAsOffer, type OfferRanking, type RankedOffer } from './product/ranking';
+
+/*
+ * AUTOMATIC PUBLICATION. Offers already in the database become a public
+ * catalogue with no per-product approval — and the pause, the approval gate
+ * and the generation validator are what make that safe rather than reckless.
+ */
+export {
+  PUBLICATION_RULES_VERSION,
+  publishCatalogue,
+  type PublishCatalogueOptions,
+  type PublishCatalogueResult,
+  type PublishSkipReason,
+} from './automation/publish-catalogue';
+export {
+  CatalogD1,
+  productIdOf,
+  type AutomationConfig,
+  type CatalogEnvironment,
+  type MerchantRow,
+} from './automation/catalog-store';
+export { catalogueFingerprint } from './publication/fingerprint';
+
+/*
+ * THE PUBLIC READ PATH. The only code allowed to answer "what is published?",
+ * and the only place the generation-interval filter exists — a second copy
+ * would be a disclosure rather than a bug.
+ */
+export {
+  PublicCatalogue,
+  type ListQuery,
+  type Page,
+  type ProductDetail,
+  type PublicOffer,
+  type PublishedProduct,
+} from './public/read';
+
+/*
+ * SCHEDULED SYNCHRONISATION against D1: feed sources read from the database
+ * rather than from a deploy, a daily write budget that distinguishes a
+ * measured estimate from Cloudflare's own figure, and a cycle log that records
+ * the cycles it REFUSED as well as the ones it ran.
+ */
+export {
+  QuotaD1,
+  recentCycles,
+  runSyncCycle,
+  type CycleOutcome,
+  type CycleTrigger,
+  type SyncCycleOptions,
+  type SyncCycleResult,
+} from './automation/sync-cycle';
+export {
+  D1FeedSourceStore,
+  isFixtureSource,
+  type FeedSourceRow,
+} from './automation/feed-source-store';
+export {
+  CycleMeter,
+  FREE_TIER,
+  assessBudget,
+  meteredD1,
+  utcDay,
+  type BudgetLimits,
+  type BudgetUsage,
+  type BudgetVerdict,
+} from './automation/quota';
