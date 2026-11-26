@@ -328,6 +328,9 @@ export function buildCatalog(parse: ShoppingFeedParse, source: CatalogSource): C
       imageUrl: f.imageLink,
       shipping: readShipping(row, listPrice.currency, source.sourceFeed),
       mandatoryFees,
+      // Verbatim, trimmed, or null. The feed was already parsing this column
+      // and then dropping it, which is why no product could be classified.
+      productType: f.productType.trim() === '' ? null : f.productType.trim(),
       snapshotAt: snapshot.toISOString(),
       sourceFeed: source.sourceFeed,
     });

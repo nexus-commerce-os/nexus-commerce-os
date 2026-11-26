@@ -236,3 +236,79 @@ export {
   type PublishOutcome,
   type ValidationLimits,
 } from './publication/generation';
+
+/*
+ * PRODUCT INTELLIGENCE. Offers in, publication candidates out. Identity comes
+ * from a manufacturer's identifier or not at all; ambiguity is quarantined
+ * rather than resolved. Delivered cost and ranking eligibility are the ones
+ * already defined in offer.ts, reused rather than redefined.
+ */
+export {
+  ELIGIBLE,
+  buildProducts,
+  productSlug,
+  type BuildProductsInput,
+  type BuildProductsResult,
+  type IneligibleReason,
+  type ProductDraft,
+} from './product/build';
+export {
+  normaliseBrand,
+  normaliseMpn,
+  productIdentity,
+  secondaryBrandMpnKey,
+  toGtin14,
+  type IdentityBasis,
+  type MatchConfidence,
+  type ProductIdentity,
+} from './product/identity';
+export {
+  classifyFromProductType,
+  normaliseSpecification,
+  slugifyCategory,
+  type Category,
+  type Classification,
+  type NormalisedSpecification,
+} from './product/classify';
+export {
+  matchOffers,
+  type MatchResult,
+  type MatchableOffer,
+  type ProductGroup,
+  type UnmatchedOffer,
+  type UnmatchedReason,
+} from './product/match';
+export { rankOffers, storedAsOffer, type OfferRanking, type RankedOffer } from './product/ranking';
+
+/*
+ * AUTOMATIC PUBLICATION. Offers already in the database become a public
+ * catalogue with no per-product approval — and the pause, the approval gate
+ * and the generation validator are what make that safe rather than reckless.
+ */
+export {
+  PUBLICATION_RULES_VERSION,
+  publishCatalogue,
+  type PublishCatalogueOptions,
+  type PublishCatalogueResult,
+  type PublishSkipReason,
+} from './automation/publish-catalogue';
+export {
+  CatalogD1,
+  productIdOf,
+  type AutomationConfig,
+  type MerchantRow,
+} from './automation/catalog-store';
+
+/*
+ * THE PUBLIC READ PATH. The only code allowed to answer "what is published?",
+ * and the only place the generation-interval filter exists — a second copy
+ * would be a disclosure rather than a bug.
+ */
+export {
+  PublicCatalogue,
+  type ListQuery,
+  type Page,
+  type ProductDetail,
+  type PublicOffer,
+  type PublishedProduct,
+} from './public/read';

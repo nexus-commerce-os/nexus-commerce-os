@@ -46,7 +46,11 @@ const offer = (over = {}) => ({
   productUrl: 'https://example.invalid/p/1',
   imageUrl: 'https://cdn.example.invalid/1.jpg',
   shippingVerified: false,
+  shippingCost: null,
+  shippingDestination: null,
   feesVerified: false,
+  feesTotal: null,
+  productType: 'Home > Drinkware',
   snapshotAt: '2026-11-26T12:00:00.000Z',
   sourceFeed: 'test:feed',
   firstSeenRun: 'run-1',
@@ -87,6 +91,41 @@ for (const impl of implementations) {
     assert.equal(found.salePrice.amountMinor, 1999);
     assert.equal(found.title, 'Northwind Trading Travel Mug');
     assert.equal(found.state, 'active');
+  });
+
+  only('a VERIFIED shipping cost survives the round trip', async () => {
+    /*
+     * This is the test the adapters did not have, and its absence hid a real
+     * defect: every adapter bound NULL into shipping_cost_minor and
+     * fees_total_minor unconditionally, so the figure was discarded on the way
+     * in and `CHECK (shipping_verified = 0 OR shipping_cost_minor IS NOT NULL)`
+     * would have failed the first import from a merchant that stated one.
+     *
+     * No offer in the catalogue has a verified shipping cost today — the CJ
+     * feed states none, measured across seven exports — which is exactly why
+     * this has to be a test rather than something noticed in production.
+     */
+    const store = await impl.make();
+    await store.beginRun(run());
+    await store.applyRun(async (tx) => {
+      await tx.upsertOffer(
+        offer({
+          shippingVerified: true,
+          shippingCost: money(499),
+          shippingDestination: 'US',
+          feesVerified: true,
+          feesTotal: money(120),
+        }),
+      );
+      await tx.finishRun('run-1', { status: 'applied' });
+    });
+
+    const found = await store.findOffer(MERCHANT, 'NW-1');
+    assert.equal(found.shippingVerified, true);
+    assert.equal(found.shippingCost.amountMinor, 499, 'the figure, not a flag');
+    assert.equal(found.shippingCost.currency, 'USD');
+    assert.equal(found.shippingDestination, 'US', 'cheap to Texas is not cheap to Alaska');
+    assert.equal(found.feesTotal.amountMinor, 120);
   });
 
   only('a second import of the same identity UPDATES rather than duplicating', async () => {

@@ -49,6 +49,14 @@ export interface PublishOutcome {
   readonly publishedCount: number;
   readonly opened: number;
   readonly closed: number;
+  /**
+   * Live rows whose freshness moved but whose content did not.
+   *
+   * One narrow UPDATE each, instead of the close-and-reopen pair a content
+   * change costs. `data_verified_at` changes every cycle by definition, so
+   * counting it as content would rewrite the entire catalogue every time.
+   */
+  readonly refreshed: number;
   /** Written nothing, because nothing about them changed. */
   readonly unchanged: number;
   readonly previousGeneration: number | null;

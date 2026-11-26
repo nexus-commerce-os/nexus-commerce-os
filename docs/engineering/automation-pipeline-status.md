@@ -17,26 +17,32 @@ scheduled retrieval → feed validation → normalisation → product identifica
 | # | Stage | State | Where |
 |---|---|---|---|
 | 1 | **Scheduled retrieval** | **built** — https/API, conditional requests, retry+jitter, SSRF and size guards | `src/retrieval/` |
-| 1b | the cron that calls it | **not built** — `runCycle` exists and is tested; nothing invokes it yet | — |
+| 1b | the cron that calls it | **not built** — `runCycle` exists and is tested; nothing invokes it, and it still talks to Postgres rather than D1 | — |
 | 2 | Feed validation | built | `catalog-guard.ts`, `freshness.ts` |
 | 3 | Normalisation | built — money as integer minor units, never a float | `money.ts` |
-| 4 | Product identification | **partial** — identity is `(merchant_id, merchant_offer_id)` | `offer-store.ts` |
-| 5 | Duplicate detection | built, two kinds: identical payload refused by sha256; repeat rows by identity | `import-feed.ts` |
-| 6 | **Category classification** | **not built** | — |
-| 7 | Database upsert | built, transactional | `postgres-offer-store.ts` |
+| 4 | Product identification | **built** — GTIN-14 first, brand+MPN second, nothing third | `src/product/identity.ts` |
+| 5 | Duplicate detection | built, three kinds: identical payload by sha256; repeat rows by identity; one offer per merchant per product | `import-feed.ts`, `product/match.ts` |
+| 6 | **Category classification** | **built** — from the merchant's stated path only, never inferred from a title | `src/product/classify.ts` |
+| 7 | Database upsert | built on **both** Postgres and D1, one contract suite over each | `postgres-offer-store.ts`, `d1-offer-store.ts` |
 | 8 | Offer reconciliation | built | `reconcile.ts` |
 | 9 | Price history | built — records movement, not sightings | `reconcile.ts` |
-| 10 | Publication eligibility | **not built** for feed products (the hand-transcribed catalog has its own gate) | — |
-| 11 | Search indexing | **not built** | — |
-| 12 | Public website update | **not built** — the feed pipeline is on `main`, the website on `release/product-catalog`, and nothing connects them | — |
-| 13 | **GTIN/MPN cross-merchant matching** | **not built** — prerequisite for multi-merchant comparison | — |
+| 10 | Publication eligibility | **built** — default-deny with a recorded reason per product | `src/product/build.ts` |
+| 11 | Search | **built** — denormalised `search_text`, folded identically on both sides | `src/public/read.ts` |
+| 12 | Public website update | **partial** — the read API exists and an isolated STAGING site serves it; honesttotal.com itself is still on the other lineage and consumes none of it | `src/public/read.ts`, `tools/staging-worker/` |
+| 13 | **GTIN/MPN cross-merchant matching** | **built** — and a brand+MPN key claimed by two GTINs is quarantined, not resolved | `src/product/match.ts` |
 | 14 | Affiliate link generation | **not built, deliberately** | — |
-| 15 | Retry / recovery / monitoring | **partial** — transactional rollback, an import ledger, quarantine, structured per-source logs. No alerting. | `scheduler.ts` |
+| 15 | Retry / recovery / monitoring | **partial** — transactional rollback, an import ledger, quarantine, a decision log, structured per-source logs. No alerting. | `scheduler.ts`, `automation/` |
+| 16 | **Generation-based publication** | **built** — intervals, a bounded atomic commit, a guarded pointer, rollback, retention | `src/publication/` |
+| 17 | **Automatic publication** | **built** — pause, approval gate, cliff guard, dry run, full idempotence | `src/automation/` |
+| 18 | Quota-aware execution | **not built** — write costs are measured but nothing budgets against them | — |
+| 19 | Admin dashboard and Access JWT | **not built** — and no `/admin` route exists, which a test enforces | — |
 
-**The honest summary: the pipeline can now go and get a feed, validate it,
-reconcile it and persist it with history. It cannot yet classify what it finds,
-match the same product across two merchants, decide publication for feed
-products, or put any of it on the website.**
+**The honest summary: a feed can now be retrieved, validated, reconciled,
+persisted, matched into products, classified, judged for publication and made
+public through an atomic pointer move — demonstrated end to end against real
+Cloudflare D1 and visible on a staging URL. What it still cannot do is run
+itself on a schedule against D1, budget its own quota, or be operated by
+anybody without a database client.**
 
 ## Proven against the real provider exports
 
@@ -113,16 +119,45 @@ has to be honoured when it is.
 
 ## What should happen next, in order
 
-1. **The cron that calls `runCycle`** — a Cloudflare scheduled trigger. The
-   loop is built and tested; nothing invokes it. This is the smallest step from
-   "can retrieve" to "does retrieve".
-2. **GTIN/MPN matching across merchants** (13) — the prerequisite for
-   multi-merchant offers and for ranking to mean anything.
-3. **Category classification** (6) and **publication eligibility for feed
-   products** (10).
-4. **Auth and RBAC, then the admin dashboard** — in that order. The dashboard's
-   job is to control and monitor this pipeline, and an unauthenticated control
-   surface for a data pipeline is worse than none.
-5. **Connect the lineages** (12). `main` holds the services; the deployed site
-   lives on `release/product-catalog` and consumes none of it. The two have
-   different data flows, so this is a design step and not a merge.
+1. **The cron that calls `runCycle`, against D1.** The retrieval loop is built
+   and tested, and automatic publication is built and tested — but nothing
+   invokes either on a schedule, and `runCycle` still writes to Postgres. This
+   is the one remaining gap between "works when run" and "runs".
+2. **Quota-aware execution.** The costs are measured (`d1-database.md`): about
+   12 writes per new offer, 6 for an unchanged feed, and roughly 4 per staged
+   candidate per cycle. Nothing budgets against them yet, and the free tier
+   allows 100,000 writes a day.
+3. **Cloudflare Access JWT verification, then the admin dashboard** — in that
+   order. The dashboard's job is to control and monitor this pipeline, and an
+   unauthenticated control surface for a data pipeline is worse than none.
+4. **Connect honesttotal.com to the read API** (12). `main` holds the services
+   and the staging site; the deployed website lives on
+   `release/product-catalog` and consumes none of it. The two lineages have
+   different data flows, so this is a design step and not a merge — and
+   `PublicCatalogue` exists precisely so that whatever connects them does not
+   write its own interval filter.
+5. **Authorised merchant data.** Everything above is demonstrated on fixtures.
+   Soundcore remains PENDING and disabled, and the source-terms audit found 2
+   of 10 records eligible — in different categories, so comparison cannot be
+   built on them. No amount of pipeline work changes that; it needs a provider
+   relationship.
+
+## Demonstrated on staging, 26 Nov 2026
+
+`https://honesttotal-catalog-staging.samsuzzaman.workers.dev` — bound to
+`honesttotal-catalog-staging`, no custom domain, no route, no KV, noindex, and
+its only write endpoint is refused when the secret is unset.
+
+| cycle | result |
+|---|---|
+| 1 | three fixture merchants, 19 products, 15 eligible, 4 withheld (pending merchant) → generation 1, 15 opened |
+| 2 | identical feeds → `skipped_duplicate`, 0 opened, 0 closed, 15 unchanged, **0 decisions re-recorded** |
+| 3 | one price change, one new product → 1 opened, 9 refreshed, 16 public |
+| 4 | one new product → generation 5, 17 public |
+
+The page showed 16 products, then 17, while the Worker version id stayed
+`c8ceab8a`. **No rebuild, no deploy, no cache to invalidate.**
+
+Cycle 4's first attempt was refused by the cliff guard, correctly: it re-ran
+only one merchant's feed, so another merchant's offers aged past 48 hours and
+5 of 16 products would have vanished.
