@@ -16,6 +16,7 @@
  * The last one is why `chunkForBinding` is unit-tested separately rather than
  * being left for this harness to catch.
  */
+import './require-node.mjs';
 import { DatabaseSync } from 'node:sqlite';
 
 /** Mirrors D1's own behaviour: foreign keys are enforced and cannot be off. */
