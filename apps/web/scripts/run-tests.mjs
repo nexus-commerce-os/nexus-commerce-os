@@ -40,6 +40,10 @@ const compile = spawnSync(
   [
     tsc,
     'worker/index.ts',
+    // auth.ts is not imported by index.ts yet — the admin surface is tested
+    // before it is routed — so it must be named explicitly or it never
+    // compiles and its suite silently has nothing to import.
+    'worker/auth.ts',
     '--outDir',
     '.worker-test',
     '--target',
@@ -56,6 +60,12 @@ const compile = spawnSync(
 // globals exist at runtime, just not in this stripped-down invocation), so the
 // emitted file is what decides success, not the exit code.
 const workerEntry = join(workerOut, 'worker', 'index.js');
+const authEntry = join(workerOut, 'worker', 'auth.js');
+if (!existsSync(authEntry)) {
+  console.error(`Could not compile the Worker auth module for testing:
+${compile.stdout}${compile.stderr}`);
+  process.exit(1);
+}
 if (!existsSync(workerEntry)) {
   console.error(`Could not compile the Worker for testing:
 ${compile.stdout}${compile.stderr}`);
