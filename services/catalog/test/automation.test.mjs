@@ -466,6 +466,40 @@ test('products, categories, brands and offer links are all idempotent', async ()
   assert.deepEqual(await snapshot(), before, 'running it three times produces the same rows');
 });
 
+test('RE-RUNNING A CYCLE AT THE SAME INSTANT IS NOT AN ERROR', async () => {
+  /*
+   * The decision row id is `<product>@<instant>`, so a retry at the same
+   * timestamp collides on the primary key. Before the ON CONFLICT in
+   * catalog-store.ts it crashed the whole run with
+   * `UNIQUE constraint failed: catalog_publication_decision.id` — found by
+   * retrying a refused publication against staging, which is exactly what an
+   * operator or a cron that fires twice in a minute would do.
+   */
+  const { db, store } = await world();
+  await runImport(
+    store,
+    Array.from({ length: 4 }, (_, i) => row(i + 1, '19.99')),
+    new Date('2026-11-26T12:00:00.000Z'),
+  );
+
+  const at = new Date('2026-11-26T12:05:00.000Z');
+  const first = await publishCatalogue(db, { now: at });
+  assert.equal(first.counts.decisionsRecorded, 4);
+
+  // The identical instant, again.
+  const retry = await publishCatalogue(db, { now: at });
+  assert.equal(retry.ran, true, 'the retry completes rather than throwing');
+  assert.equal(
+    retry.counts.decisionsRecorded,
+    0,
+    'and records nothing new, because nothing changed',
+  );
+
+  const rows = await db.prepare('SELECT COUNT(*) AS n FROM catalog_publication_decision').first();
+  assert.equal(rows.n, 4, 'one decision per product, not two');
+  assert.equal((await publicCatalogue(db)).length, 4);
+});
+
 test('a rolled-back catalogue is what the public sees, and the next cycle still works', async () => {
   const { db, store, publisher } = await world();
   await runImport(store, [row(1, '19.99')], new Date('2026-11-26T12:00:00.000Z'));

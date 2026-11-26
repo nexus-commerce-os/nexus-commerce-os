@@ -1,0 +1,25 @@
+# Isolated STAGING Worker. It exists to demonstrate the automation pipeline
+# end to end against a real database, and nothing else.
+#
+# WHAT MAKES IT ISOLATED, and why each line matters:
+#   · it is bound to honesttotal-catalog-STAGING, never -prod;
+#   · it has no custom domain and no route, so it is reachable only on
+#     workers.dev and cannot serve honesttotal.com;
+#   · it holds no KV namespace, so production waitlist data is out of reach;
+#   · it is read-only over the catalogue — the only write path in the bundle is
+#     the demonstration endpoint, and that is gated on a shared secret.
+name = "honesttotal-catalog-staging"
+main = "src/worker.ts"
+# No build step: wrangler bundles the TypeScript and the already-compiled
+# catalog worker entry it imports. Nothing here is a pnpm workspace package,
+# so the repository lockfile is untouched by this tool existing.
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "CATALOG"
+database_name = "honesttotal-catalog-staging"
+database_id = "94d3893d-fc34-44cd-b8a3-31027cdfb79f"
+
+[observability]
+enabled = true

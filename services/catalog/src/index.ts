@@ -298,3 +298,17 @@ export {
   type AutomationConfig,
   type MerchantRow,
 } from './automation/catalog-store';
+
+/*
+ * THE PUBLIC READ PATH. The only code allowed to answer "what is published?",
+ * and the only place the generation-interval filter exists — a second copy
+ * would be a disclosure rather than a bug.
+ */
+export {
+  PublicCatalogue,
+  type ListQuery,
+  type Page,
+  type ProductDetail,
+  type PublicOffer,
+  type PublishedProduct,
+} from './public/read';

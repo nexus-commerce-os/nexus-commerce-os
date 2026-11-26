@@ -303,9 +303,29 @@ export class CatalogD1 {
       statements.push(
         this.db
           .prepare(
+            /*
+             * ON CONFLICT, because the id is `<product>@<instant>` and a
+             * RETRY AT THE SAME INSTANT IS NOT AN ERROR.
+             *
+             * Without this, re-running a cycle after a refused publication
+             * crashed the entire run on
+             * `UNIQUE constraint failed: catalog_publication_decision.id` —
+             * found by doing exactly that against staging. A cron that fires
+             * twice in the same minute, or an operator retrying a rejected
+             * generation, would hit it in production.
+             *
+             * A conflict here means "this product, this instant", so
+             * overwriting is the only sensible reading: it is the same
+             * decision being recorded again, not a second one.
+             */
             `INSERT INTO catalog_publication_decision
                (id, product_id, decided_at, published, reason_code, detail, decided_by, rules_version)
-             VALUES (?,?,?,?,?,?,'automatic',?)`,
+             VALUES (?,?,?,?,?,?,'automatic',?)
+             ON CONFLICT (id) DO UPDATE SET
+               published = excluded.published,
+               reason_code = excluded.reason_code,
+               detail = excluded.detail,
+               rules_version = excluded.rules_version`,
           )
           .bind(
             `${id}@${at}`,
