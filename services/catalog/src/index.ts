@@ -312,3 +312,30 @@ export {
   type PublicOffer,
   type PublishedProduct,
 } from './public/read';
+
+/*
+ * SCHEDULED SYNCHRONISATION against D1: feed sources read from the database
+ * rather than from a deploy, a daily write budget that distinguishes a
+ * measured estimate from Cloudflare's own figure, and a cycle log that records
+ * the cycles it REFUSED as well as the ones it ran.
+ */
+export {
+  QuotaD1,
+  recentCycles,
+  runSyncCycle,
+  type CycleOutcome,
+  type CycleTrigger,
+  type SyncCycleOptions,
+  type SyncCycleResult,
+} from './automation/sync-cycle';
+export { D1FeedSourceStore, type FeedSourceRow } from './automation/feed-source-store';
+export {
+  CycleMeter,
+  FREE_TIER,
+  assessBudget,
+  meteredD1,
+  utcDay,
+  type BudgetLimits,
+  type BudgetUsage,
+  type BudgetVerdict,
+} from './automation/quota';

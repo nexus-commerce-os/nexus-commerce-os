@@ -88,6 +88,27 @@ export {
 } from './automation/publish-catalogue';
 export { CatalogD1, productIdOf, type AutomationConfig } from './automation/catalog-store';
 
+// Scheduled synchronisation: the cron handler's entry point.
+export {
+  QuotaD1,
+  recentCycles,
+  runSyncCycle,
+  type CycleOutcome,
+  type CycleTrigger,
+  type SyncCycleResult,
+} from './automation/sync-cycle';
+export { D1FeedSourceStore, type FeedSourceRow } from './automation/feed-source-store';
+export {
+  CycleMeter,
+  FREE_TIER,
+  assessBudget,
+  meteredD1,
+  utcDay,
+  type BudgetLimits,
+  type BudgetUsage,
+  type BudgetVerdict,
+} from './automation/quota';
+
 // The public read path.
 export {
   PublicCatalogue,
