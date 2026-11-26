@@ -198,3 +198,18 @@ export {
   type SyncResult,
 } from './retrieval/sync-command';
 export { isFixtureTransport } from './retrieval/feed-source';
+
+/*
+ * D1 — the second storage engine. The Postgres implementation stays; both
+ * satisfy the same OfferStore contract and the same suite runs against each.
+ */
+export { D1OfferStore } from './store/d1/d1-offer-store';
+export {
+  MAX_BOUND_PARAMS,
+  chunkForBinding,
+  exactInteger,
+  rowsPerStatement,
+  type D1Like,
+  type D1PreparedStatement,
+  type D1Result,
+} from './store/d1/d1-client';
