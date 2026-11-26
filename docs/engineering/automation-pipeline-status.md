@@ -17,7 +17,7 @@ scheduled retrieval → feed validation → normalisation → product identifica
 | # | Stage | State | Where |
 |---|---|---|---|
 | 1 | **Scheduled retrieval** | **built** — https/API, conditional requests, retry+jitter, SSRF and size guards | `src/retrieval/` |
-| 1b | the cron that calls it | **not built** — `runCycle` exists and is tested; nothing invokes it, and it still talks to Postgres rather than D1 | — |
+| 1b | the cron that calls it | **built** — a Cloudflare scheduled trigger runs the full cycle against D1 | `tools/staging-worker/`, `automation/sync-cycle.ts` |
 | 2 | Feed validation | built | `catalog-guard.ts`, `freshness.ts` |
 | 3 | Normalisation | built — money as integer minor units, never a float | `money.ts` |
 | 4 | Product identification | **built** — GTIN-14 first, brand+MPN second, nothing third | `src/product/identity.ts` |
@@ -34,7 +34,7 @@ scheduled retrieval → feed validation → normalisation → product identifica
 | 15 | Retry / recovery / monitoring | **partial** — transactional rollback, an import ledger, quarantine, a decision log, structured per-source logs. No alerting. | `scheduler.ts`, `automation/` |
 | 16 | **Generation-based publication** | **built** — intervals, a bounded atomic commit, a guarded pointer, rollback, retention | `src/publication/` |
 | 17 | **Automatic publication** | **built** — pause, approval gate, cliff guard, dry run, full idempotence | `src/automation/` |
-| 18 | Quota-aware execution | **not built** — write costs are measured but nothing budgets against them | — |
+| 18 | Quota-aware execution | **built** — a daily budget that distinguishes a measured estimate from Cloudflare's lagging authoritative figure, and spends the higher | `automation/quota.ts` |
 | 19 | Admin dashboard and Access JWT | **not built** — and no `/admin` route exists, which a test enforces | — |
 
 **The honest summary: a feed can now be retrieved, validated, reconciled,

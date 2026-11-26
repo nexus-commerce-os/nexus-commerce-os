@@ -14,6 +14,19 @@ main = "src/worker.ts"
 # catalog worker entry it imports. Nothing here is a pnpm workspace package,
 # so the repository lockfile is untouched by this tool existing.
 compatibility_date = "2026-11-01"
+# REQUIRED, and discovered by deploying rather than by reading.
+#
+# The ingestion path uses `node:crypto` for run ids and `node:zlib` to read a
+# ZIP, so the Worker refused to start: "Dynamic require of node:crypto is not
+# supported". Workers provides both under this flag.
+#
+# It is a real dependency and is written down as one. The alternative —
+# rewriting the archive reader around DecompressionStream and swapping
+# randomUUID for the global crypto — is a worthwhile change and NOT one to
+# make while proving the scheduler works, because it would mean the feed
+# parser that was measured against seven real provider exports is no longer
+# the one being run.
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [[d1_databases]]
@@ -23,3 +36,17 @@ database_id = "94d3893d-fc34-44cd-b8a3-31027cdfb79f"
 
 [observability]
 enabled = true
+
+# THE CRON. This is what makes synchronisation SCHEDULED rather than merely
+# schedulable: `runCycle` and `publishCatalogue` were both built and tested
+# long before anything invoked them, and a loop nothing calls is not
+# automation.
+#
+# Twice a day, six hours apart in Dhaka terms (02:17 and 14:17 UTC). The :17
+# is deliberate — every service scheduled on the hour contends with every
+# other, and a provider's export is not ready at exactly midnight either.
+#
+# The cycle is idempotent and its id is derived from the instant, so a cron
+# that fires twice updates one row rather than running twice.
+[triggers]
+crons = ["17 2,14 * * *"]

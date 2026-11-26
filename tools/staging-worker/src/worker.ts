@@ -31,8 +31,14 @@
  * is the WORKER-SAFE entry (`dist/worker.js`), never the barrel — the barrel
  * exports the Postgres adapter, which drags `pg` into an edge bundle.
  */
-import { PublicCatalogue, publishCatalogue } from '../../../services/catalog/dist/worker.js';
+import {
+  PublicCatalogue,
+  publishCatalogue,
+  recentCycles,
+  runSyncCycle,
+} from '../../../services/catalog/dist/worker.js';
 import type { D1Like } from '../../../services/catalog/dist/worker.js';
+import { FIXTURE_MERCHANTS, buildFixtureFeed, zipOf } from './fixture-feed';
 
 interface Env {
   readonly CATALOG: D1Database;
@@ -129,6 +135,46 @@ export default {
       return json(page);
     }
 
+    /*
+     * THE SYNTHETIC PROVIDER.
+     *
+     * Served here so the scheduled cycle retrieves over REAL https and
+     * exercises the SSRF guard, the conditional-request path, the size
+     * limits and the ZIP reader — rather than the `fixture` transport, which
+     * reads a local file and is correctly refused in production.
+     *
+     * An ETag derived from the hour, so an unchanged feed answers 304 and the
+     * cycle costs nothing. That is the behaviour the design depends on, and
+     * simulating it would prove nothing.
+     */
+    if (url.pathname.startsWith('/fixture/')) {
+      const key = url.pathname.slice('/fixture/'.length).replace(/\.zip$/, '');
+      const merchant = FIXTURE_MERCHANTS[key];
+      if (merchant === undefined) return json({ error: 'no such fixture' }, 404);
+
+      const now = new Date();
+      const text = buildFixtureFeed(merchant, now);
+      const etag = `"fixture-${key}-${text.length}-${new Date(now).toISOString().slice(0, 13)}"`;
+      if (request.headers.get('if-none-match') === etag) {
+        return new Response(null, { status: 304, headers: { ...SECURITY_HEADERS, etag } });
+      }
+      return new Response(zipOf(text), {
+        headers: {
+          ...SECURITY_HEADERS,
+          'content-type': 'application/zip',
+          'content-disposition': `attachment; filename="${key}-fixture.zip"`,
+          etag,
+        },
+      });
+    }
+
+    if (url.pathname === '/api/cycles') {
+      // The question a scheduler must be able to answer about itself. Refused
+      // cycles are in here too, which is the whole point: a log that only
+      // records successes cannot distinguish "paused" from "never ran".
+      return json({ cycles: await recentCycles(db, 20) });
+    }
+
     if (url.pathname === '/api/categories') {
       return json({ categories: await catalogue.categories() });
     }
@@ -157,15 +203,32 @@ export default {
       if (!env.DEMO_TOKEN || !presented || !timingSafeEqual(presented, env.DEMO_TOKEN)) {
         return json({ error: 'forbidden' }, 403);
       }
-      const result = await publishCatalogue(db, { now: new Date(), decidedBy: 'staging:demo' });
+      // `publish=only` republishes without retrieving, which is what a
+      // demonstration of the pointer move needs. Otherwise it runs the SAME
+      // cycle the cron runs, so a manual trigger exercises the scheduled path
+      // rather than a parallel one that could drift from it.
+      if (url.searchParams.get('publish') === 'only') {
+        const result = await publishCatalogue(db, { now: new Date(), decidedBy: 'staging:demo' });
+        return json({
+          ran: result.ran,
+          skipped: result.skipped,
+          skippedDetail: result.skippedDetail,
+          counts: result.counts,
+          generation: result.generation,
+          outcome: result.outcome,
+          rejected: result.rejected,
+        });
+      }
+      const cycle = await runSyncCycle(db, { now: new Date(), trigger: 'manual' });
       return json({
-        ran: result.ran,
-        skipped: result.skipped,
-        skippedDetail: result.skippedDetail,
-        counts: result.counts,
-        generation: result.generation,
-        outcome: result.outcome,
-        rejected: result.rejected,
+        id: cycle.id,
+        outcome: cycle.outcome,
+        detail: cycle.detail,
+        budget: cycle.budget,
+        sources: cycle.retrieval?.outcomes ?? [],
+        publication: cycle.publication?.outcome ?? null,
+        rejected: cycle.publication?.rejected ?? null,
+        cost: cycle.cost,
       });
     }
 
@@ -190,6 +253,91 @@ export default {
     }
 
     return json({ error: 'not found' }, 404);
+  },
+  /*
+   * THE CRON HANDLER.
+   *
+   * Everything it needs was already built and tested; what was missing was
+   * anything that called it on a timer. A retrieval loop nothing invokes is
+   * not automation, however well it is tested.
+   *
+   * `waitUntil` is NOT used to detach the work. A scheduled Worker is allowed
+   * to run to completion, and detaching would mean the cron reports success
+   * the instant it starts — which is exactly the lie a log is supposed to
+   * prevent.
+   */
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    const db = env.CATALOG as unknown as D1Like;
+
+    /*
+     * THE HANDLER RECORDS ITS OWN FAILURE.
+     *
+     * `runSyncCycle` writes a row for every outcome it reaches, including the
+     * refusals — but it cannot write one for a throw that happens before it
+     * starts, or for a binding that is not there. That failure is INVISIBLE:
+     * the cycle log stays empty, which reads exactly like a cron that never
+     * fired. Found by deploying a once-a-minute schedule and watching an
+     * empty log for five minutes with no way to tell which it was.
+     */
+    let result;
+    try {
+      result = await runSyncCycle(db, {
+        now: new Date(event.scheduledTime),
+        trigger: 'scheduled',
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      console.log(
+        JSON.stringify({
+          at: new Date(event.scheduledTime).toISOString(),
+          cron: event.cron,
+          outcome: 'failed',
+          detail,
+        }),
+      );
+      // Best effort: if the database is the thing that is broken, this fails
+      // too, and the console line above is the record.
+      try {
+        await db
+          .prepare(
+            `INSERT INTO catalog_sync_cycle
+               (id, started_at, finished_at, trigger, outcome, detail)
+             VALUES (?,?,?,'scheduled','failed',?)
+             ON CONFLICT (id) DO UPDATE SET detail = excluded.detail`,
+          )
+          .bind(
+            `cycle-${new Date(event.scheduledTime).toISOString()}-scheduled`,
+            new Date(event.scheduledTime).toISOString(),
+            new Date().toISOString(),
+            detail.slice(0, 500),
+          )
+          .run();
+      } catch {
+        // Nothing further to do, and swallowing this is deliberate: throwing
+        // from a cron handler buys nothing a log line has not already given.
+      }
+      return;
+    }
+
+    // One structured line per cycle. Carries no credential and no feed
+    // content — just what happened and what it cost.
+    console.log(
+      JSON.stringify({
+        at: new Date(event.scheduledTime).toISOString(),
+        cron: event.cron,
+        outcome: result.outcome,
+        detail: result.detail,
+        sources: result.retrieval?.outcomes.map((o) => ({
+          id: o.sourceId,
+          outcome: o.outcome,
+          reason: o.reason,
+        })),
+        generation: result.publication?.outcome?.generation ?? null,
+        published: result.publication?.counts.eligible ?? null,
+        rowsWritten: result.cost.rowsWritten,
+      }),
+    );
+    void ctx;
   },
 } satisfies ExportedHandler<Env>;
 
