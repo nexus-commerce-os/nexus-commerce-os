@@ -81,9 +81,15 @@ export async function d1Schema() {
   const { readFile } = await import('node:fs/promises');
   const { fileURLToPath } = await import('node:url');
   const { join } = await import('node:path');
+  const { readdir } = await import('node:fs/promises');
   const dir = fileURLToPath(new URL('../../migrations-d1/', import.meta.url));
+  // The DIRECTORY is the list, not a hardcoded array. A hardcoded one drifts
+  // the moment a 0003 is added, which is the exact failure this function
+  // exists to prevent.
+  const names = (await readdir(dir)).filter((n) => n.endsWith('.sql')).sort();
+  if (names.length === 0) throw new Error(`no migrations found in ${dir}`);
   const parts = [];
-  for (const name of ['0001_catalog_init.sql', '0002_publication_and_admin.sql']) {
+  for (const name of names) {
     parts.push(await readFile(join(dir, name), 'utf8'));
   }
   // Reading the real migrations rather than a copy is the point: a schema that

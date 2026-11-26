@@ -133,8 +133,79 @@ The first is the one worth keeping: an affiliate link for an unapproved
 merchant is now impossible to store, so the rule cannot be forgotten at a call
 site.
 
+## Transport behaviour, measured against a live database
+
+The contract suite runs the adapter on `node:sqlite`, which is fast and free
+but cannot speak for the platform. Its own header lists three things it does
+not know. `services/catalog/test/d1-remote.test.mjs` answers them by asking
+Cloudflare: it creates a throwaway database, applies the real migrations, runs
+the real adapter, and deletes the database afterwards. Every line below was
+measured on 26 Nov 2026 against `v3-prod` in APAC/SIN before it was written
+down, and each is now an assertion rather than a note.
+
+| asked | what D1 actually did |
+|---|---|
+| 100 bound parameters | accepted |
+| 101 bound parameters | **HTTP 400**, `code 7500`, `too many SQL variables` |
+| bound parameters with two statements in one request | **HTTP 400**, `code 7400`, `params with multiple statements is not supported` |
+| two statements in one request, second violates a `UNIQUE` | **both rolled back** — the first did not survive |
+| offer referencing a run that does not exist | **refused** — `FOREIGN KEY constraint failed` |
+| `PRAGMA foreign_keys` | `1`, and setting it changes nothing |
+| second row with the same `(merchant_id, merchant_offer_id)` | **refused** — `UNIQUE constraint failed` |
+| second `applied` run with the same content hash | **refused** — the partial unique index is the arbiter |
+| `ON CONFLICT (merchant_id, merchant_offer_id)` upsert | lands on the existing row |
+
+Two of these change the code rather than merely confirming it.
+
+**`MAX_BOUND_PARAMS = 100` is the platform's number.** `d1-client.ts` chunks
+every multi-row write by parameter count because of the 400 above, not because
+100 seemed prudent. A 27-column offer therefore fits three rows per statement.
+
+**The HTTP API cannot carry bindings alongside multiple statements**, so the
+remote harness's `batch()` is a sequence of separate requests and is *not*
+atomic. That makes it strictly weaker than a Worker's D1 binding, which is the
+only reason it is acceptable as a test transport: a contract that holds under a
+non-atomic batch also holds under an atomic one. A harness that invented
+atomicity the real binding lacked would be the dangerous direction.
+
+### The write cost of an import, which is what the daily budget is made of
+
+`rows_written` counts index entries, not just table rows — an offer row with
+four applicable indexes reports 5. Measured end to end, through the real
+adapter:
+
+| cycle | `rows_written` |
+|---|---|
+| 25 new offers (first import) | **282** (~11.3 per offer: offer row + indexes, price-history row + index, ledger) |
+| the identical feed again | **6** — refused on the content hash before any catalogue write |
+| one price change + one new offer | **147** |
+
+The free tier allows 100,000 writes per day. At ~11 writes per new offer, a
+full first import of a 225-offer merchant feed costs roughly 2,500 — about 2.5%
+of a day's budget. The number that matters for growth is the second row: an
+unchanged feed costs 6 writes regardless of catalogue size, because the content
+hash is checked first. Change detection is therefore the quota strategy, not an
+optimisation on top of one.
+
+### What an interrupted import leaves behind
+
+Measured, not reasoned about: when the flush fails part-way, the statements
+already sent **stay committed**. D1 gave `applyRun` no transaction spanning
+batches, so nothing undoes them. The run is left un-`applied`, and re-running
+the same feed converges on the full catalogue with no duplicates — every
+statement is an identity-keyed upsert and price history carries a
+once-per-run unique index.
+
+This is safe only because nothing public reads these tables. Publication is a
+separate pointer move, so a half-written import is **staged, not published**.
+
 ## Not verified
 
 - maximum rows returned per query (not listed in the docs);
 - whether `PRAGMA defer_foreign_keys` applies inside `batch()`;
-- migration file-count and size limits.
+- migration file-count and size limits;
+- **real `batch()` atomicity.** The HTTP API cannot express it, so it is
+  unproven by the remote suite. It is exercised from inside a Worker as part
+  of the staging demonstration; until then, treat the atomicity of a single
+  `batch()` as Cloudflare's documented claim rather than as something this
+  repository has measured.
