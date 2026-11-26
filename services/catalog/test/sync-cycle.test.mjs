@@ -532,6 +532,147 @@ test('retention does not run after a REFUSED publication', async () => {
   assert.equal(result.pruned, null);
 });
 
+test('A FIXTURE SOURCE CANNOT RUN IN PRODUCTION', async () => {
+  /*
+   * The transport check is not enough. `transport: 'fixture'` reads a local
+   * file and is already refused outside tests — but a fixture served over
+   * https is an ordinary https source, and copying that row into the
+   * production database would publish invented products on the live site.
+   *
+   * So the guard reads the environment from the DATABASE, not from a deploy
+   * variable: a row copied into production lands next to a column that says
+   * `production`.
+   */
+  const { db, feeds } = await world();
+  // The merchant first: catalog_feed_source.merchant_id is a real foreign key,
+  // and D1 enforces it.
+  await db
+    .prepare(
+      "INSERT INTO catalog_merchant (id, name, network, relationship) VALUES ('fixture-demo', 'Demo (FIXTURE)', 'fixture', 'approved')",
+    )
+    .run();
+  await feeds.upsert({
+    id: 'fixture-demo-feed',
+    merchantId: 'fixture-demo',
+    transport: 'https',
+    url: 'https://example.invalid/demo.zip',
+    format: 'tsv',
+    schedule: { everyMinutes: 60 },
+    credentialRef: null,
+    auth: { kind: 'none' },
+    enabled: true,
+    paused: false,
+    pausedReason: null,
+    pausedAt: null,
+    lastSuccessAt: null,
+    lastAttemptAt: null,
+    validators: {},
+  });
+
+  // A genuine source to survive the filter. `world()` builds src-0 with
+  // transport 'fixture', which is itself caught — the first version of this
+  // test asserted src-0 would remain and got an empty list, correctly.
+  await feeds.upsert({
+    id: 'northwind-live-feed',
+    merchantId: MERCHANT,
+    transport: 'https',
+    url: 'https://northwind.example/feed.zip',
+    format: 'tsv',
+    schedule: { everyMinutes: 60 },
+    credentialRef: null,
+    auth: { kind: 'none' },
+    enabled: true,
+    paused: false,
+    pausedReason: null,
+    pausedAt: null,
+    lastSuccessAt: null,
+    lastAttemptAt: null,
+    validators: {},
+  });
+
+  assert.equal((await feeds.runnable('staging')).length, 3, 'staging runs all three');
+  const inProduction = await feeds.runnable('production');
+  assert.deepEqual(
+    inProduction.map((source) => source.id),
+    ['northwind-live-feed'],
+    'production keeps only the real source: one fixture by id, one by transport',
+  );
+  assert.equal((await feeds.fixtureSources()).length, 2);
+});
+
+test('an unrecognised environment is read as production', async () => {
+  /*
+   * The schema's CHECK already refuses a value outside the three, so this
+   * cannot be written through SQL — the first version of this test tried and
+   * the constraint stopped it, which is the better outcome.
+   *
+   * The code branch still earns its place as defence in depth: a database
+   * restored from before the constraint, or a second reader, must not turn a
+   * typo into permission to run fixtures on a live site. So it is exercised
+   * through a reader that returns the bad row directly.
+   */
+  const { CatalogD1 } = await import('../dist/index.js');
+  const bogus = {
+    prepare: () => ({
+      bind: () => bogus.prepare(),
+      first: async () => ({
+        paused: 0,
+        paused_reason: null,
+        auto_publish: 1,
+        environment: 'staigng',
+      }),
+      all: async () => ({ results: [] }),
+      run: async () => ({ meta: {} }),
+    }),
+    batch: async () => [],
+    exec: async () => ({}),
+  };
+  const config = await new CatalogD1(bogus).automationConfig();
+  assert.equal(config.environment, 'production');
+  assert.equal(config.paused, false, 'and the rest of the row is still read normally');
+});
+
+test('a production cycle says out loud that it withheld fixtures', async () => {
+  // An operator who configured a fixture source in production and saw nothing
+  // happen would reasonably conclude the scheduler was broken.
+  const { db, feeds } = await world();
+  await db
+    .prepare("UPDATE catalog_automation_config SET environment = 'production' WHERE id = 1")
+    .run();
+  // The merchant first: catalog_feed_source.merchant_id is a real foreign key,
+  // and D1 enforces it.
+  await db
+    .prepare(
+      "INSERT INTO catalog_merchant (id, name, network, relationship) VALUES ('fixture-demo', 'Demo (FIXTURE)', 'fixture', 'approved')",
+    )
+    .run();
+  await feeds.upsert({
+    id: 'fixture-demo-feed',
+    merchantId: 'fixture-demo',
+    transport: 'https',
+    url: 'https://example.invalid/demo.zip',
+    format: 'tsv',
+    schedule: { everyMinutes: 60 },
+    credentialRef: null,
+    auth: { kind: 'none' },
+    enabled: true,
+    paused: false,
+    pausedReason: null,
+    pausedAt: null,
+    lastSuccessAt: null,
+    lastAttemptAt: null,
+    validators: {},
+  });
+
+  const result = await runSyncCycle(db, {
+    now: NOW,
+    trigger: 'scheduled',
+    scheduler: { retrieve: fixtureRetrieve({ 'src-0': archiveOf(3) }) },
+  });
+  assert.match(result.detail ?? '', /fixture source\(s\) were refused/);
+  assert.match(result.detail ?? '', /environment=production/);
+});
+
 test('FREE_TIER is the documented allowance, not an invented one', () => {
   assert.equal(FREE_TIER.dailyWrites, 100_000);
   assert.ok(FREE_TIER.reserve > 0 && FREE_TIER.reserve < FREE_TIER.dailyWrites);

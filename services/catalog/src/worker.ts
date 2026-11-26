@@ -86,7 +86,13 @@ export {
   type PublishCatalogueOptions,
   type PublishCatalogueResult,
 } from './automation/publish-catalogue';
-export { CatalogD1, productIdOf, type AutomationConfig } from './automation/catalog-store';
+export {
+  CatalogD1,
+  productIdOf,
+  type AutomationConfig,
+  type CatalogEnvironment,
+} from './automation/catalog-store';
+export { catalogueFingerprint } from './publication/fingerprint';
 
 // Scheduled synchronisation: the cron handler's entry point.
 export {
@@ -97,7 +103,11 @@ export {
   type CycleTrigger,
   type SyncCycleResult,
 } from './automation/sync-cycle';
-export { D1FeedSourceStore, type FeedSourceRow } from './automation/feed-source-store';
+export {
+  D1FeedSourceStore,
+  isFixtureSource,
+  type FeedSourceRow,
+} from './automation/feed-source-store';
 export {
   CycleMeter,
   FREE_TIER,

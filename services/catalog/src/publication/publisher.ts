@@ -142,6 +142,30 @@ export class GenerationPublisher {
    * fails rather than racing. A lock held in memory would not survive the
    * process that took it.
    */
+  /** The fingerprint of the generation the public is being served, if any. */
+  async liveFingerprint(): Promise<string | null> {
+    const live = await this.liveGeneration();
+    if (live === null) return null;
+    const row = await this.db
+      .prepare(
+        'SELECT catalogue_fingerprint FROM catalog_publication_generation WHERE generation = ?',
+      )
+      .bind(live)
+      .first<{ catalogue_fingerprint: string | null }>();
+    const value = row?.catalogue_fingerprint;
+    return value === null || value === undefined ? null : String(value);
+  }
+
+  /** Records what this generation's catalogue hashed to. */
+  async setFingerprint(generation: number, fingerprint: string): Promise<void> {
+    await this.db
+      .prepare(
+        'UPDATE catalog_publication_generation SET catalogue_fingerprint = ? WHERE generation = ?',
+      )
+      .bind(fingerprint, generation)
+      .run();
+  }
+
   async beginGeneration(options: {
     at: string;
     sourceRunId?: string | null;

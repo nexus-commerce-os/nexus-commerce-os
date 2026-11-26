@@ -159,9 +159,24 @@ test('CYCLE 2: an unchanged feed publishes nothing new and writes no published r
   assert.equal(again.run.status, 'skipped_duplicate', 'the import refuses on the content hash');
 
   const second = await publishCatalogue(db, { now: new Date('2026-11-26T13:05:00.000Z') });
-  assert.equal(second.outcome.unchanged, 12);
-  assert.equal(second.outcome.opened, 0);
-  assert.equal(second.outcome.closed, 0);
+  /*
+   * NO GENERATION AT ALL now, which is stronger than the old assertion that a
+   * generation opened and closed nothing. Staging the identical candidates
+   * cost about 300 row writes a cycle, measured over twelve consecutive
+   * scheduled cycles on staging.
+   *
+   * The checks still ran: the fingerprint is taken AFTER the eligibility
+   * pipeline, so freshness expiry, merchant approval and the rules version are
+   * all inputs to it.
+   */
+  assert.equal(second.skipped, 'catalogue_unchanged');
+  assert.equal(second.outcome, null, 'no generation was created');
+  assert.ok(second.fingerprint, 'and the digest it compared is reported');
+
+  const generations = await db
+    .prepare('SELECT COUNT(*) AS n FROM catalog_publication_generation')
+    .first();
+  assert.equal(generations.n, 1, 'still exactly one generation');
 
   const after = await db.prepare('SELECT COUNT(*) AS n FROM catalog_published_product').first();
   assert.equal(after.n, before.n, 'not one published row was rewritten');

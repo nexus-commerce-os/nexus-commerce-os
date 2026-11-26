@@ -17,6 +17,7 @@
  * always asks: was this off on purpose, and who turned it off?
  */
 import type { FeedSource } from '../retrieval/feed-source';
+import type { CatalogEnvironment } from './catalog-store';
 import type { FeedValidators } from '../retrieval/retrieve';
 import type { SourceState, SourceStateStore } from '../retrieval/scheduler';
 import type { D1Like, D1PreparedStatement } from '../store/d1/d1-client';
@@ -101,7 +102,9 @@ export class D1FeedSourceStore implements SourceStateStore {
    * retrieval, no credential lookup and no quota — and so the filter cannot be
    * forgotten by a caller.
    */
-  async runnable(): Promise<readonly FeedSourceRow[]> {
+  async runnable(
+    environment: CatalogEnvironment = 'development',
+  ): Promise<readonly FeedSourceRow[]> {
     const out = await this.db
       .prepare(
         `SELECT * FROM catalog_feed_source
@@ -109,7 +112,24 @@ export class D1FeedSourceStore implements SourceStateStore {
           ORDER BY merchant_id, id`,
       )
       .all<Record<string, unknown>>();
-    return out.results.map(toRow);
+    const rows = out.results.map(toRow);
+    return environment === 'production' ? rows.filter((row) => !isFixtureSource(row)) : rows;
+  }
+
+  /**
+   * Fixture sources, which must never run in production.
+   *
+   * THE TRANSPORT IS NOT ENOUGH. `transport: 'fixture'` is already refused
+   * outside tests — it reads a local file — but a fixture served over https is
+   * an ordinary https source, and copying that row into the production
+   * database would publish invented products on the live site.
+   *
+   * So the id and the merchant id are checked too. The convention that a
+   * fixture announces itself in its own id is already enforced when a source
+   * is validated; this is the place it is RELIED ON.
+   */
+  async fixtureSources(): Promise<readonly FeedSourceRow[]> {
+    return (await this.all()).filter(isFixtureSource);
   }
 
   /* ───────────────── the SourceStateStore contract ───────────────── */
@@ -263,4 +283,17 @@ function authDetailOf(auth: FeedSource['auth']): string | null {
   if (auth.kind === 'basic') return auth.username;
   if (auth.kind === 'query') return auth.parameter;
   return null;
+}
+
+/** Whether a source is a fixture, by transport OR by naming convention. */
+export function isFixtureSource(source: {
+  id: string;
+  merchantId: string;
+  transport: string;
+}): boolean {
+  return (
+    source.transport === 'fixture' ||
+    source.id.startsWith('fixture-') ||
+    source.merchantId.startsWith('fixture-')
+  );
 }

@@ -12,10 +12,19 @@ import type { StoredOffer } from '../store/offer-store';
 import type { Category } from '../product/classify';
 import type { ProductDraft } from '../product/build';
 
+export type CatalogEnvironment = 'development' | 'staging' | 'production';
+
 export interface AutomationConfig {
   readonly paused: boolean;
   readonly pausedReason: string | null;
   readonly autoPublish: boolean;
+  /**
+   * Which database this is, according to the database.
+   *
+   * Deliberately not a deploy variable: it travels with the data, so a row
+   * copied into production lands next to a column that says `production`.
+   */
+  readonly environment: CatalogEnvironment;
 }
 
 export interface MerchantRow {
@@ -36,7 +45,7 @@ export class CatalogD1 {
   async automationConfig(): Promise<AutomationConfig> {
     const row = await this.db
       .prepare(
-        'SELECT paused, paused_reason, auto_publish FROM catalog_automation_config WHERE id = 1',
+        'SELECT paused, paused_reason, auto_publish, environment FROM catalog_automation_config WHERE id = 1',
       )
       .first<Record<string, unknown>>();
     if (!row) {
@@ -50,12 +59,20 @@ export class CatalogD1 {
         paused: true,
         pausedReason: 'catalog_automation_config has no row 1; the schema is not initialised',
         autoPublish: false,
+        // The strictest reading of an unknown database, for the same reason
+        // the pause above is true: nobody has said this is safe.
+        environment: 'production',
       };
     }
+    const environment = nullable(row.environment);
     return {
       paused: fromInt(row.paused),
       pausedReason: nullable(row.paused_reason),
       autoPublish: fromInt(row.auto_publish),
+      // An unrecognised value is treated as production. A typo in a config
+      // column must not be the thing that lets fixtures onto a live site.
+      environment:
+        environment === 'development' || environment === 'staging' ? environment : 'production',
     };
   }
 
