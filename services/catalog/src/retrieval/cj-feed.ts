@@ -384,7 +384,19 @@ export async function retrieveCjFeed(
         },
         body: JSON.stringify({ query }),
         signal: controller.signal,
-        redirect: 'error',
+        /*
+         * `manual`, NOT `error`. Workers refuses `redirect: "error"` outright —
+         * "won't be implemented since it does not make sense at the edge" — and
+         * the request throws before it is sent. Measured in production: 25
+         * consecutive retrieval failures, every one of them a TypeError from
+         * the runtime rather than anything CJ said.
+         *
+         * The intent is unchanged and is enforced below instead: a redirect is
+         * REFUSED, never followed. This request carries a bearer token in a
+         * header, and following a redirect would hand that token to whatever
+         * host the response named.
+         */
+        redirect: 'manual',
       });
     } finally {
       clearTimeout(timer);
@@ -400,6 +412,15 @@ export async function retrieveCjFeed(
       status: 'failed',
       reason: `the feed summary request failed: ${message(error)}`,
       retryable: true,
+      fetchedAt: at(),
+      attempts: 1,
+    };
+  }
+  if (isRedirect(summary.status)) {
+    return {
+      status: 'failed',
+      reason: `CJ redirected the feed summary (${summary.status}); a token is never followed elsewhere`,
+      retryable: false,
       fetchedAt: at(),
       attempts: 1,
     };
@@ -470,6 +491,15 @@ export async function retrieveCjFeed(
       status: 'failed',
       reason: `the catalogue request failed: ${message(error)}`,
       retryable: true,
+      fetchedAt: at(),
+      attempts: 2,
+    };
+  }
+  if (isRedirect(catalogue.status)) {
+    return {
+      status: 'failed',
+      reason: `CJ redirected the catalogue request (${catalogue.status}); a token is never followed elsewhere`,
+      retryable: false,
       fetchedAt: at(),
       attempts: 2,
     };
@@ -590,4 +620,9 @@ async function readWithLimit(response: Response, maxBytes: number): Promise<stri
 
 function message(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
+/** A redirect this client refuses rather than follows. */
+function isRedirect(status: number): boolean {
+  return status >= 300 && status < 400;
 }

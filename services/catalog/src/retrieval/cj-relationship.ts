@@ -100,7 +100,10 @@ export async function verifyAdvertiserRelationship(
     response = await doFetch(url.toString(), {
       headers: { authorization: `Bearer ${options.token}`, accept: 'application/xml' },
       signal: controller.signal,
-      redirect: 'error',
+      // `manual`, not `error`: Workers does not implement `error` and throws
+      // before sending. A redirect is still refused below rather than
+      // followed — this request carries a bearer token.
+      redirect: 'manual',
     });
   } catch (error) {
     return {
@@ -113,6 +116,14 @@ export async function verifyAdvertiserRelationship(
     clearTimeout(timer);
   }
 
+  if (response.status >= 300 && response.status < 400) {
+    return {
+      ok: false,
+      reason: `CJ redirected the advertiser lookup (${response.status}); a token is never followed elsewhere`,
+      advertiser: null,
+      checkedAt,
+    };
+  }
   if (!response.ok) {
     return {
       ok: false,

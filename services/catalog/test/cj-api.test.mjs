@@ -573,3 +573,49 @@ test('BUT ANYTHING CLAIMING TO BE AN ARCHIVE IS STILL READ AS ONE, and still fai
   const blank = Buffer.from(['   ', ''].join(String.fromCharCode(10)), 'utf8');
   assert.throws(() => readDelimitedPayload(blank), /no-delimited-member/);
 });
+
+/* ───────────── the runtime, not the library, decides this ───────────── */
+
+test('THE REQUEST USES A REDIRECT MODE WORKERS ACTUALLY IMPLEMENTS', async () => {
+  /*
+   * `redirect: "error"` throws in Workers before the request is sent —
+   * "won't be implemented since it does not make sense at the edge". It cost
+   * 25 consecutive production retrieval failures, every one a TypeError from
+   * the runtime rather than anything CJ said. Node's fetch accepts it, so no
+   * test that ran here would have caught it; this one asserts the value.
+   */
+  const stub = stubFetch([{ body: summaryBody() }, { body: catalogueBody([product()]) }]);
+  await retrieveCjFeed(parseCjFeedConfig(DETAIL), { token: 'pat', fetchImpl: stub.fetch });
+  for (const call of stub.calls()) {
+    assert.equal(call.init.redirect, 'manual', 'only follow or manual are implemented at the edge');
+  }
+});
+
+test('and a redirect is REFUSED, because the request carries a token', async () => {
+  const redirected = () =>
+    new Response('', { status: 302, headers: { location: 'https://elsewhere.invalid/' } });
+
+  const onSummary = await retrieveCjFeed(parseCjFeedConfig(DETAIL), {
+    token: 'pat',
+    fetchImpl: stubFetch([redirected]).fetch,
+  });
+  assert.equal(onSummary.status, 'failed');
+  assert.match(onSummary.reason, /redirected the feed summary \(302\)/);
+  assert.equal(onSummary.retryable, false);
+
+  const onCatalogue = await retrieveCjFeed(parseCjFeedConfig(DETAIL), {
+    token: 'pat',
+    fetchImpl: stubFetch([{ body: summaryBody() }, redirected]).fetch,
+  });
+  assert.equal(onCatalogue.status, 'failed');
+  assert.match(onCatalogue.reason, /redirected the catalogue request \(302\)/);
+
+  const lookup = await verifyAdvertiserRelationship({
+    token: 'pat',
+    requestorCid: '8038031',
+    advertiserId: '7382109',
+    fetchImpl: async () => redirected(),
+  });
+  assert.equal(lookup.ok, false);
+  assert.match(lookup.reason, /redirected the advertiser lookup \(302\)/);
+});
