@@ -345,3 +345,21 @@ export {
   type BudgetUsage,
   type BudgetVerdict,
 } from './automation/quota';
+
+export {
+  CJ_QUERY_URL,
+  CjConfigError,
+  catalogQuery,
+  feedSummaryQuery,
+  parseCjFeedConfig,
+  renderShoppingFeed,
+  retrieveCjFeed,
+  type CjFeedConfig,
+  type CjProduct,
+} from './retrieval/cj-feed';
+export {
+  CJ_ADVERTISER_LOOKUP_URL,
+  verifyAdvertiserRelationship,
+  type CjAdvertiser,
+  type RelationshipVerdict,
+} from './retrieval/cj-relationship';

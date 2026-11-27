@@ -38,6 +38,7 @@ import {
   type FeedSource,
 } from './feed-source';
 import { assertFetchableUrl, isPublicAddress, redactUrl } from './url-guard';
+import { parseCjFeedConfig, retrieveCjFeed } from './cj-feed';
 
 /** What the caller remembers between runs so the next one can be conditional. */
 export interface FeedValidators {
@@ -329,6 +330,56 @@ export async function retrieveFeed(
     }
   }
 
+  /*
+   * CJ'S PUBLISHER API IS A TRANSPORT, NOT A URL.
+   *
+   * It takes a POST with a GraphQL body and answers with JSON, so the
+   * conditional-GET machinery below — ETag, Last-Modified, 304 — has nothing
+   * to work with. `retrieveCjFeed` does the equivalent with the feed's own
+   * `lastUpdated` and returns the same `RetrievalOutcome`, so everything
+   * downstream of this function is unchanged.
+   *
+   * Dispatched on the DECLARED provider rather than on the hostname: a source
+   * that means to talk to CJ says so in its configuration, and a URL that
+   * merely happens to point at CJ does not get a different request shape.
+   */
+  if (source.transport === 'api' && declaresProvider(source.providerDetail, 'cj')) {
+    let config;
+    try {
+      config = parseCjFeedConfig(source.providerDetail ?? null);
+    } catch (error) {
+      return {
+        status: 'failed',
+        reason: `cj source misconfigured: ${error instanceof Error ? error.message : String(error)}`,
+        retryable: false,
+        fetchedAt: now().toISOString(),
+        attempts: 0,
+      };
+    }
+
+    let token: string;
+    try {
+      token = await resolveToken(source, options.resolveCredential);
+    } catch (error) {
+      return {
+        status: 'failed',
+        reason: error instanceof Error ? error.message : String(error),
+        retryable: false,
+        fetchedAt: now().toISOString(),
+        attempts: 0,
+      };
+    }
+
+    return retrieveCjFeed(config, {
+      token,
+      previous,
+      now,
+      ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+      maxBytes: limits.maxDownloadBytes,
+    });
+  }
+
   if (!isImplemented(source.transport)) {
     const error = new UnsupportedTransportError(source.transport);
     return {
@@ -415,4 +466,46 @@ export async function retrieveFeed(
     fetchedAt: now().toISOString(),
     attempts,
   };
+}
+
+/**
+ * Does this source's configuration name a provider API?
+ *
+ * Cheap and total: a detail that is absent, not JSON, or names something else
+ * simply is not this provider, and the source falls through to the generic
+ * path where it fails for its own reasons.
+ */
+function declaresProvider(detail: string | undefined, provider: string): boolean {
+  if (detail === undefined || detail.trim() === '') return false;
+  try {
+    const parsed: unknown = JSON.parse(detail);
+    return (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      (parsed as Record<string, unknown>).provider === provider
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** The bearer token for an API source, with every absence named. */
+async function resolveToken(
+  source: FeedSource,
+  resolve: CredentialResolver | undefined,
+): Promise<string> {
+  if (source.credentialRef === null || source.credentialRef === undefined) {
+    throw new Error(`${source.id}: an api source needs a credentialRef naming its token`);
+  }
+  if (resolve === undefined) {
+    throw new Error(`${source.id}: no credential resolver supplied`);
+  }
+  const token = await resolve(source.credentialRef);
+  if (token === undefined || token === '') {
+    throw new Error(
+      `${source.id}: credential "${source.credentialRef}" is not set. ` +
+        'Set it as a Worker secret; it is never read from the database.',
+    );
+  }
+  return token;
 }

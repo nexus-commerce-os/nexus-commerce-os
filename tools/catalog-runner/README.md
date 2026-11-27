@@ -58,6 +58,48 @@ it records the source-terms audit per DOMAIN (`verdict` one of `eligible`,
 `quarantined`, `unread`) and governs the hand-transcribed catalogue, not an
 authorised merchant feed.
 
+### CJ: the API, not the emailed ZIP
+
+CJ delivers the Soundcore subscription as a ZIP attached to an email from
+`datatransfer@cj.com`. It also documents a publisher-facing alternative that
+needs no mailbox at all — quoting the Product Feed API reference: *"This
+feature allows publishers to query the product feed once and receive the
+products from that feed as a streaming HTTP response."*
+
+That is what `transport = 'api'` uses here. One header,
+`Authorization: Bearer <personal access token>`, and no attachment to open.
+
+```sql
+INSERT INTO catalog_feed_source
+  (id, merchant_id, transport, url, format, every_minutes,
+   min_interval_minutes, credential_ref, auth_kind, auth_detail, enabled)
+VALUES ('src-cj-soundcore', 'cj-soundcore', 'api',
+        'https://ads.api.cj.com/query', 'tsv', 720, 60,
+        'CJ_PERSONAL_ACCESS_TOKEN', 'bearer',
+        '{"provider":"cj","companyId":"<your publisher CID>","adId":"<the feed adId>","advertiserId":"<advertiser CID>"}',
+        0);
+```
+
+Find the `adId` with the summary query, which is also what the transport uses
+each cycle to decide whether anything moved:
+
+```
+curl https://ads.api.cj.com/query -XPOST   -H "Authorization: Bearer <token>"   -d '{"query":"{ productFeeds(companyId: \"<CID>\") { resultList { adId feedName advertiserName productCount lastUpdated } } }"}'
+```
+
+**`pid` is left out on purpose.** With it, the transport asks for
+`linkCode { clickUrl }` and the tracking link is ingested; without it, only
+the product's own landing page is. Add it once the relationship is verified —
+there is no reason to carry a tracking link for a merchant that cannot be
+published yet.
+
+**Verify the relationship separately, and do not take delivery as proof.** A
+subscription created while a relationship existed keeps arriving afterwards.
+`verifyAdvertiserRelationship()` asks CJ's Advertiser Lookup API, which
+returns `relationship-status` and `account-status`; only `joined` **and**
+`active` authorises setting `catalog_merchant.relationship = 'approved'`.
+Record its `evidence` string as the reason.
+
 ### The credential never goes in the database
 
 `credential_ref` holds the NAME of a secret. The value is a Worker secret:
