@@ -233,6 +233,33 @@ function isDelimitedName(name: string): boolean {
  * which file is the product catalogue is not a decision code should take.
  */
 export function readDelimitedPayload(archive: Buffer): DelimitedPayload {
+  /*
+   * NOT EVERY FEED ARRIVES IN A ZIP.
+   *
+   * This function was written for the emailed export, which always is one,
+   * and it therefore refused anything else with "not-a-zip". That is wrong
+   * for a feed fetched as plain delimited text over https — including CJ's
+   * own API transport, which renders the products it receives into exactly
+   * the tab-separated file the ZIP would have contained and has nothing to
+   * compress it into.
+   *
+   * The test is the ZIP MAGIC, not a guess about the content. A real archive
+   * begins `PK`; a truncated or corrupt one still does, so it keeps
+   * going down the archive path and still fails loudly there. Only bytes that
+   * were never claiming to be an archive are read as the payload itself,
+   * which is what they are.
+   */
+  if (!looksLikeZip(archive)) {
+    let plain = archive.toString('utf8');
+    if (plain.charCodeAt(0) === 0xfeff) plain = plain.slice(1);
+    if (plain.trim() === '') throw new ArchiveError('no-delimited-member');
+    return {
+      memberName: '(unarchived)',
+      text: plain,
+      sha256: createHash('sha256').update(plain, 'utf8').digest('hex'),
+    };
+  }
+
   const delimited = readZipMembers(archive).filter((m) => isDelimitedName(m.name));
   if (delimited.length === 0) throw new ArchiveError('no-delimited-member');
   if (delimited.length > 1) {
@@ -248,4 +275,15 @@ export function readDelimitedPayload(archive: Buffer): DelimitedPayload {
     text,
     sha256: createHash('sha256').update(text, 'utf8').digest('hex'),
   };
+}
+
+/** The local-file-header signature every ZIP starts with: `PK`. */
+function looksLikeZip(bytes: Buffer): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    bytes[2] === 0x03 &&
+    bytes[3] === 0x04
+  );
 }

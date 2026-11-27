@@ -24,10 +24,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  assessFeedWindow,
   catalogQuery,
   feedSummaryQuery,
   parseCjFeedConfig,
   parseShoppingFeed,
+  feedExportWindow,
+  readDelimitedPayload,
   renderShoppingFeed,
   retrieveCjFeed,
   verifyAdvertiserRelationship,
@@ -478,4 +481,95 @@ test('A RECURRING DELIVERY IS NOT EVIDENCE — only the lookup is', async () => 
     fetchImpl: lookupFetch(lookupXml({ relationship: 'notjoined' })),
   });
   assert.equal(verdict.ok, false, 'and it authorises nothing');
+});
+
+/* ────────── LAST_UPDATED dates the export, not the product ────────── */
+
+test('EVERY ROW CARRIES THE EXPORT INSTANT, because that is what the column means', () => {
+  /*
+   * Measured on the real Soundcore feed: CJ's per-product `lastUpdated` had
+   * 203 distinct values across 219 rows, spanning 2025-09-02 to 2026-11-27.
+   * Rendering those into LAST_UPDATED made a current export read as stale and
+   * `importFeedArchive` refused it with `skipped_stale` — correctly, because
+   * the freshness guard reads that column as the date of the GENERATION RUN
+   * and a 450-day spread means it is dating products instead.
+   */
+  const products = [
+    product({ id: 'A', lastUpdated: '2025-09-02T16:14:46.455Z' }),
+    product({ id: 'B', lastUpdated: '2026-03-01T15:05:26.686Z' }),
+    product({ id: 'C', lastUpdated: '2026-11-27T12:00:20.517Z' }),
+  ];
+  const exportedAt = '2026-11-27T12:00:20.530Z';
+  const parsed = parseShoppingFeed(renderShoppingFeed(products, { exportedAt }));
+
+  const stamps = new Set(parsed.rows.map((row) => row.fields.lastUpdated));
+  assert.deepEqual([...stamps], [exportedAt], 'one export, one timestamp');
+
+  // The guard reads the whole window: one instant, no spread, not stale.
+  const freshness = assessFeedWindow(feedExportWindow(parsed.rows), new Date(exportedAt));
+  assert.equal(freshness.kind, 'fresh', 'the guard reads it as one fresh export');
+
+  // And the shape the guard refuses, for contrast: product dates, not export
+  // dates. This is what the real Soundcore feed looked like before the fix.
+  const unstamped = parseShoppingFeed(renderShoppingFeed(products));
+  const spread = assessFeedWindow(feedExportWindow(unstamped.rows), new Date(exportedAt));
+  assert.equal(spread.kind, 'inconsistent', 'a 14-month spread is not one export');
+});
+
+test('with no export instant, the product timestamp is still used', () => {
+  const parsed = parseShoppingFeed(renderShoppingFeed([product()]));
+  assert.equal(parsed.rows[0].fields.lastUpdated, '2026-11-26T04:00:00.000Z');
+});
+
+test('the retrieval stamps the rows with the feed lastUpdated it reported', async () => {
+  const stub = stubFetch([
+    { body: summaryBody() },
+    {
+      body: catalogueBody([
+        product(),
+        product({ id: 'B', lastUpdated: '2025-01-01T00:00:00.000Z' }),
+      ]),
+    },
+  ]);
+  const result = await retrieveCjFeed(parseCjFeedConfig(DETAIL), {
+    token: 'pat',
+    fetchImpl: stub.fetch,
+  });
+
+  assert.equal(result.status, 'fetched');
+  const parsed = parseShoppingFeed(result.body.toString('utf8'));
+  const stamps = new Set(parsed.rows.map((row) => row.fields.lastUpdated));
+  assert.deepEqual([...stamps], ['2026-11-26T04:05:00.000Z'], 'the feed instant, on every row');
+});
+
+/* ──────────── a feed that is not in a ZIP is still a feed ──────────── */
+
+test('PLAIN DELIMITED BYTES ARE READ, not refused as "not a zip"', () => {
+  // The API transport has nothing to compress its render into, and a feed
+  // fetched as plain text over https is ordinary. This used to throw.
+  const text = renderShoppingFeed([product()], { exportedAt: '2026-11-27T12:00:20.530Z' });
+  const payload = readDelimitedPayload(Buffer.from(text, 'utf8'));
+
+  assert.equal(payload.memberName, '(unarchived)');
+  assert.match(payload.text, /SC-1001/);
+  assert.equal(payload.sha256.length, 64);
+  assert.equal(parseShoppingFeed(payload.text).rows.length, 1);
+});
+
+test('a BOM is stripped from plain bytes too', () => {
+  const text = renderShoppingFeed([product()]);
+  const payload = readDelimitedPayload(Buffer.from('﻿' + text, 'utf8'));
+  assert.equal(payload.text.charCodeAt(0) === 0xfeff, false);
+  assert.equal(parseShoppingFeed(payload.text).rows.length, 1);
+});
+
+test('BUT ANYTHING CLAIMING TO BE AN ARCHIVE IS STILL READ AS ONE, and still fails loudly', () => {
+  // A truncated ZIP still begins with the local-file-header signature, so
+  // it must not be mistaken for text and silently parsed as a feed with no
+  // rows. Only bytes that never claimed to be an archive are read as one.
+  const corrupt = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('nonsense')]);
+  assert.throws(() => readDelimitedPayload(corrupt), /not-a-zip|no-delimited-member/);
+
+  const blank = Buffer.from(['   ', ''].join(String.fromCharCode(10)), 'utf8');
+  assert.throws(() => readDelimitedPayload(blank), /no-delimited-member/);
 });

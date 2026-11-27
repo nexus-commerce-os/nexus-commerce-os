@@ -240,8 +240,36 @@ function field(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
+export interface RenderOptions {
+  /*
+   * WHEN THIS EXPORT WAS GENERATED, which is NOT when each product last
+   * changed — and the difference is the whole reason this option exists.
+   *
+   * The feed's LAST_UPDATED column dates the EXPORT RUN. `assessFeedFreshness`
+   * reads it that way: it refuses a file whose row timestamps span too wide a
+   * window, because a spread means the column is dating products rather than
+   * the generation, and the guard can then no longer tell a fresh export from
+   * a year-old one.
+   *
+   * CJ's API field of the same name means the other thing. Measured on the
+   * real Soundcore feed: 203 distinct values across 219 rows, spanning
+   * 2025-09-02 to 2026-11-27 — 450 days. Rendering those into LAST_UPDATED
+   * made a perfectly current export read as stale, and the import was
+   * correctly refused with `skipped_stale`.
+   *
+   * So every row is stamped with the feed's own `lastUpdated` from the summary
+   * query, which is exactly "when CJ last generated this feed" — the same
+   * meaning the emailed export's column carries. Nothing is invented: it is a
+   * value CJ reported about this file.
+   */
+  readonly exportedAt?: string;
+}
+
 /** Renders the API's products as the tab-separated export the parser reads. */
-export function renderShoppingFeed(products: readonly CjProduct[]): string {
+export function renderShoppingFeed(
+  products: readonly CjProduct[],
+  options: RenderOptions = {},
+): string {
   const lines = [FEED_HEADERS.join('\t')];
   for (const product of products) {
     /*
@@ -283,7 +311,7 @@ export function renderShoppingFeed(products: readonly CjProduct[]): string {
         // otherwise. Never both, and never a link this module invented.
         product.linkCode?.clickUrl ?? product.link ?? '',
         product.imageLink ?? '',
-        product.lastUpdated ?? '',
+        options.exportedAt ?? product.lastUpdated ?? '',
         productType,
         packed === ':::' ? '' : packed,
         shippingPrice,
@@ -503,8 +531,23 @@ export async function retrieveCjFeed(
     };
   }
 
-  const body = Buffer.from(renderShoppingFeed(products), 'utf8');
-  const sha256 = createHash('sha256').update(body).digest('hex');
+  const body = Buffer.from(
+    renderShoppingFeed(products, lastUpdated === undefined ? {} : { exportedAt: lastUpdated }),
+    'utf8',
+  );
+
+  /*
+   * THE DIGEST IGNORES THE EXPORT STAMP, and that is the point of taking it
+   * separately rather than hashing `body`.
+   *
+   * Every row carries the feed's generation instant, so a re-export of
+   * byte-identical products produces different bytes — and hashing those
+   * would make the cheap "nothing changed" skip fire never. Hashing the
+   * products alone asks the question actually worth asking: are these the
+   * same products as last time? If they are, the cycle stops here, and the
+   * stamp that would have differed never mattered.
+   */
+  const sha256 = createHash('sha256').update(renderShoppingFeed(products), 'utf8').digest('hex');
   const validators: FeedValidators = { lastModified: lastUpdated, sha256 };
 
   /*
