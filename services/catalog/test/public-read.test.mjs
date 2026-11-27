@@ -257,6 +257,29 @@ test('search folds the query the same way the stored text was folded', async () 
   assert.equal(found.items[0].title, 'Northwind Item 2');
 });
 
+test('EVERY TERM MUST MATCH, and the order does not matter', async () => {
+  /*
+   * A single LIKE over the whole phrase meant "northwind travel mug" found
+   * nothing, because the stored text reads "northwind trading travel mug 1"
+   * and those words are not contiguous. Measured on the staging site: 0
+   * results for a query that should have returned five.
+   */
+  const { catalogue } = await world({ products: 4 });
+  const exact = await catalogue.list({ q: 'Northwind Item 2' });
+  assert.equal(exact.total, 1);
+
+  // Words the title separates, and in the wrong order.
+  assert.equal((await catalogue.list({ q: 'item northwind' })).total, 4, 'order must not matter');
+  assert.equal((await catalogue.list({ q: '2 northwind' })).total, 1, 'gaps must not matter');
+
+  // A term that is absent still excludes.
+  assert.equal(
+    (await catalogue.list({ q: 'northwind contoso' })).total,
+    0,
+    'every term must match',
+  );
+});
+
 test('a search for a LIKE wildcard searches for the characters, not for everything', async () => {
   const { catalogue } = await world({ products: 5 });
   const page = await catalogue.list({ q: '%' });
