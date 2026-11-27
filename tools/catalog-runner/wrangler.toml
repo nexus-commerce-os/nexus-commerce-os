@@ -65,5 +65,13 @@ enabled = true
 #
 # The cycle id is derived from the scheduled instant, so a cron that fires
 # twice updates one row rather than running the cycle twice.
+#
+# DO NOT EDIT THIS LINE TO RUN A CYCLE NOW. It was edited to "* * * * *" to
+# watch the first production run, and the edit was committed and shipped — a
+# Worker that runs a full sync cycle every minute, against a provider with a
+# published call limit. Use the flag instead, which touches no file:
+#
+#     npx wrangler deploy --triggers "* * * * *"    # temporary
+#     npx wrangler deploy                           # back to the line below
 [triggers]
-crons = ["* * * * *"]
+crons = ["17 2,14 * * *"]

@@ -38,6 +38,9 @@ export const CJ_QUERY_URL = 'https://ads.api.cj.com/query';
 /** Documented: "Call limit: 500 calls per 5 minutes." Two calls per cycle is not near it. */
 export const CJ_CALL_BUDGET_PER_5_MIN = 500;
 
+/** How this client identifies itself. A name and a version, nothing else. */
+export const USER_AGENT = 'HonestTotal-Catalog/1.0';
+
 /**
  * What a `catalog_feed_source` row carries in `auth_detail` for this transport.
  *
@@ -381,6 +384,17 @@ export async function retrieveCjFeed(
           authorization: `Bearer ${options.token}`,
           'content-type': 'application/json',
           accept: 'application/json',
+          /*
+           * A NAME FOR THIS CLIENT, because a request with no User-Agent is a
+           * request many gateways refuse. Workers sends none by default, and
+           * the first requests that actually reached CJ from the production
+           * Worker came back 403 while the identical request from a laptop
+           * had just succeeded.
+           *
+           * Generic on purpose: the product's name and a version, never the
+           * operator's address or anything else about who is running it.
+           */
+          'user-agent': USER_AGENT,
         },
         body: JSON.stringify({ query }),
         signal: controller.signal,
@@ -426,10 +440,18 @@ export async function retrieveCjFeed(
     };
   }
   if (!summary.ok) {
+    /*
+     * The provider's own message, to the LOG and never to the stored reason.
+     *
+     * A 403 with nothing but a status is a dead end: it cannot distinguish a
+     * bad token from an account restriction from a gateway refusing the
+     * client. CJ's body says which. It stays out of `reason` because that
+     * string is read back through the dashboard and a GraphQL error can echo
+     * the query, which carries account identifiers.
+     */
+    await logProviderRefusal('feed summary', summary);
     return {
       status: 'failed',
-      // The status, never the body: a GraphQL error body can echo the query,
-      // and the query carries account identifiers.
       reason: `CJ answered ${summary.status} to the feed summary`,
       retryable: summary.status >= 500 || summary.status === 429,
       fetchedAt: at(),
@@ -505,6 +527,7 @@ export async function retrieveCjFeed(
     };
   }
   if (!catalogue.ok) {
+    await logProviderRefusal('catalogue request', catalogue);
     return {
       status: 'failed',
       reason: `CJ answered ${catalogue.status} to the catalogue request`,
@@ -625,4 +648,15 @@ function message(error: unknown): string {
 /** A redirect this client refuses rather than follows. */
 function isRedirect(status: number): boolean {
   return status >= 300 && status < 400;
+}
+
+/** Logs what the provider said about a refusal, bounded and best effort. */
+async function logProviderRefusal(what: string, response: Response): Promise<void> {
+  let said = '(no body)';
+  try {
+    said = (await response.text()).slice(0, 300).replace(/\s+/g, ' ').trim() || '(empty)';
+  } catch {
+    said = '(unreadable)';
+  }
+  console.error(`cj ${what} refused ${response.status}: ${said}`);
 }
