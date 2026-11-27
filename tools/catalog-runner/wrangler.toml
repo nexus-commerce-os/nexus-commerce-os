@@ -1,0 +1,69 @@
+# THE PRODUCTION INGESTION RUNNER.
+#
+# WHY IT EXISTS. The automation was complete and scheduled — in STAGING. The
+# production database had the schema, the publication machinery and an
+# `auto_publish = 1` flag, and nothing whatsoever that would ever call them:
+# honesttotal.com's Worker is a reader, and the only Worker in this account
+# with a cron was bound to honesttotal-catalog-staging. So an authorised
+# merchant feed could have been configured in production and would have sat
+# there for ever. This closes that gap and nothing else.
+#
+# WHAT IT IS NOT. It has no `fetch` handler, no route, no custom domain and
+# `workers_dev = false`, so it has NO HTTP SURFACE AT ALL — there is no
+# administrative endpoint here to leave unauthenticated, and no fixture
+# endpoint to serve synthetic data from a production-named Worker. The only
+# way in is the cron below.
+#
+# WHAT IT DOES TODAY. `catalog_feed_source` in production is empty, so every
+# cycle retrieves nothing, publishes nothing and writes one row to
+# `catalog_sync_cycle` saying so. That is the correct behaviour before a
+# merchant is authorised, and it is also the proof that the schedule fires.
+#
+# ACTIVATION IS A DATABASE ROW, NOT A DEPLOY. When a merchant relationship is
+# confirmed, inserting the merchant, its source permission and its feed source
+# is enough; the next cycle picks it up. See tools/catalog-runner/README.md.
+name = "honesttotal-catalog-runner"
+main = "src/worker.ts"
+
+# NO workers.dev SUBDOMAIN. Without a `fetch` handler there would be nothing
+# to serve, but this states the intent rather than relying on it: a `fetch`
+# added later must also be a deliberate decision to publish a URL.
+workers_dev = false
+
+compatibility_date = "2026-11-01"
+
+# REQUIRED. The ingestion path uses `node:crypto` for run ids and `node:zlib`
+# to read a ZIP; without this flag the Worker refuses to start with "Dynamic
+# require of node:crypto is not supported". Learned on the staging Worker by
+# deploying it, not by reading about it.
+compatibility_flags = ["nodejs_compat"]
+
+# The catalogue is imported from `services/catalog/dist`, which is gitignored,
+# so a clean checkout has to compile it before wrangler can bundle this.
+# Attached to wrangler itself rather than to a script, because anyone in this
+# directory can type `npx wrangler deploy` and skip an npm script.
+[build]
+command = "node ../../node_modules/typescript/bin/tsc -p ../../services/catalog/tsconfig.json"
+
+# PRODUCTION. The one line in this file that must never be edited casually:
+# the whole safety story of the pipeline rests on which database is bound
+# here. `src/worker.ts` refuses to run a cycle unless the bound database
+# identifies itself as the production one, so a copy-paste of a staging id
+# fails loudly instead of quietly importing fixtures into production.
+[[d1_databases]]
+binding = "CATALOG"
+database_name = "honesttotal-catalog-prod"
+database_id = "26b88f39-a560-4e31-97be-db48faee97cb"
+
+[observability]
+enabled = true
+
+# Twice a day, at :17 past, six hours apart — the same schedule the staging
+# Worker has run on since 26-Nov. The :17 is deliberate: everything scheduled
+# on the hour contends with everything else, and a provider's nightly export
+# is not ready at exactly midnight either.
+#
+# The cycle id is derived from the scheduled instant, so a cron that fires
+# twice updates one row rather than running the cycle twice.
+[triggers]
+crons = ["17 2,14 * * *"]
