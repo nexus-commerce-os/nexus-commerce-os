@@ -9,9 +9,11 @@
  *
  * WHAT THE PRODUCTION DATABASE CONTAINS TODAY: nothing. No merchant has been
  * authorised, so there is no eligible product, so the publication pointer has
- * never moved. The pages below therefore render an honest empty state rather
- * than fixtures, and that is the correct output — not a placeholder for a
- * catalogue that is coming. The populated version of exactly this code runs on
+ * never moved. So these routes step aside and let the exported catalogue —
+ * the specification-only records that survived the source-terms audit — keep
+ * serving /products, which is what honesttotal.com shows today. They render
+ * an honest empty state only when there is no exported page either, and they
+ * never render fixtures. The populated version of exactly this code runs on
  * the staging Worker against the staging database.
  *
  * NOTHING HERE WRITES. The only write path on this Worker is the waitlist, and
@@ -50,6 +52,13 @@ import type { D1Like } from '../../../services/catalog/dist/store/d1/d1-client.j
 
 export interface CatalogEnv {
   readonly CATALOG?: D1Database;
+  /*
+   * The asset service, so these routes can ask whether the exported site
+   * already has a page for this path before deciding to answer themselves.
+   * Optional because the unit suites construct an env without it; a missing
+   * one simply means "nothing exported", which is the safe reading.
+   */
+  readonly ASSETS?: Fetcher;
 }
 
 const MAX_AGE_SECONDS = 60;
@@ -65,10 +74,15 @@ const MAX_AGE_SECONDS = 60;
  * the real answer was "this is broken". Zero products and a broken read are
  * different facts and must not render the same.
  *
- * So every database error fails loudly, and the TEST environment is migrated
- * instead — scripts/migrate-local-d1.mjs. What the tests assert is then the
- * state production is genuinely in: a migrated database with nothing
- * published in it.
+ * So every database error is still treated as a failure here. What changed is
+ * only what a visitor gets WHILE it is failing: the exported catalogue, if the
+ * site has one, instead of a 503 over the top of a page that works. The claim
+ * "nothing is published" is never made on a failed read, which is the part
+ * that mattered.
+ *
+ * `wrangler dev --local` is therefore the no-schema case on purpose: the
+ * browser suite exercises the fall-through, and `worker/catalog.test.ts`
+ * exercises the 503 with an asset service that has no page to offer.
  */
 /**
  * Cache headers for catalogue responses.
@@ -191,6 +205,7 @@ export async function handleCatalogPage(
   if (!isList && !isDetail) return null;
 
   if (env.CATALOG === undefined) {
+    if (await exportedPageExists(request, env)) return null;
     return page(
       unavailableState('The catalogue database is not connected in this deployment.'),
       nonce,
@@ -209,22 +224,98 @@ export async function handleCatalogPage(
         catalogue.categories(),
         catalogue.brands(),
       ]);
+      if (summary.products === 0 && (await exportedPageExists(request, env))) {
+        return null;
+      }
       return page(renderList({ summary, listed, categories, brands, url }), nonce, 200);
     }
 
     const slug = decodeURIComponent(url.pathname.slice('/products/'.length));
     const detail = await catalogue.bySlug(slug);
     if (detail === null) {
+      /*
+       * Only when the database has published NOTHING. If a generation is live
+       * and this slug is not in it, the slug is genuinely not published and an
+       * exported page for it would be a stale copy of a record the pipeline
+       * has since withheld — serving that is exactly the failure this project
+       * is built to avoid.
+       */
+      const { products } = await catalogue.summary();
+      if (products === 0 && (await exportedPageExists(request, env))) {
+        return null;
+      }
       return page(renderMissing(slug), nonce, 404);
     }
     return page(renderDetail(detail), nonce, 200);
   } catch (error) {
+    /*
+     * A DATABASE FAILURE MUST NOT TAKE DOWN A CATALOGUE THAT WORKS.
+     *
+     * The rule being kept is "a broken read never renders as an empty shop",
+     * and it is kept: nothing below claims that nothing is published. What is
+     * NOT required is answering 503 while the exported catalogue — a real
+     * published catalogue of records that passed the source-terms audit — sits
+     * one layer down, perfectly serveable. Shadowing a working page because a
+     * second source failed would be an outage this site did not have to have.
+     *
+     * The failure is never silent. It is logged, and `/api/catalog/*` answers
+     * 503 with `no-store`, so the machine-readable surface states the fault
+     * even while visitors keep seeing the catalogue that does work.
+     *
+     * When there is no exported page, the 503 stands. That is the case the
+     * rule is really about, and it is still loud.
+     */
     console.error(`catalogue page failed: ${(error as Error).message}`);
+    if (await exportedPageExists(request, env)) return null;
     return page(
       unavailableState('The catalogue is temporarily unavailable. Please try again shortly.'),
       nonce,
       503,
     );
+  }
+}
+
+/*
+ * NOTHING IN D1 MUST NOT MEAN NOTHING ON THE SITE.
+ *
+ * honesttotal.com already serves a catalogue at /products: the
+ * specification-only records that survived the source-terms audit, exported
+ * at build time by `scripts/build-catalog.mjs`. These routes run in FRONT of
+ * the asset service, so the first version of this file shadowed that page and
+ * replaced two genuine published records with "no products are published
+ * yet". Two real products on the site and a tidy empty state are not the same
+ * answer, and the second one is false while the first is true.
+ *
+ * So a catalogue path is handed back to the asset service whenever this file
+ * has nothing better to say — the database published nothing, the binding is
+ * absent, or the read failed — but only after asking whether the exported
+ * site actually has that page. If it does not, the honest empty state (or, for
+ * a failed read, the loud 503) is the right answer and falling through to an
+ * exported 404 would not be.
+ *
+ * The moment a merchant is authorised and a generation goes live, the D1
+ * catalogue takes over the path, which is the point of building it.
+ */
+async function exportedPageExists(request: Request, env: CatalogEnv): Promise<boolean> {
+  if (env.ASSETS === undefined) return false;
+  try {
+    /*
+     * A GET, not a HEAD. The asset service is documented for GET and HEAD, but
+     * `not_found_handling` and the exported 404 page are the behaviour being
+     * relied on here, and GET is the request that definitely exercises them.
+     * The body is discarded immediately — only the status is wanted — and the
+     * normal asset path will fetch it again if this returns null.
+     */
+    const probe = await env.ASSETS.fetch(new Request(request.url, { method: 'GET' }));
+    // Cancelled rather than left dangling: an unread body holds its stream for
+    // the lifetime of the isolate.
+    await probe.body?.cancel();
+    return probe.status >= 200 && probe.status < 300;
+  } catch (error) {
+    // A probe that fails tells us nothing about the exported site, so it must
+    // not be read as "the page is missing".
+    console.error(`asset probe failed: ${(error as Error).message}`);
+    return false;
   }
 }
 

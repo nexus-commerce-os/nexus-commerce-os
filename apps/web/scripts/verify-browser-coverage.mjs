@@ -34,12 +34,22 @@ const MIN_TESTS_PER_WIDTH = 8;
 const MIN_FLOW_TESTS = 6;
 
 /**
- * The only skip this suite is allowed to report, and the reason it exists:
- * the catalog is absent from the artifact unless PUBLISH_CATALOG=1, and a test
- * that pretends to cover absent pages is worse than one that says it did not.
- * CI builds WITH the catalog, so even this should not appear there.
+ * The only skips this suite is allowed to report.
+ *
+ *   · "catalog not published" — the catalog is absent from the artifact unless
+ *     PUBLISH_CATALOG=1, and a test that pretends to cover absent pages is
+ *     worse than one that says it did not. CI builds WITH the catalog, so even
+ *     this should not appear there.
+ *
+ *   · "catalogue state: …" — /products has three possible sources (the D1
+ *     catalogue, the exported catalogue, the honest empty state) and a given
+ *     deployment is in exactly one of those states, so the assertions for the
+ *     other two cannot run. The prefix is a convention, not a loophole: every
+ *     such skip names the state it found, the branch SELECTION is asserted
+ *     exhaustively in test/catalog-worker.test.mjs rather than here, and a
+ *     test skipped for any other reason still fails this check.
  */
-const ALLOWED_SKIP = /catalog not published/i;
+const ALLOWED_SKIP = /catalog not published|^catalogue state:/i;
 
 const reportPath = process.argv[2] ?? 'playwright-report/report.json';
 
@@ -64,6 +74,17 @@ function collect(suites, out = []) {
           title: spec.title,
           status: t.status, // expected | unexpected | flaky | skipped
           results: t.results ?? [],
+          /*
+           * WHERE A SKIP REASON ACTUALLY LIVES. `test.skip(condition, reason)`
+           * records the reason as an ANNOTATION of type "skip", not as a
+           * result error — so the check below, which read only
+           * `results[].errors[].message`, could never see one. It had been
+           * passing because the single skip it was written to allow came from
+           * a spec file no project matched, so nothing was ever skipped and
+           * the branch never ran. Both halves of that are fixed: the file is
+           * matched now, and the reason is read from where Playwright puts it.
+           */
+          annotations: t.annotations ?? [],
         });
       }
     }
@@ -113,10 +134,18 @@ if (!flows) {
 
 for (const t of tests) {
   if (t.status !== 'skipped') continue;
-  const reason = t.results.flatMap((r) => r.errors ?? []).map((e) => e.message ?? '').join(' ');
-  const annotation = JSON.stringify(t.results.map((r) => r.status));
-  if (!ALLOWED_SKIP.test(reason) && !ALLOWED_SKIP.test(t.title)) {
-    problems.push(`[${t.project}] "${t.title}" was SKIPPED (${annotation}) — not an allowed skip`);
+  const stated = t.annotations
+    .filter((a) => a.type === 'skip' || a.type === 'fixme')
+    .map((a) => a.description ?? '');
+  const reason = [
+    ...stated,
+    ...t.results.flatMap((r) => r.errors ?? []).map((e) => e.message ?? ''),
+  ].join(' ');
+  if (!stated.some((r) => ALLOWED_SKIP.test(r.trim())) && !ALLOWED_SKIP.test(t.title)) {
+    problems.push(
+      `[${t.project}] "${t.title}" was SKIPPED — not an allowed skip. ` +
+        `Reason given: ${reason.trim() === '' ? '(none, which is itself the problem)' : reason}`,
+    );
   }
 }
 

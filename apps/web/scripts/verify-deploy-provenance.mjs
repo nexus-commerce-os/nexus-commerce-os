@@ -21,6 +21,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 const DEPLOY_COMMANDS = ['deploy', 'versions upload', 'versions deploy'];
 const SHIPPABLE_BRANCHES = ['release/product-catalog', 'main'];
@@ -29,7 +30,9 @@ const wranglerCommand = process.env.WRANGLER_COMMAND ?? '';
 const isDeploy = DEPLOY_COMMANDS.some((c) => wranglerCommand.includes(c));
 
 if (!isDeploy) {
-  console.log(`verify-deploy-provenance: not a deploy (${wranglerCommand || 'no command'}) — skipped`);
+  console.log(
+    `verify-deploy-provenance: not a deploy (${wranglerCommand || 'no command'}) — skipped`,
+  );
   process.exit(0);
 }
 
@@ -94,7 +97,12 @@ if (head) {
     try {
       const raw = execFileSync(
         'gh',
-        ['api', `repos/{owner}/{repo}/commits/${head}/check-runs`, '--jq', '[.check_runs[] | select(.name=="ci-gate")] | .[0] | .status + "/" + (.conclusion // "none")'],
+        [
+          'api',
+          `repos/{owner}/{repo}/commits/${head}/check-runs`,
+          '--jq',
+          '[.check_runs[] | select(.name=="ci-gate")] | .[0] | .status + "/" + (.conclusion // "none")',
+        ],
         { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
       ).trim();
       conclusion = raw || null;
@@ -110,6 +118,35 @@ if (head) {
           `the mandatory checks have not passed for the code being deployed`,
       );
     }
+  }
+}
+
+/*
+ * WITHDRAWING A LIVE CATALOGUE IS A DELIBERATE ACT, NOT A DEFAULT.
+ *
+ * `gate-catalog.mjs` deletes out/products.html and out/products/ unless
+ * PUBLISH_CATALOG=1, which is the right default for a build: the catalogue
+ * ships only on purpose. But honesttotal.com HAS a live /products page, with
+ * two published records and indexed detail pages, and `deploy:cf` does not
+ * set the flag — so a routine deploy would have quietly removed them. That is
+ * not hypothetical: it is what the artifact built for this deploy contained
+ * until the flag was passed.
+ *
+ * So the asymmetry is made explicit. Shipping an artifact with no catalogue is
+ * allowed, but it has to be asked for.
+ */
+if (!existsSync(new URL('../out/products.html', import.meta.url))) {
+  if (process.env.ALLOW_CATALOG_WITHDRAWAL !== '1') {
+    problems.push(
+      'this artifact has no out/products.html, so deploying it would REMOVE the live ' +
+        'catalogue at /products. Build with PUBLISH_CATALOG=1 to keep it, or set ' +
+        'ALLOW_CATALOG_WITHDRAWAL=1 to withdraw it on purpose',
+    );
+  } else {
+    console.warn(
+      'verify-deploy-provenance: deploying WITHOUT a catalogue — /products will stop ' +
+        'answering, as explicitly requested by ALLOW_CATALOG_WITHDRAWAL=1.',
+    );
   }
 }
 

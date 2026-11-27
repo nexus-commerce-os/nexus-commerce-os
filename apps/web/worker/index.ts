@@ -30,9 +30,10 @@ export interface Env {
   ASSETS: Fetcher;
   WAITLIST: KVNamespace;
   /**
-   * The published catalogue. Optional on purpose: a deploy without the
-   * binding serves the same honest "nothing published" as one with an empty
-   * database, rather than turning a configuration gap into an outage.
+   * The published catalogue. Optional on purpose: a deploy without the binding
+   * falls through to the exported catalogue rather than turning a
+   * configuration gap into an outage, and says so loudly on
+   * `/api/catalog/*` — see worker/catalog.ts.
    */
   CATALOG?: D1Database;
 }
