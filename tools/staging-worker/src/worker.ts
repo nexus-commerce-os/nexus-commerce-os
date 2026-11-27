@@ -39,6 +39,8 @@ import {
 } from '../../../services/catalog/dist/worker.js';
 import type { D1Like } from '../../../services/catalog/dist/worker.js';
 import { FIXTURE_MERCHANTS, buildFixtureFeed, zipOf } from './fixture-feed';
+import { handleAdmin } from './admin';
+import { CatalogD1 } from '../../../services/catalog/dist/worker.js';
 
 interface Env {
   readonly CATALOG: D1Database;
@@ -48,6 +50,13 @@ interface Env {
    * absent the endpoint is refused rather than left open.
    */
   readonly DEMO_TOKEN?: string;
+  /* Administration. See admin-auth.ts for why the fallback is refused rather
+   * than relaxed when the secret is absent. */
+  readonly ACCESS_TEAM_DOMAIN?: string;
+  readonly ACCESS_AUD?: string;
+  readonly ADMIN_ALLOWLIST?: string;
+  readonly DEV_ADMIN_TOKEN?: string;
+  readonly ADMIN_CSRF_SECRET?: string;
 }
 
 /*
@@ -117,6 +126,28 @@ export default {
       return json({ error: 'method not allowed' }, 405);
     }
 
+    /*
+     * THE DASHBOARD, before anything else that could serve a page.
+     *
+     * `environment` is read from the DATABASE rather than a variable, so the
+     * development fallback cannot be turned on in production by editing a
+     * deploy setting.
+     */
+    if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
+      const config = await new CatalogD1(db).automationConfig();
+      const admin = await handleAdmin(request, {
+        db,
+        env,
+        environment: config.environment,
+        now: new Date(),
+        // The hours in `crons` in wrangler.toml. Passed in because a Worker
+        // cannot read its own trigger, and inventing one would be a number
+        // that looks authoritative and is not.
+        cronHours: [2, 14],
+      });
+      if (admin !== null) return admin;
+    }
+
     // ───────────────────────────── the API ─────────────────────────────
 
     if (url.pathname === '/api/summary') {
@@ -153,8 +184,12 @@ export default {
       if (merchant === undefined) return json({ error: 'no such fixture' }, 404);
 
       const now = new Date();
-      const text = buildFixtureFeed(merchant, now);
-      const etag = `"fixture-${key}-${text.length}-${new Date(now).toISOString().slice(0, 13)}"`;
+      // `?cycle=N` shifts every price, which is how a provider republishing
+      // with new prices is simulated. It is part of the SOURCE URL, so a price
+      // update needs no deploy — which is the claim being demonstrated.
+      const cycle = Number(url.searchParams.get('cycle') ?? '0');
+      const text = buildFixtureFeed(merchant, now, Number.isFinite(cycle) ? cycle : 0);
+      const etag = `"fixture-${key}-${cycle}-${text.length}-${new Date(now).toISOString().slice(0, 13)}"`;
       if (request.headers.get('if-none-match') === etag) {
         return new Response(null, { status: 304, headers: { ...SECURITY_HEADERS, etag } });
       }

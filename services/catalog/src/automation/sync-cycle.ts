@@ -130,6 +130,13 @@ export async function runSyncCycle(
     return finish('paused', config.pausedReason);
   }
 
+  /*
+   * A MANUAL REQUEST IS DRAINED HERE, not run inside the admin request that
+   * made it. Claimed before any work, so a second cycle starting while this
+   * one runs does not serve the same request twice.
+   */
+  const claimed = await claimSyncRequests(db, at);
+
   // ── 2. the budget ──
   const usage = await quota.usage(utcDay(options.now));
   const verdict = assessBudget(usage, limits);
@@ -253,7 +260,48 @@ export async function runSyncCycle(
       : null;
   const detail = [fixtureNote, publicationNote].filter((part) => part !== null).join('; ') || null;
 
+  await settleSyncRequests(metered, claimed, id, at, 'done');
   return finish('ran', detail, { budget: verdict, retrieval, publication, pruned }, meter);
+}
+
+/** Queued manual requests, marked claimed so no second cycle serves them. */
+async function claimSyncRequests(db: D1Like, at: string): Promise<readonly string[]> {
+  const queued = await db
+    .prepare(
+      "SELECT id FROM catalog_sync_request WHERE status = 'queued' ORDER BY requested_at LIMIT 20",
+    )
+    .all<{ id: string }>();
+  const ids = queued.results.map((row) => String(row.id));
+  if (ids.length === 0) return [];
+  await db.batch(
+    ids.map((requestId) =>
+      db
+        .prepare(
+          "UPDATE catalog_sync_request SET status = 'claimed', claimed_at = ? WHERE id = ? AND status = 'queued'",
+        )
+        .bind(at, requestId),
+    ),
+  );
+  return ids;
+}
+
+async function settleSyncRequests(
+  db: D1Like,
+  ids: readonly string[],
+  cycleId: string,
+  at: string,
+  status: 'done' | 'failed',
+): Promise<void> {
+  if (ids.length === 0) return;
+  await db.batch(
+    ids.map((requestId) =>
+      db
+        .prepare(
+          'UPDATE catalog_sync_request SET status = ?, finished_at = ?, cycle_id = ? WHERE id = ?',
+        )
+        .bind(status, at, cycleId, requestId),
+    ),
+  );
 }
 
 /* ─────────────────────────── the quota table ─────────────────────────── */

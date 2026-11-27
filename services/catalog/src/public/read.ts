@@ -162,12 +162,34 @@ export class PublicCatalogue {
        * "no filter" is the dangerous reading, because it answers a search with
        * everything.
        */
-      const needle = normaliseQuery(query.q);
-      if (needle === '') {
+      /*
+       * EVERY TERM MUST MATCH, not the whole phrase as one substring.
+       *
+       * A single LIKE over the joined query means "northwind travel mug"
+       * finds nothing, because the product's search text reads "northwind
+       * trading travel mug 1 fixture" and those words are not contiguous.
+       * Measured on staging: a reasonable query returned 0 of 5 matching
+       * products. A search box that fails on a reasonable query is the
+       * decorative control this project refuses to ship.
+       *
+       * So the query is split and each term becomes its own LIKE, ANDed
+       * together. Order stops mattering and extra words in the title stop
+       * hurting, which is what somebody typing a product name expects.
+       *
+       * Capped at eight terms: each one is another LIKE over the same column,
+       * and an unbounded query would let a visitor choose how much work the
+       * database does.
+       */
+      const terms = normaliseQuery(query.q)
+        .split(' ')
+        .filter((term) => term !== '');
+      if (terms.length === 0) {
         return { items: [], total: 0, limit, offset, generation: live };
       }
-      where.push("search_text LIKE ? ESCAPE '\\'");
-      bind.push(`%${escapeLike(needle)}%`);
+      for (const term of terms.slice(0, 8)) {
+        where.push("search_text LIKE ? ESCAPE '\\'");
+        bind.push(`%${escapeLike(term)}%`);
+      }
     }
 
     const clause = where.join(' AND ');
