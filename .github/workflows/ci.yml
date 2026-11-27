@@ -50,7 +50,7 @@ concurrency:
 
 env:
   # why: pinned toolchain versions = reproducible builds across every runner (docs/10 §0.1 #1).
-  NODE_VERSION: "20.17.0"
+  NODE_VERSION: "24.22.3"
   PYTHON_VERSION: "3.12"
   PNPM_VERSION: "9.7.0"
   TERRAFORM_VERSION: "1.9.5"

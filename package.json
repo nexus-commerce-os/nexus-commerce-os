@@ -6,7 +6,7 @@
   "description": "NEXUS Commerce OS monorepo — P0.1 Infrastructure Foundation. Platform scaffold only.",
   "packageManager": "pnpm@9.7.0",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.5.0",
     "pnpm": ">=9.0.0"
   },
   "scripts": {

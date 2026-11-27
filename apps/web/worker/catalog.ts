@@ -54,6 +54,27 @@ export interface CatalogEnv {
 
 const MAX_AGE_SECONDS = 60;
 
+/*
+ * A DATABASE WITH NO SCHEMA IS AN EMPTY CATALOGUE, NOT AN OUTAGE.
+ *
+ * `wrangler dev --local` hands the Worker a D1 with no tables at all, and so
+ * does a freshly created database before its migrations run. Both produced a
+ * 503 and the words "temporarily unavailable", which is wrong twice: nothing
+ * is temporary about it, and there is nothing to be unavailable — no product
+ * has ever been published into that database.
+ *
+ * Only this one error is treated that way. Anything else — a syntax error, a
+ * missing column, a timeout — still fails loudly, because those DO mean
+ * "products may exist and we cannot read them", which is the case a visitor
+ * must never see as an empty shop.
+ *
+ * It is logged either way. An unmigrated production database is a real
+ * problem; it is just not the visitor's problem.
+ */
+function isMissingSchema(error: unknown): boolean {
+  return /no such table/i.test(error instanceof Error ? error.message : String(error));
+}
+
 /**
  * Cache headers for catalogue responses.
  *
@@ -129,6 +150,9 @@ export async function handleCatalogApi(
     // The message, never the query. A database error can carry a fragment of
     // SQL, and this response is public.
     console.error(`catalogue read failed: ${(error as Error).message}`);
+    if (isMissingSchema(error)) {
+      return json({ items: [], total: 0, limit: 0, offset: 0, generation: null });
+    }
     return json({ error: 'the catalogue is temporarily unavailable' }, 503, {
       'cache-control': 'no-store',
     });
@@ -193,6 +217,9 @@ export async function handleCatalogPage(
     return page(renderDetail(detail), nonce, 200);
   } catch (error) {
     console.error(`catalogue page failed: ${(error as Error).message}`);
+    if (isMissingSchema(error)) {
+      return page(`<h1>Products</h1>${renderEmptyCatalogue()}`, nonce, 200);
+    }
     return page(
       emptyState('The catalogue is temporarily unavailable. Please try again shortly.'),
       nonce,

@@ -1,7 +1,7 @@
 # NEXUS Commerce OS — Monorepo
 
 [![License](https://img.shields.io/badge/license-Proprietary%20(source--available)-blue)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a)](.nvmrc)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522.5-3c873a)](.nvmrc)
 [![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-f69220)](package.json)
 [![Phase](https://img.shields.io/badge/phase-P0.1%20infrastructure-informational)](docs/13-implementation-roadmap.md)
 [![Docs](https://img.shields.io/badge/docs-certified%20%26%20frozen-success)](docs/00-README.md)
@@ -39,7 +39,7 @@ Every directory carries a `README.md` (**purpose · ownership · dependencies**)
 
 ## Getting started (P0.1)
 
-Prerequisites: **Node ≥ 20** ([`.nvmrc`](.nvmrc)), **pnpm ≥ 9**, **Terraform ≥ 1.7**, Docker, kubectl, Helm.
+Prerequisites: **Node ≥ 22.5** ([`.nvmrc`](.nvmrc)), **pnpm ≥ 9**, **Terraform ≥ 1.7**, Docker, kubectl, Helm.
 
 ```bash
 pnpm install                  # workspace deps (uses the committed pnpm-lock.yaml)
