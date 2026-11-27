@@ -267,6 +267,28 @@ export class PublicCatalogue {
    * and a merchant whose approval was withdrawn this morning must not still
    * be linked from a page published last night.
    */
+  /**
+   * Has this slug EVER been published, in any generation?
+   *
+   * Not the same question as `bySlug`, and the difference is what makes it
+   * safe to fall back to an exported page. A slug with no row at all has
+   * never been through this pipeline, so an exported page for it is a
+   * different catalogue, not a stale copy of a record the pipeline withheld.
+   * A slug that was published and later closed DOES have a row, answers true,
+   * and must keep 404ing — serving its old exported page would be publishing
+   * something the eligibility rules have since refused.
+   *
+   * Deliberately ignores the interval filter, which is the only query here
+   * that may.
+   */
+  async everPublished(slug: string): Promise<boolean> {
+    const row = await this.db
+      .prepare('SELECT 1 AS present FROM catalog_published_product WHERE slug = ? LIMIT 1')
+      .bind(slug)
+      .first<{ present: number }>();
+    return row !== null && row !== undefined;
+  }
+
   async bySlug(slug: string): Promise<ProductDetail | null> {
     const live = await this.liveGeneration();
     if (live === null) return null;
