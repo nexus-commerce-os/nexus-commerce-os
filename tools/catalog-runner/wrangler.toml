@@ -66,4 +66,4 @@ enabled = true
 # The cycle id is derived from the scheduled instant, so a cron that fires
 # twice updates one row rather than running the cycle twice.
 [triggers]
-crons = ["17 2,14 * * *"]
+crons = ["* * * * *"]

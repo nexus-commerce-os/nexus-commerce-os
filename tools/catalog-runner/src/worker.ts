@@ -19,6 +19,14 @@ import { runSyncCycle } from '../../../services/catalog/dist/worker.js';
 
 interface Env {
   readonly CATALOG: D1Database;
+  /*
+   * Feed credentials, by the NAME a `catalog_feed_source` row gives in its
+   * `credential_ref`. They are Worker secrets and are read through the index
+   * signature below rather than named here, because which ones exist is a
+   * deployment fact and not a compile-time one — adding a merchant must not
+   * require editing this file.
+   */
+  readonly [secret: string]: unknown;
 }
 
 /** What the bound database must say about itself before anything runs. */
@@ -86,9 +94,31 @@ export default {
      * like a cron that never fired. The same lesson the staging Worker
      * learned by watching an empty log for five minutes.
      */
+    /*
+     * THE SECRET HAS TO REACH THE RETRIEVAL, and it does not by default.
+     *
+     * `retrieveFeed` resolves a source's `credential_ref` through a resolver
+     * the CALLER supplies; with none, it refuses the source outright. The
+     * first production run of the CJ feed failed six times in a row with
+     * "no credential resolver supplied" — the token was a Worker secret, the
+     * config row named it correctly, and nothing connected the two.
+     *
+     * Found because the cycle was run with publication disabled first. The
+     * failure is recorded per source, so the next operator sees the reason
+     * rather than an empty catalogue.
+     */
+    const resolveCredential = async (ref: string): Promise<string | undefined> => {
+      const value = env[ref];
+      return typeof value === 'string' && value !== '' ? value : undefined;
+    };
+
     let result;
     try {
-      result = await runSyncCycle(db, { now: new Date(event.scheduledTime), trigger: 'scheduled' });
+      result = await runSyncCycle(db, {
+        now: new Date(event.scheduledTime),
+        trigger: 'scheduled',
+        scheduler: { retrieveOptions: { resolveCredential } },
+      });
     } catch (error) {
       const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       log({ at, cron: event.cron, outcome: 'failed', detail });
