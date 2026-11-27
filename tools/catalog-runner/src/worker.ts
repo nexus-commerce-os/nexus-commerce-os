@@ -15,7 +15,7 @@
  * public.
  */
 import type { D1Like } from '../../../services/catalog/dist/worker.js';
-import { runSyncCycle } from '../../../services/catalog/dist/worker.js';
+import { cleanSecret, runSyncCycle } from '../../../services/catalog/dist/worker.js';
 
 interface Env {
   readonly CATALOG: D1Database;
@@ -108,8 +108,9 @@ export default {
      * rather than an empty catalogue.
      */
     const resolveCredential = async (ref: string): Promise<string | undefined> => {
-      const value = env[ref];
-      return typeof value === 'string' && value !== '' ? value : undefined;
+      // `cleanSecret`, not a bare read: a UTF-8 BOM in front of a stored
+      // token cost a day of 403s that looked like the provider's doing.
+      return typeof env[ref] === 'string' ? cleanSecret(env[ref] as string) : undefined;
     };
 
     let result;

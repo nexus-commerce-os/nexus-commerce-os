@@ -30,6 +30,7 @@ import {
   parseCjFeedConfig,
   parseShoppingFeed,
   feedExportWindow,
+  cleanSecret,
   readDelimitedPayload,
   renderShoppingFeed,
   retrieveCjFeed,
@@ -618,4 +619,39 @@ test('and a redirect is REFUSED, because the request carries a token', async () 
   });
   assert.equal(lookup.ok, false);
   assert.match(lookup.reason, /redirected the advertiser lookup \(302\)/);
+});
+
+/* ──────── the three bytes that cost a day, and a 403 that was ours ──────── */
+
+test('A BOM IS NOT PART OF A SECRET', () => {
+  /*
+   * `Get-Clipboard | wrangler secret put` wrote a UTF-8 BOM in front of the
+   * CJ token. The stored value was correct to the eye and wrong by three
+   * bytes, and CJ answered 403 "Could not authenticate given token" to a
+   * token that had worked from a laptop minutes earlier. The Workers runtime
+   * was what finally said so, warning that the authorization header
+   * contained non-ASCII characters.
+   */
+  const token = 'uGBbPHjx7KfFWCmhZS_6OL75Jw';
+  assert.equal(cleanSecret('﻿' + token), token, 'a leading BOM is shell residue');
+  assert.equal(
+    cleanSecret(`  ${token}
+`),
+    token,
+    'so is surrounding whitespace',
+  );
+  assert.equal(cleanSecret(`﻿  ${token}  `), token, 'and both together');
+});
+
+test('but the INTERIOR of a secret is never touched', () => {
+  // A provider may issue anything; only the edges are shell artefacts.
+  assert.equal(cleanSecret('abc def'), 'abc def');
+  assert.equal(cleanSecret('a﻿b'), 'a﻿b', 'a BOM in the middle is part of the value');
+});
+
+test('and an empty or absent credential stays absent', () => {
+  assert.equal(cleanSecret(undefined), undefined);
+  assert.equal(cleanSecret(''), undefined);
+  assert.equal(cleanSecret('   '), undefined, 'whitespace is not a credential');
+  assert.equal(cleanSecret('﻿'), undefined, 'nor is a BOM on its own');
 });

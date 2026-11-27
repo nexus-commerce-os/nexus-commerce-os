@@ -146,3 +146,5 @@ export {
   type CjAdvertiser,
   type RelationshipVerdict,
 } from './retrieval/cj-relationship';
+
+export { cleanSecret } from './retrieval/feed-source';
