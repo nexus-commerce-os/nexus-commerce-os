@@ -48,7 +48,7 @@ enabled = true
 # enforces on `deploy` and `versions upload` and merely reports on `dev`, so
 # previewing the site locally is never blocked by an unfilled legal fact.
 [build]
-command = "node scripts/release-gate.mjs && node scripts/verify-deploy-provenance.mjs"
+command = "node scripts/build-catalog.mjs && node scripts/release-gate.mjs && node scripts/verify-deploy-provenance.mjs"
 
 [assets]
 directory = "./out"
@@ -74,3 +74,16 @@ run_worker_first = ["/*", "!/_next/*"]
 [[kv_namespaces]]
 binding = "WAITLIST"
 id = "12a90ce4e895472399c8cd741e5623ad"
+
+# The published catalogue. PRODUCTION database, which is empty: no merchant has
+# been authorised, so the publication pointer has never moved and the catalogue
+# pages render an honest empty state.
+#
+# The fixture data lives in honesttotal-catalog-STAGING and cannot reach here:
+# that is a different database, and the production one carries
+# `environment = 'production'`, which makes the scheduler refuse fixture
+# sources by transport, by id and by merchant id.
+[[d1_databases]]
+binding = "CATALOG"
+database_name = "honesttotal-catalog-prod"
+database_id = "26b88f39-a560-4e31-97be-db48faee97cb"

@@ -36,7 +36,7 @@ Reference the relevant ADR or doc where applicable (e.g. `feat(affiliate): ... (
 
 ## Local development
 
-Prerequisites: **Node ≥ 20** (see [`.nvmrc`](.nvmrc)), **pnpm ≥ 9**, **Go ≥ 1.22**,
+Prerequisites: **Node ≥ 22.5** (see [`.nvmrc`](.nvmrc)), **pnpm ≥ 9**, **Go ≥ 1.22**,
 **Terraform ≥ 1.7**.
 
 ```bash

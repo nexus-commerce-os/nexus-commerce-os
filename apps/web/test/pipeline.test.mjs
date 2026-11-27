@@ -136,6 +136,24 @@ test('the catalog is withheld unless PUBLISH_CATALOG is explicitly set', () => {
   );
 });
 
+test('BUT A DEPLOY CANNOT WITHDRAW THE LIVE CATALOGUE BY ACCIDENT', () => {
+  /*
+   * The two halves of this fit together badly on their own: the build drops
+   * the catalogue unless PUBLISH_CATALOG=1, and `deploy:cf` does not set it.
+   * So the default path produced an artifact with no /products — while
+   * honesttotal.com serves /products with two published records and indexed
+   * detail pages. Deleting an indexed page is a decision; it should not be a
+   * side effect of an unset variable.
+   */
+  const gate = read('scripts/verify-deploy-provenance.mjs');
+  assert.match(gate, /out\/products\.html/, 'the deploy gate must look for the catalog index');
+  assert.match(
+    gate,
+    /ALLOW_CATALOG_WITHDRAWAL !== '1'/,
+    'withdrawing the catalog must require an exact opt-in',
+  );
+});
+
 test('the manifest covers the Worker bundle, not only the static assets', () => {
   // WHY THIS IS ITS OWN TEST. The first manifest hashed `out/` and nothing
   // else. But a deploy uploads two things: the assets in `out/`, and a Worker

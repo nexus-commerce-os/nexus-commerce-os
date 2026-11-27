@@ -81,3 +81,10 @@ apps/web/wrangler.staging.toml
 apps/web/.artifact-manifest.json
 apps/web/.worker-bundle/
 apps/web/.wrangler-bundle.toml
+
+# Playwright run artefacts. `.last-run.json` is written on every run and was
+# committed by a `git add -A` during a test cycle, which then failed the
+# formatting gate — a generated file has no business being formatted or
+# reviewed.
+test-results/
+playwright-report/

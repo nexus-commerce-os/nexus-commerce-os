@@ -24,10 +24,18 @@ import {
   type WaitlistEntry,
   type WaitlistStore,
 } from '../src/lib/waitlist-contract';
+import { handleCatalogApi, handleCatalogPage } from './catalog';
 
 export interface Env {
   ASSETS: Fetcher;
   WAITLIST: KVNamespace;
+  /**
+   * The published catalogue. Optional on purpose: a deploy without the binding
+   * falls through to the exported catalogue rather than turning a
+   * configuration gap into an outage, and says so loudly on
+   * `/api/catalog/*` — see worker/catalog.ts.
+   */
+  CATALOG?: D1Database;
 }
 
 /**
@@ -357,6 +365,24 @@ export default {
     const { pathname } = new URL(request.url);
 
     if (pathname === '/api/waitlist') return handleWaitlist(request, env);
+
+    /*
+     * THE CATALOGUE, BEFORE THE ASSET SERVICE.
+     *
+     * These routes are rendered from D1 on every request, which is the whole
+     * point: a newly published product or a changed price appears without a
+     * rebuild and without a deploy. `run_worker_first` already sends every
+     * document here, so the only thing needed was somewhere to put them.
+     *
+     * Both helpers return null when the path is not theirs, so an unknown
+     * path still falls through to the exported site exactly as before.
+     */
+    const api = await handleCatalogApi(request, env);
+    if (api !== null) return api;
+
+    const catalogPage = await handleCatalogPage(request, env, makeNonce());
+    if (catalogPage !== null) return catalogPage;
+
     return serveAsset(request, env);
   },
 };

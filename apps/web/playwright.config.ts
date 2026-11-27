@@ -66,9 +66,19 @@ export default defineConfig({
   projects: [
     // One project per width, so a failure names the width it failed at. These
     // cover LAYOUT and rendering only; they deliberately submit nothing.
+    /*
+     * BOTH SPEC FILES, and the second one is here because it was running
+     * NOWHERE. `testMatch` listed only responsive.spec.ts, so every test in
+     * catalog.spec.ts — the three-state assertions about /products — was
+     * collected by no project at all and never executed. A spec file that
+     * matches nothing is indistinguishable from a passing one in the summary,
+     * which is exactly the failure `verify-browser-coverage.mjs` exists to
+     * catch and could not: it counts the tests a project ran, and a project
+     * that never had them looks fully covered.
+     */
     ...WIDTHS.map((width) => ({
       name: `w${width}`,
-      testMatch: /responsive\.spec\.ts/,
+      testMatch: /(responsive|catalog)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width, height: heightFor(width) },
@@ -104,7 +114,8 @@ export default defineConfig({
     command: `npx wrangler dev --port ${PORT} --ip 127.0.0.1 --local`,
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
+    // Startup compiles the catalogue first, which is most of this.
+    timeout: 300_000,
     stdout: 'pipe',
     stderr: 'pipe',
   },
