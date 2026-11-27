@@ -55,26 +55,21 @@ export interface CatalogEnv {
 const MAX_AGE_SECONDS = 60;
 
 /*
- * A DATABASE WITH NO SCHEMA IS AN EMPTY CATALOGUE, NOT AN OUTAGE.
+ * A MISSING TABLE IS A FAILURE, NOT AN EMPTY CATALOGUE.
  *
- * `wrangler dev --local` hands the Worker a D1 with no tables at all, and so
- * does a freshly created database before its migrations run. Both produced a
- * 503 and the words "temporarily unavailable", which is wrong twice: nothing
- * is temporary about it, and there is nothing to be unavailable — no product
- * has ever been published into that database.
+ * `wrangler dev --local` hands the Worker a D1 with no tables, and for a
+ * moment this file treated that as "nothing published" to get the browser
+ * tests green. That was the wrong direction, and it is worth saying why
+ * rather than just reverting it: a production database that had lost its
+ * schema would then have shown a visitor a tidy "no products yet" page while
+ * the real answer was "this is broken". Zero products and a broken read are
+ * different facts and must not render the same.
  *
- * Only this one error is treated that way. Anything else — a syntax error, a
- * missing column, a timeout — still fails loudly, because those DO mean
- * "products may exist and we cannot read them", which is the case a visitor
- * must never see as an empty shop.
- *
- * It is logged either way. An unmigrated production database is a real
- * problem; it is just not the visitor's problem.
+ * So every database error fails loudly, and the TEST environment is migrated
+ * instead — scripts/migrate-local-d1.mjs. What the tests assert is then the
+ * state production is genuinely in: a migrated database with nothing
+ * published in it.
  */
-function isMissingSchema(error: unknown): boolean {
-  return /no such table/i.test(error instanceof Error ? error.message : String(error));
-}
-
 /**
  * Cache headers for catalogue responses.
  *
@@ -123,14 +118,21 @@ export async function handleCatalogApi(
   }
 
   /*
-   * NO BINDING IS AN EMPTY CATALOGUE, NOT AN ERROR.
+   * NO BINDING IS A FAILURE.
    *
-   * A deploy that has not yet been given the database should serve the same
-   * honest "nothing published" as one that has an empty database. A 500 here
-   * would make a configuration gap look like an outage.
+   * The first version of this served an empty catalogue instead, reasoning
+   * that a configuration gap should not look like an outage. That is backwards:
+   * it makes an outage look like a configuration-free empty shop, and a
+   * visitor cannot tell that the site simply forgot its database.
    */
   if (env.CATALOG === undefined) {
-    return json({ items: [], total: 0, limit: 0, offset: 0, generation: null });
+    // A deploy without the binding is a MISCONFIGURATION, not an empty shop.
+    // This used to answer 200 with an empty list, which made a missing
+    // database indistinguishable from a catalogue nobody has published into.
+    console.error('catalogue: the CATALOG binding is absent from this deployment');
+    return json({ error: 'the catalogue is not configured in this deployment' }, 503, {
+      'cache-control': 'no-store',
+    });
   }
 
   const catalogue = new PublicCatalogue(env.CATALOG as unknown as D1Like);
@@ -150,9 +152,6 @@ export async function handleCatalogApi(
     // The message, never the query. A database error can carry a fragment of
     // SQL, and this response is public.
     console.error(`catalogue read failed: ${(error as Error).message}`);
-    if (isMissingSchema(error)) {
-      return json({ items: [], total: 0, limit: 0, offset: 0, generation: null });
-    }
     return json({ error: 'the catalogue is temporarily unavailable' }, 503, {
       'cache-control': 'no-store',
     });
@@ -192,7 +191,11 @@ export async function handleCatalogPage(
   if (!isList && !isDetail) return null;
 
   if (env.CATALOG === undefined) {
-    return page(emptyState('The catalogue is not connected in this deployment.'), nonce, 200);
+    return page(
+      unavailableState('The catalogue database is not connected in this deployment.'),
+      nonce,
+      503,
+    );
   }
 
   const catalogue = new PublicCatalogue(env.CATALOG as unknown as D1Like);
@@ -217,11 +220,8 @@ export async function handleCatalogPage(
     return page(renderDetail(detail), nonce, 200);
   } catch (error) {
     console.error(`catalogue page failed: ${(error as Error).message}`);
-    if (isMissingSchema(error)) {
-      return page(`<h1>Products</h1>${renderEmptyCatalogue()}`, nonce, 200);
-    }
     return page(
-      emptyState('The catalogue is temporarily unavailable. Please try again shortly.'),
+      unavailableState('The catalogue is temporarily unavailable. Please try again shortly.'),
       nonce,
       503,
     );
@@ -333,8 +333,16 @@ th{color:var(--muted);font-weight:600}
 @media (max-width:420px){h1{font-size:22px}.ht-main{padding:18px 14px 44px}}
 `;
 
-function emptyState(message: string): string {
-  return `<h1>Products</h1><div class="ht-empty"><strong>Nothing is published yet.</strong>${escapeHtml(message)}</div>`;
+/*
+ * The FAILURE page. Deliberately not headed "Nothing is published yet",
+ * which is what it said until this was noticed: a broken read would have
+ * reassured the visitor that the shop was merely empty. Zero products and a
+ * catalogue we cannot read are different facts and must not read the same.
+ */
+function unavailableState(message: string): string {
+  return `<h1>Products</h1><div class="ht-empty"><strong>The catalogue could not be read.</strong>${escapeHtml(
+    message,
+  )}</div>`;
 }
 
 /**

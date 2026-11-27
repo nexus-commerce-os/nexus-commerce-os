@@ -104,7 +104,8 @@ export default defineConfig({
     command: `npx wrangler dev --port ${PORT} --ip 127.0.0.1 --local`,
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
+    // Startup compiles the catalogue first, which is most of this.
+    timeout: 300_000,
     stdout: 'pipe',
     stderr: 'pipe',
   },
