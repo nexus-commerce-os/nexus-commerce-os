@@ -67,6 +67,18 @@ export interface FeedSource {
   readonly credentialRef: string | null;
   /** Where a resolved credential goes. */
   readonly auth?: FeedAuth;
+  /*
+   * PROVIDER CONFIGURATION, NOT A CREDENTIAL.
+   *
+   * Some APIs need identifiers in the request that are neither the URL nor
+   * the secret — CJ's needs the publisher's company id and the feed's ad id
+   * in the query body. They live in the `auth_detail` column, which already
+   * exists and already carries this kind of value for `basic` and `query`
+   * auth, and they are deliberately NOT secrets: a value that must be kept
+   * secret belongs behind `credentialRef`, where it is resolved at fetch time
+   * and never written into a config row.
+   */
+  readonly providerDetail?: string;
   /** Off by default: a source is configured before it is trusted to run. */
   readonly enabled: boolean;
 }

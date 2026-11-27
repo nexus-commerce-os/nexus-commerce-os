@@ -54,6 +54,9 @@ function toRow(row: Record<string, unknown>): FeedSourceRow {
     },
     credentialRef: text(row.credential_ref),
     auth: toAuth(authKind, authDetail),
+    // Carried whole as well as interpreted: `toAuth` reads the one field a
+    // given auth kind needs, and an API transport needs the rest of it.
+    ...(authDetail === null ? {} : { providerDetail: authDetail }),
     enabled: fromInt(row.enabled),
     paused: fromInt(row.paused),
     pausedReason: text(row.paused_reason),
