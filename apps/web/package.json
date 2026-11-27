@@ -8,7 +8,7 @@
     "build": "node scripts/build-catalog.mjs && node scripts/release-gate.mjs && next build && node scripts/gate-catalog.mjs && node scripts/verify-headers.mjs && node scripts/verify-footer.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-merchants.mjs && node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-catalog.mjs && node scripts/artifact-manifest.mjs write",
     "start": "next start",
     "lint": "eslint src worker",
-    "test": "node scripts/run-tests.mjs",
+    "test": "node scripts/build-catalog.mjs && node scripts/run-tests.mjs",
     "typecheck": "node scripts/build-catalog.mjs && tsc --noEmit && tsc -p worker --noEmit",
     "deploy:cf": "node scripts/release-gate.mjs --enforce && node scripts/verify-deploy-provenance.mjs && pnpm run build && node scripts/artifact-manifest.mjs verify && wrangler deploy",
     "preview:cf": "next build && wrangler dev",
