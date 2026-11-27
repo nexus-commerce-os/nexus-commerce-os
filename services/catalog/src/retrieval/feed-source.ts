@@ -94,6 +94,31 @@ export type FeedAuth =
 /** Resolves a `credentialRef` to its secret. Supplied by the caller. */
 export type CredentialResolver = (ref: string) => Promise<string | undefined>;
 
+/*
+ * A SECRET IS WHAT WAS COPIED, NOT WHAT THE SHELL ADDED TO IT.
+ *
+ * `Get-Clipboard | wrangler secret put` wrote a UTF-8 BOM in front of a CJ
+ * personal access token. The stored value was correct to the eye and wrong by
+ * three bytes, and what came back was a 403 — "Could not authenticate given
+ * token" — from a token that worked from a laptop minutes earlier. The
+ * Workers runtime had to be the one to say so: "A header value for
+ * 'authorization' contains non-ASCII characters … ï»¿".
+ *
+ * So every resolved credential is cleaned here, once, where every transport
+ * goes through. A BOM and surrounding whitespace are never part of a secret —
+ * no provider issues one with either — so removing them cannot destroy a
+ * valid credential, and leaving them in produces a failure that looks like
+ * somebody else's fault.
+ *
+ * It does NOT touch the interior: a secret with a space in the middle is a
+ * secret with a space in the middle.
+ */
+export function cleanSecret(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const cleaned = value.replace(/^﻿/, '').trim();
+  return cleaned === '' ? undefined : cleaned;
+}
+
 /**
  * Reads secrets from the environment.
  *
@@ -102,7 +127,7 @@ export type CredentialResolver = (ref: string) => Promise<string | undefined>;
  * is a package that cannot be deployed anywhere else.
  */
 export function envCredentialResolver(env: NodeJS.ProcessEnv = process.env): CredentialResolver {
-  return async (ref) => env[ref];
+  return async (ref) => cleanSecret(env[ref]);
 }
 
 /** Transports that actually work today. */

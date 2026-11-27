@@ -31,6 +31,7 @@ import {
   type SizeLimits,
 } from './limits';
 import {
+  cleanSecret,
   UnsupportedTransportError,
   isFixtureTransport,
   isImplemented,
@@ -500,7 +501,10 @@ async function resolveToken(
   if (resolve === undefined) {
     throw new Error(`${source.id}: no credential resolver supplied`);
   }
-  const token = await resolve(source.credentialRef);
+  // Cleaned here as well as in `envCredentialResolver`, because a caller may
+  // supply its own resolver — the production runner does — and the three
+  // stray bytes are no less fatal for arriving through that one.
+  const token = cleanSecret(await resolve(source.credentialRef));
   if (token === undefined || token === '') {
     throw new Error(
       `${source.id}: credential "${source.credentialRef}" is not set. ` +

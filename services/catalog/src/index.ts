@@ -157,6 +157,7 @@ export {
   type SizeLimits,
 } from './retrieval/limits';
 export {
+  cleanSecret,
   envCredentialResolver,
   isDue,
   isImplemented,
