@@ -93,7 +93,15 @@ export function feedStamp(now: Date): string {
   return hour.toISOString();
 }
 
-export function buildFixtureFeed(merchant: FixtureMerchant, now: Date): string {
+/**
+ * `cycle` shifts every price by a fixed amount.
+ *
+ * A real provider republishes its feed with new prices; this is how that is
+ * simulated without waiting for one. It is a query parameter on the source
+ * URL rather than a code change, so demonstrating a price update does not
+ * require deploying anything — which is the claim being demonstrated.
+ */
+export function buildFixtureFeed(merchant: FixtureMerchant, now: Date, cycle = 0): string {
   const stamp = feedStamp(now);
   const lines = [HEADERS.join('\t')];
 
@@ -106,7 +114,7 @@ export function buildFixtureFeed(merchant: FixtureMerchant, now: Date): string {
       BRAND: merchant.brand,
       GTIN: gtin12(String(10_000_000_000 + i + merchant.prefix.charCodeAt(0) * 1_000)),
       MPN: `${merchant.prefix}-MPN-${i}`,
-      PRICE: money(merchant.basePriceMinor + i * 100),
+      PRICE: money(merchant.basePriceMinor + i * 100 + cycle * 250),
       SALE_PRICE: '',
       AVAILABILITY: 'in stock',
       CONDITION: 'new',
