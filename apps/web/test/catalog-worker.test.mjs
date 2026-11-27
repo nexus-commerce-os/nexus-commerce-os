@@ -206,6 +206,19 @@ test('AN UNKNOWN SLUG IS 404 AND NEVER ANOTHER PRODUCT', async () => {
 
 const STAMP = '2026-11-26T11:31:41.000Z';
 
+/** One synthetic feed row, shared by the publish and the retire. */
+const feedRow = (i) =>
+  product({
+    id: `NW-${i}`,
+    title: `Northwind Item ${i}`,
+    price: '19.99 USD',
+    salePrice: '',
+    gtin: gtin12(String(10000000000 + i)),
+    mpn: `NW-MPN-${i}`,
+    lastUpdated: STAMP,
+    productType: 'Home > Drinkware',
+  });
+
 /**
  * A database with a real published generation in it.
  *
@@ -218,7 +231,7 @@ const STAMP = '2026-11-26T11:31:41.000Z';
  * publisher records `merchant_not_approved` and publishes nothing, which is a
  * different test (and one services/catalog already has).
  */
-async function publishedD1() {
+async function publishedD1(count = 3) {
   const db = migratedEmptyD1();
   await db
     .prepare(
@@ -227,18 +240,7 @@ async function publishedD1() {
     .bind('northwind', 'Northwind Trading')
     .run();
 
-  const rows = [1, 2, 3].map((i) =>
-    product({
-      id: `NW-${i}`,
-      title: `Northwind Item ${i}`,
-      price: '19.99 USD',
-      salePrice: '',
-      gtin: gtin12(String(10000000000 + i)),
-      mpn: `NW-MPN-${i}`,
-      lastUpdated: STAMP,
-      productType: 'Home > Drinkware',
-    }),
-  );
+  const rows = Array.from({ length: count }, (_, i) => feedRow(i + 1));
 
   const imported = await importFeedArchive(zipOf(buildFeed(rows)), new D1OfferStore(db), {
     merchantId: 'northwind',
@@ -249,7 +251,7 @@ async function publishedD1() {
 
   const published = await publishCatalogue(db, { now: new Date('2026-11-26T12:00:00.000Z') });
   assert.equal(published.ran, true, `the publication did not run: ${JSON.stringify(published)}`);
-  assert.equal(published.counts.products, 3);
+  assert.equal(published.counts.products, count);
   return db;
 }
 
@@ -310,4 +312,78 @@ test('A PUBLISHED PRODUCT HAS A DETAIL PAGE, and an unpublished slug still does 
 
   const missing = await handleCatalogPage(get('/products/not-in-this-generation'), env, 'n');
   assert.equal(missing.status, 404, 'a live generation makes "not published" a fact, so 404');
+});
+
+test('A LIVE GENERATION MUST NOT 404 THE EXPORTED DETAIL PAGES', async () => {
+  /*
+   * honesttotal.com has two exported, INDEXED detail pages —
+   * /products/sennheiser-hd-600 and /products/das-keyboard-4-professional.
+   * They belong to a different catalogue: the specification-only records that
+   * passed the source-terms audit. An unrelated merchant's first generation
+   * going live would have started answering 404 for both of them, because the
+   * fallback asked only whether anything was published at all.
+   */
+  const db = await publishedD1();
+  const exported = assets(true);
+
+  const response = await handleCatalogPage(
+    get('/products/sennheiser-hd-600'),
+    { CATALOG: db, ASSETS: exported.binding },
+    'n',
+  );
+  assert.equal(response, null, 'a slug this pipeline has never published may still be exported');
+  assert.ok(exported.calls() > 0);
+});
+
+test('BUT A WITHHELD RECORD DOES NOT COME BACK AS AN EXPORTED PAGE', async () => {
+  /*
+   * The case the check exists to refuse, built the way it really happens: a
+   * product the feed stops listing is retired, its published row's interval
+   * closes, and the next generation does not contain it. Serving its old
+   * exported page then would publish exactly what the eligibility rules
+   * withheld.
+   */
+  /*
+   * TWENTY, not three. A publication that would retire a third of the
+   * catalogue is refused by the cliff guard and the pointer does not move —
+   * which is the guard working, and makes three products the wrong fixture
+   * for testing an ordinary retirement.
+   */
+  const db = await publishedD1(20);
+  const store = new D1OfferStore(db);
+
+  const remaining = Array.from({ length: 19 }, (_, i) => feedRow(i + 1));
+  const second = await importFeedArchive(zipOf(buildFeed(remaining)), store, {
+    merchantId: 'northwind',
+    sourceFeed: 'test:shopping:0000',
+    now: new Date('2026-11-26T13:00:00.000Z'),
+  });
+  assert.equal(
+    second.applied,
+    true,
+    `the second import did not apply: ${JSON.stringify(second.run)}`,
+  );
+  assert.equal(second.reconciliation.removed.length, 1, 'one product left the feed');
+
+  const republished = await publishCatalogue(db, { now: new Date('2026-11-26T14:00:00.000Z') });
+  assert.equal(republished.ran, true);
+  // The product record survives; what it loses is its active offer, so it is
+  // withheld rather than deleted. Eligibility is the figure that moves.
+  assert.equal(republished.counts.eligible, 19, 'the retired product is no longer eligible');
+
+  const closed = await db
+    .prepare(
+      'SELECT slug FROM catalog_published_product WHERE last_generation IS NOT NULL ORDER BY slug LIMIT 1',
+    )
+    .first();
+  assert.ok(closed, 'a row should have been closed');
+
+  const exported = assets(true);
+  const response = await handleCatalogPage(
+    get(`/products/${closed.slug}`),
+    { CATALOG: db, ASSETS: exported.binding },
+    'n',
+  );
+  assert.equal(response.status, 404, 'withheld means withheld');
+  assert.equal(exported.calls(), 0, 'and the asset service is not even asked');
 });

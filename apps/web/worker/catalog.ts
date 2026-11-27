@@ -234,14 +234,23 @@ export async function handleCatalogPage(
     const detail = await catalogue.bySlug(slug);
     if (detail === null) {
       /*
-       * Only when the database has published NOTHING. If a generation is live
-       * and this slug is not in it, the slug is genuinely not published and an
-       * exported page for it would be a stale copy of a record the pipeline
-       * has since withheld — serving that is exactly the failure this project
-       * is built to avoid.
+       * A SLUG THIS PIPELINE HAS NEVER SEEN IS NOT A WITHHELD RECORD.
+       *
+       * The first version asked only whether anything was published at all,
+       * which was right while the database was empty and wrong the moment it
+       * was not: /products/sennheiser-hd-600 and
+       * /products/das-keyboard-4-professional are exported pages, they are
+       * indexed, and they would have started answering 404 the instant an
+       * unrelated merchant's first generation went live.
+       *
+       * So the question asked is whether the slug has EVER been published
+       * here. Never — no row in any generation — means the exported page is a
+       * different catalogue and may serve. Once — a row whose interval has
+       * closed — means the eligibility rules have withheld it since, and its
+       * old exported page must NOT come back; that is the case this check
+       * exists to refuse, and it still 404s.
        */
-      const { products } = await catalogue.summary();
-      if (products === 0 && (await exportedPageExists(request, env))) {
+      if (!(await catalogue.everPublished(slug)) && (await exportedPageExists(request, env))) {
         return null;
       }
       return page(renderMissing(slug), nonce, 404);
