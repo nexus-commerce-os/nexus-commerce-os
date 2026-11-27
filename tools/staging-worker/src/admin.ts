@@ -146,9 +146,20 @@ async function action(
   const op = String(form.get('op') ?? '');
   const at = context.now.toISOString();
 
-  const record = (outcome: 'allowed' | 'denied' | 'failed', detail: string, target: string | null) =>
+  const record = (
+    outcome: 'allowed' | 'denied' | 'failed',
+    detail: string,
+    target: string | null,
+  ) =>
     data
-      .audit(context.db, { at, actorId: principal.email, action: `op:${op}`, target, outcome, detail })
+      .audit(context.db, {
+        at,
+        actorId: principal.email,
+        action: `op:${op}`,
+        target,
+        outcome,
+        detail,
+      })
       .catch(() => undefined);
 
   try {
@@ -221,7 +232,9 @@ async function perform(
     case 'set-auto-publish': {
       const on = String(form.get('value') ?? '') === 'on';
       await db
-        .prepare('UPDATE catalog_automation_config SET auto_publish = ?, updated_at = ? WHERE id = 1')
+        .prepare(
+          'UPDATE catalog_automation_config SET auto_publish = ?, updated_at = ? WHERE id = 1',
+        )
         .bind(on ? 1 : 0, at)
         .run();
       return {
@@ -262,7 +275,11 @@ async function perform(
         .prepare('UPDATE catalog_feed_source SET enabled = ? WHERE id = ?')
         .bind(on ? 1 : 0, id)
         .run();
-      return { section: 'sources', target: id, detail: `Source ${id} ${on ? 'enabled' : 'disabled'}` };
+      return {
+        section: 'sources',
+        target: id,
+        detail: `Source ${id} ${on ? 'enabled' : 'disabled'}`,
+      };
     }
 
     case 'reset-source-failures': {

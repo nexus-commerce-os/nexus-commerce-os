@@ -100,9 +100,7 @@ export async function overview(db: D1Like, now: Date, crons: readonly number[]):
     .first<Record<string, unknown>>();
 
   const quota = await db
-    .prepare(
-      `SELECT estimated_writes, authoritative_writes FROM catalog_quota_usage WHERE day = ?`,
-    )
+    .prepare(`SELECT estimated_writes, authoritative_writes FROM catalog_quota_usage WHERE day = ?`)
     .bind(today)
     .first<Record<string, unknown>>();
 
@@ -121,7 +119,10 @@ export async function overview(db: D1Like, now: Date, crons: readonly number[]):
     lastSyncAt: s(lastCycle?.started_at),
     lastSyncOutcome: s(lastCycle?.outcome),
     nextSyncAt: nextRun(crons, now),
-    liveGeneration: row?.live_generation === null || row?.live_generation === undefined ? null : n(row.live_generation),
+    liveGeneration:
+      row?.live_generation === null || row?.live_generation === undefined
+        ? null
+        : n(row.live_generation),
     estimatedWritesToday: n(quota?.estimated_writes),
     authoritativeWritesToday:
       quota?.authoritative_writes === null || quota?.authoritative_writes === undefined
@@ -154,7 +155,11 @@ const section = (columns: string[], rows: Row[], empty: string): Section => ({
   empty,
 });
 
-async function all(db: D1Like, sql: string, binds: unknown[] = []): Promise<Record<string, unknown>[]> {
+async function all(
+  db: D1Like,
+  sql: string,
+  binds: unknown[] = [],
+): Promise<Record<string, unknown>[]> {
   const statement = binds.length > 0 ? db.prepare(sql).bind(...binds) : db.prepare(sql);
   const out = await statement.all<Record<string, unknown>>();
   return out.results;
@@ -270,7 +275,16 @@ export async function cycles(db: D1Like, limit = 40): Promise<Section> {
     [limit],
   );
   return section(
-    ['started_at', 'trigger', 'outcome', 'sources_imported', 'sources_failed', 'rows_written', 'generation', 'detail'],
+    [
+      'started_at',
+      'trigger',
+      'outcome',
+      'sources_imported',
+      'sources_failed',
+      'rows_written',
+      'generation',
+      'detail',
+    ],
     rows as Row[],
     'No synchronisation cycle has run yet.',
   );
@@ -300,7 +314,17 @@ export async function offers(db: D1Like, limit = 100): Promise<Section> {
     [limit],
   );
   return section(
-    ['merchant_id', 'merchant_offer_id', 'title', 'list_price_minor', 'currency', 'availability', 'state', 'shipping_stated', 'last_seen_at'],
+    [
+      'merchant_id',
+      'merchant_offer_id',
+      'title',
+      'list_price_minor',
+      'currency',
+      'availability',
+      'state',
+      'shipping_stated',
+      'last_seen_at',
+    ],
     rows as Row[],
     'No offer has been imported yet.',
   );
@@ -317,7 +341,15 @@ export async function priceHistory(db: D1Like, limit = 100): Promise<Section> {
     [limit],
   );
   return section(
-    ['observed_at', 'merchant_id', 'merchant_offer_id', 'list_price_minor', 'sale_price_minor', 'currency', 'availability'],
+    [
+      'observed_at',
+      'merchant_id',
+      'merchant_offer_id',
+      'list_price_minor',
+      'sale_price_minor',
+      'currency',
+      'availability',
+    ],
     rows as Row[],
     'No price movement has been recorded. History records movement, not sightings.',
   );
